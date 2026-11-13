@@ -10,6 +10,7 @@ Specification and implementation backlog for the Digital Bridge Accessibility Ha
 4. [Issue backlog](docs/issues.md): stable local IDs, dependencies, blocked-work procedure, acceptance and verification.
 5. [Verification](docs/verification.md) and [conformance template](docs/conformance.md): what evidence is required; neither claims tests have passed.
 6. [Agent instructions](AGENTS.md): how to take an issue through implementation and independent reviews.
+7. [Coding standards](docs/coding-standards.md): Occam's razor, comments, TypeScript style and efficient implementation.
 
 ## How implementation starts
 

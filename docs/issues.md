@@ -51,6 +51,7 @@ The initial parallel frontier is T3-001, T3-002, and T3-003. After T3-004, T3-00
 - Configuration rejects missing required values clearly; secrets are not bundled into browser assets or committed.
 - Commands fail on a deliberately broken focused check. PR CI configuration is prepared for the future repository without claiming it ran on GitHub.
 - README records exact commands and supported versions chosen from current compatible stable documentation.
+- Establish the [coding-standard tooling](coding-standards.md#enforcement-and-review): TypeScript strict checks, compatible ESLint/typescript-eslint rules and shared Prettier format checking, using documented package commands in CI. Do not introduce speculative plugins or rewrite unrelated files.
 
 **Automated verification:** Run the documented build/type-check/test commands; verify readiness changes appropriately when the database is unavailable.  
 **Human verify:** Follow the README on a clean environment and load the web page and health endpoint without undocumented setup.

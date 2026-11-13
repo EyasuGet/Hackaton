@@ -2,6 +2,8 @@
 
 Status: target architecture, not an existing application. Read [spec.md](spec.md) for behaviour and [issues.md](issues.md) for implementation order. Inspect the current project before each issue; this tree is not permission to scaffold unused files.
 
+Apply [the coding standards](coding-standards.md) inside this architecture: simplest adequate implementation, purposeful comments and consistent TypeScript. The layer diagram describes dependency direction, not a minimum number of classes/files to create.
+
 ## Runtime shape
 
 The arrows below show runtime calls/data flow, **not source-code imports**. The browser never talks directly to PostgreSQL or holds provider credentials. Approved course/job content and delivery intents are stored in the same PostgreSQL instance, not separate unnamed stores.
@@ -121,6 +123,7 @@ Hackaton/
 ├── docs/
 │   ├── spec.md
 │   ├── architecture.md
+│   ├── coding-standards.md
 │   ├── decisions.md
 │   ├── issues.md
 │   ├── verification.md

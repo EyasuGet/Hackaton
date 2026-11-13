@@ -10,6 +10,7 @@ This is the Track 3 multilingual learning/help assistant. Work from the reposito
 
 ## Coding preferences
 
+- Apply [the coding standards](docs/coding-standards.md) when implementing/reviewing: Occam's razor, useful file/block/line comments, TypeScript conventions, and efficient execution. Choose the simplest adequate implementation without weakening required behaviour or the agreed module interfaces.
 - Make the smallest correct change. Preserve existing formatting and readable one-line expressions; keep unrelated cleanup, renaming, and refactoring out of scope.
 - Before editing, inspect current behaviour, callers, tests, and project conventions. Account for meaningful failure paths and compatibility.
 - Use feature-first modules and the agreed Clean Architecture dependency direction. Object-oriented use cases and adapters earn their interfaces through actual behaviour or replacement needs. Prefer composition and explicit constructor wiring; avoid generic base classes and speculative frameworks.

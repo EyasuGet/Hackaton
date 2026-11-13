@@ -40,6 +40,7 @@ Author sign-off means completing this checklist, not submitting a GitHub **Appro
 - [ ] Explicit dependencies satisfied; required external evidence complete; applicable release/stretch gates respected.
 - [ ] Existing behaviour, shared contracts and applicable overall decisions remain compatible with current `main`.
 - [ ] Added tests cover distinct necessary risks without redundant cases or implementation-detail assertions.
+- [ ] The implementation follows the coding standards: simplest adequate design, justified abstractions/dependencies, useful file/block/line comments and configured TypeScript checks.
 - [ ] Blocking review findings resolved; checks/CI and reviews cover the current candidate, including material conflict resolutions.
 - [ ] No unrelated cleanup or sensitive data in the diff/evidence.
 - [ ] I, the PR author, have reviewed this PR using the template and sign off on my own merge; required repository protections are satisfied.
