@@ -1,13 +1,13 @@
 # Track 3 — Accessible learning and career assistant
 
-Local specification and implementation backlog for the Digital Bridge Accessibility Hackathon. **Planning pack only: no application, package commands, or runtime verification exists yet.** No GitHub repository or issues have been created by this work.
+Specification and implementation backlog for the Digital Bridge Accessibility Hackathon, shared in [the team repository](https://github.com/abnsol/Hackathon). **Planning pack only: no application, package commands, or runtime verification exists yet.** Issue bodies remain local Markdown; no GitHub issues have been created.
 
 ## Start here
 
 1. [Product specification](docs/spec.md): what must work and what is excluded.
 2. [Architecture](docs/architecture.md): stack, detailed target folders, module interfaces, identity/answer/delivery flows.
 3. [Decision register](docs/decisions.md): settled choices, implementation discretion, and external blockers.
-4. [Issue backlog](docs/issues.md): stable local IDs, phase gates, dependencies, acceptance and verification.
+4. [Issue backlog](docs/issues.md): stable local IDs, dependencies, blocked-work procedure, acceptance and verification.
 5. [Verification](docs/verification.md) and [conformance template](docs/conformance.md): what evidence is required; neither claims tests have passed.
 6. [Agent instructions](AGENTS.md): how to take an issue through implementation and independent reviews.
 
@@ -15,7 +15,9 @@ Local specification and implementation backlog for the Digital Bridge Accessibil
 
 Read the Phase 0 issues, claim one whose blockers are satisfied, and inspect the current project before editing. Establish the runnable workspace while other team members investigate the supplied Savanna contract and live provider/device risks. Do not build a giant empty skeleton first. The first learner increment is a narrow authorised, source-backed text interaction; later phases extend the same use cases across voice, channels, help, and careers.
 
-The agreed sequence is foundation/risk checks → accessible tutor → voice/channels → help/careers → submission verification. Independent issues within the active phase can run in parallel. Optional research mode and lowest-priority employer features come afterward.
+Delivery milestones are foundation/risk checks → accessible tutor → voice/channels → help/careers → submission verification. Work follows explicit dependencies, not a whole-phase waiting barrier. When blocked, [record the blocker and pick other ready baseline work](docs/issues.md#when-work-is-blocked). Optional research mode and lowest-priority employer features still wait for baseline acceptance.
+
+Each author reviews and merges their own PR using the [review skill](.agents/skills/code-review/SKILL.md) and [PR template](.github/pull_request_template.md), with standards/spec AI reviewers. No other teammate's PR approval is required; CI, repository protections, applicable overall decisions, existing-implementation compatibility and required device/co-designer evidence still apply. Follow the [focused test-writing rules](docs/verification.md#test-writing-rules), not a test-count target.
 
 ## Fresh-session starter
 

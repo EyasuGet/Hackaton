@@ -8,6 +8,22 @@ Bootstrap must provide documented, reproducible commands for dependency installa
 
 Live provider checks must be clearly separate from deterministic CI. Missing credentials produce an explicit unverified/blocked result; a mock pass cannot be substituted. Do not put secrets or real learner records in fixtures.
 
+## Test-writing rules
+
+Use these rules when selecting tests and during author-led standards/spec review. The acceptance scenarios below are risk coverage, not instructions to repeat the same assertion at every layer.
+
+1. **Name the risk first.** Each new test must prove a specific acceptance criterion, meaningful failure path, or regression risk. Its name and assertions must describe the same observable behaviour. No tests added solely for test count or a coverage target.
+2. **Inspect existing coverage.** Extend a relevant test/fixture when it already exercises the path. Add a new case only for a distinct condition or outcome. Preserve useful existing tests; remove/consolidate a duplicate only after demonstrating that its unique coverage is retained.
+3. **Use the lowest sufficient layer.** Unit-test a business rule; use a real-database integration test for transactions/locking; use browser tests for user interaction and accessibility. Repeat across layers only for a separate integration risk, and explain that risk in the PR.
+4. **Assert outcomes, not implementation trivia.** Prefer returned results, persisted changes, permitted/denied access, and user-visible effects. Avoid tests of private methods, arbitrary call counts, internal ordering, getters, framework behaviour, or formatting unless the requirement explicitly makes them observable. Outbound send count is meaningful when proving no duplicate delivery.
+5. **Cover meaningful boundaries.** Choose realistic valid, invalid, boundary, and failure cases only where behaviour differs. For example, test a duplicate job event or cancelled subscription, not many equivalent strings just to add cases. Parameterise genuinely equivalent logic with distinct inputs instead of copying whole tests.
+6. **Make failures sensitive.** A regression test should fail without the fix; verify this where practical and record it. Assert the actual effect, not only that a promise resolved or a mock returned the value configured by the test.
+7. **Keep tests deterministic and independent.** Control time, randomness and external responses; isolate fixtures/records. Avoid arbitrary sleeps and execution-order dependencies. Do not mock the behaviour under test; fake external dependencies at real interfaces. Real provider/device evidence remains a separate requirement.
+8. **Keep setup proportional.** Reuse current test infrastructure and minimal synthetic fixtures. Add a helper/dependency only when the present test needs it. Large snapshots must not replace targeted behavioural assertions or be blindly regenerated after a failure.
+9. **Match checks to the change.** Run focused checks first and documented regression/pre-merge checks afterward. Documentation-only changes need link, diagram, dependency, and instruction-consistency checks as applicable, not artificial application tests. Report unavailable checks honestly.
+
+The PR's test rationale identifies each added/changed test's distinct risk and any deliberate cross-layer overlap. A failed check is a defect to diagnose, not permission to delete assertions, skip a useful case, or label a mock as live evidence.
+
 ## Layers of proof
 
 | Layer | Exercises | Expected proof |

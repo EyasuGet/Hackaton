@@ -7,14 +7,24 @@ Status: local draft of the agreed design, prepared 2026-11-14. No application im
 - Product scope is defined in [the spec](spec.md); technical decisions in [the architecture](architecture.md). This file is the authoritative local issue body until an explicitly requested GitHub migration.
 - Keep each `T3-NNN` ID when migrating. Create issues in dependency order, then resolve dependency links and retain an ID-to-GitHub mapping. Do not silently change all issues to In Progress or assign them to one person.
 - Each implementation issue is intended to be one independently verifiable PR. If current code reveals that a slice cannot fit one PR, propose a split preserving its acceptance criteria and dependencies before implementing it.
-- All issues below start **Planned / unassigned**, except explicitly marked **Needs future spec**. A team member claims one ready issue before starting; one issue has one implementation owner. Others may review or pair.
-- An issue is ready when its listed dependencies and its phase-entry gate are complete. Within the active phase, independent ready issues may run in parallel. All baseline work in the previous phase must pass its exit gate before the next phase starts.
-- Phase 0 feasibility checks may complete with an evidenced external blocker, an escalation path, and a dependent issue marked blocked. This records risk; it does not pass that dependent feature's live acceptance. Later phase gates remain blocked if their required live capabilities are unverified.
-- “Done” requires the stated acceptance evidence, standards/spec reviews, resolved blocking findings, and human acceptance. Once Git exists, it also requires merge and integrated verification. A mock only proves test behaviour, never live SMS, screen sharing, or Savanna compatibility.
+- All issues below start **Planned / unassigned**, except explicitly marked **Needs future spec**. A team member claims one ready issue before starting; one issue has one implementation owner who also owns its review and merge. Others may pair, but another teammate's PR approval is not a prerequisite.
+- Baseline issues are ready when their explicit dependencies are complete and their own prerequisites are available. Pick the earliest ready baseline issue across phases; phase numbers group delivery milestones, not team-wide start barriers. Optional Phase 5 still requires T3-027 and any future-spec approval.
+- Phase 0 feasibility checks may complete with an evidenced external blocker, an escalation path, and a dependent issue marked blocked. This records risk; it does not pass that dependent feature's live acceptance. A milestone remains incomplete while its required capabilities are unverified, without freezing unrelated baseline issues.
+- “Done” requires the stated acceptance evidence, author-led template review with standards/spec AI reviewers, resolved blocking findings, and required human/device checks. It also requires the author's authorised merge and integrated verification. A mock only proves test behaviour, never live SMS, screen sharing, or Savanna compatibility.
 - Automated checks below describe **planned verification targets**, not existing command names or tests already run. T3-001 establishes documented commands; each later issue adds the relevant executable checks and records the actual invocation/result.
 - `Baseline` is required scope. `Stretch` is not a blocker for submission. Employer features are lowest priority and require a separate future spec before becoming ready.
 
-## Phase gates and issue map
+## When work is blocked
+
+1. Record `Blocked`, the specific dependency or external capability, the owner/contact, the next action, and a concrete next check-in time in the issue. Notify its owner immediately; do not wait silently or repeatedly poll an unchanged blocker.
+2. Pick another unclaimed ready **baseline** issue, even in a later phase. Keep the blocked branch/PR clearly labelled and avoid accumulating multiple active implementations. Example: blocked SMS T3-015 does not prevent ready help T3-016 or careers T3-019; their own dependencies still apply.
+3. If no independent issue is ready, pair with the prerequisite owner, investigate a named external blocker, or improve required evidence/docs/tests for an existing issue. Do not manufacture low-value tests or start optional scope simply to stay busy.
+4. If only a shared interface is blocking useful work, agree its request/result/error contract with the prerequisite owner and record it. Prefer a small, genuinely needed contract slice merged first. Split/update issue IDs and dependencies before treating the consumer as ready. A labelled fixture can support isolated development, but cannot complete real integration acceptance. Never invent a competing interface or merge code that depends on an unavailable implementation.
+5. Resume by syncing the now-completed prerequisite, inspecting its actual contract, and rerunning the affected integration checks. If an unavoidable critical-path blocker remains, surface the concrete decision to the team rather than waiving it.
+
+An independently safe partial slice may be proposed as a separately scoped issue; the original live feature remains blocked. Phase/release milestones report missing work honestly, but do not freeze unrelated baseline work.
+
+## Delivery milestones and issue map
 
 | Phase | Issues | Exit gate |
 |---|---|---|
@@ -25,7 +35,7 @@ Status: local draft of the agreed design, prepared 2026-11-14. No application im
 | 4 — Submission readiness | T3-024–027 | Measured load/security/accessibility evidence, clean installation and Savanna integration, complete submission package |
 | 5 — Optional improvements | T3-028–032 | Each optional feature passes its own checks without regressing the baseline; no stretch feature delays submission |
 
-The initial parallel frontier is T3-001, T3-002, and T3-003. Subsequent frontiers follow the dependencies below; the phase-entry rule applies even when an issue does not list every previous-phase ID.
+The initial parallel frontier is T3-001, T3-002, and T3-003. After T3-004, T3-005, T3-006 and T3-014 can proceed independently. There are no hidden previous-phase dependencies; each issue lists its actual prerequisites. T3-027 explicitly accounts for the entire baseline before optional work opens.
 
 ## Phase 0 — Foundation and risk checks
 
@@ -440,7 +450,7 @@ The initial parallel frontier is T3-001, T3-002, and T3-003. Subsequent frontier
 ### T3-025 — Complete the co-designer accessibility gate and conformance evidence
 
 **Phase:** 4 · **Priority:** Baseline · **Status:** Planned · **Owner:** Unassigned  
-**Depends on:** T3-009, T3-010, T3-011, T3-016, T3-017, T3-018, T3-022 · **Type:** Human/device validation and focused fixes
+**Depends on:** T3-009, T3-013, T3-018, T3-021, T3-023 · **Type:** Human/device validation and focused fixes
 
 **Deliver:** A final main-task test covering tutoring and the agreed help/career journey, plus a truthful WCAG 2.2 AA conformance report with evidence, limitations and unresolved findings.
 
@@ -458,7 +468,7 @@ The initial parallel frontier is T3-001, T3-002, and T3-003. Subsequent frontier
 ### T3-026 — Prove clean installation, Savanna integration and portable interfaces
 
 **Phase:** 4 · **Priority:** Baseline · **Status:** Planned · **Owner:** Unassigned  
-**Depends on:** T3-002, T3-006, T3-007, T3-012, T3-018, T3-022, T3-023 · **Type:** Integration and installation validation
+**Depends on:** T3-002, T3-008, T3-012, T3-018, T3-023 · **Type:** Integration and installation validation
 
 **Deliver:** A clean-install path a stranger can follow, real Savanna launch/identity integration, a script-tag installation on another site and accurate REST/OpenAPI documentation generated or maintained from actual implemented contracts.
 
@@ -481,6 +491,7 @@ The initial parallel frontier is T3-001, T3-002, and T3-003. Subsequent frontier
 
 **Done when:**
 - Every mandatory requirement maps to completed acceptance evidence. An honest draft package may list unresolved blockers, but it cannot complete this issue, pass the baseline gate, or unlock Phase 5 until required live and human/device checks pass (or an explicit approved requirement change is recorded).
+- Verify that every baseline issue T3-001–026 is complete, including transitive dependencies; a passed validation subset does not substitute for missing baseline work.
 - Adopt the open licence actually specified by ALX; do not invent licensing permission. Document attribution and third-party dependency/provider requirements.
 - Rerun documented checks for the submitted revision and record passed/failed/unverified accurately; do not copy stale evidence from an earlier build.
 - The demo includes cited Amharic tutoring, a limitation/fallback, asynchronous help, learner-controlled sharing on supported hardware, and the job/accommodation journey.

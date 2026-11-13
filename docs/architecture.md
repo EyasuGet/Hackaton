@@ -4,24 +4,52 @@ Status: target architecture, not an existing application. Read [spec.md](spec.md
 
 ## Runtime shape
 
-```text
-Savanna / another host -- script loader --> isolated learner iframe
-Standalone lightweight page ---------------------+       |
-Support console ---------------------------------+       |
-Telegram webhook/polling adapter -------------------------+
-                                                        v
-                                      Fastify HTTP / channel adapters
-                                                        |
-                                      Application use cases + domain
-                                        |        |           |
-                                  PostgreSQL   approved     provider adapters
-                                  + outbox     content      AI / voice / SMS
-                                        |
-                                  delivery worker --> Telegram / SMS
+The arrows below show runtime calls/data flow, **not source-code imports**. The browser never talks directly to PostgreSQL or holds provider credentials. Approved course/job content and delivery intents are stored in the same PostgreSQL instance, not separate unnamed stores.
 
-Authorised support session: learner browser <--> WebRTC/relay <--> staff browser
-Screen media is not sent to the tutor or recorded by this application.
+```mermaid
+flowchart TB
+    Host["Savanna / another host"] --> Loader["Script-tag loader"]
+    Loader --> Frame["Isolated learner iframe"]
+    Page["Standalone learner page"] --> HTTP
+    Frame --> HTTP
+    Staff["Support console"] --> HTTP
+    Telegram["Telegram Bot API"] <-->|"Webhook or polling; replies"| Channel
+
+    subgraph Backend["One backend deployment"]
+        HTTP["Fastify HTTP interface + web assets"] --> UseCases["Application use cases"]
+        Channel["Telegram channel adapter"] --> UseCases
+        UseCases --> Domain["Domain rules"]
+        UseCases -->|"Repository ports; atomic state + intent"| Persistence["PostgreSQL adapters"]
+        UseCases -->|"Answer port"| Answer["Cloud answer adapter"]
+        UseCases -->|"Answer port"| FAQ["Curated FAQ adapter"]
+        UseCases -->|"Speech ports"| Speech["Speech adapters"]
+        FAQ -->|"Approved entries"| Persistence
+        Worker["Notification use case + delivery worker"] -->|"Claim, recheck eligibility, record outcome"| Persistence
+        Worker --> Delivery["Telegram / SMS delivery adapters"]
+    end
+
+    Persistence <--> DB[("PostgreSQL: identity, content, jobs, conversations, help, outbox")]
+    Answer --> AI["External AI provider, with consent"]
+    Speech --> Voice["External speech provider, with consent"]
+    Delivery --> Telegram
+    Delivery --> SMS["Approved SMS provider"]
+    SMS --> Phone["Consenting handset"]
 ```
+
+The worker reads committed delivery intents through persistence interfaces; the database does not execute or push messages itself. The standalone page can also read its explicitly prepared, non-restricted FAQ cache offline without reaching the backend. Direct tutoring replies use the channel/HTTP response path; durable alerts and support notifications use the worker.
+
+### Screen sharing is a separate media path
+
+```mermaid
+flowchart LR
+    Learner["Learner browser"] -->|"Authenticated signalling"| Signal["Backend: support authorisation + signalling"]
+    Staff["Authorised staff browser"] -->|"Authenticated signalling"| Signal
+    Learner <-->|"Direct WebRTC media when possible"| Staff
+    Learner <-->|"Relayed media when required"| TURN["TURN relay"]
+    TURN <--> Staff
+```
+
+Signalling authorises/negotiates the session; the screen media takes the direct or relay path, **not both by requirement**. The learner controls capture and stop. Screen media is never routed to the tutor or recorded by this application. TURN is a network dependency when required, not a new business microservice.
 
 Deploy one backend and one PostgreSQL instance initially; serve web assets and the embed loader through the documented deployment. The delivery worker belongs to the same backend deployment and uses durable database state. No Redis or separate queue product is needed initially. HTTPS, public callback/relay reachability, and suitable hosting remain provisioning requirements, not assumptions about organiser services.
 
@@ -42,10 +70,17 @@ The AI, retrieval, speech, SMS, host-identity, and media-relay selections are bo
 
 ## Dependency direction and OO design
 
-```text
-presentation --> application --> domain
-infrastructure --> application ports / domain
-bootstrap --> concrete implementations and wiring
+Here arrows mean **source-code dependencies** (the importer points to what it imports), not the runtime request direction. Infrastructure implements ports owned by application; application does not import its concrete adapters.
+
+```mermaid
+flowchart LR
+    Presentation["Presentation / channel adapters"] --> Application["Application use cases + ports"]
+    Application --> Domain["Domain"]
+    Infrastructure["Infrastructure adapters"] --> Application
+    Infrastructure --> Domain
+    Bootstrap["Bootstrap / composition root"] --> Presentation
+    Bootstrap --> Application
+    Bootstrap --> Infrastructure
 ```
 
 - A **module** hides meaningful behaviour behind a small **interface**. Its interface includes identity/scope requirements, ordering, failure states, and side effects, not just method signatures.
@@ -58,82 +93,107 @@ bootstrap --> concrete implementations and wiring
 
 ## Target folder structure
 
+This is a **target layout**, not a claim that the application files exist. Only the Markdown planning/workflow files currently exist. Root package files, Compose/configuration, CI, `apps`, `packages`, and `fixtures` are created by their owning implementation issues as needed. Compact entries such as `grilling/SKILL.md` mean a file inside that directory; no brace-expanded placeholder paths are used.
+
 ```text
-AGENTS.md
-README.md
-compose.yaml                         # Created by bootstrap, not present yet
-.env.example                         # Names/defaults only; no secrets
-.agents/
-  skills/{grilling,to-spec,to-tickets,implement,code-review}/SKILL.md
-  agents/{standards-reviewer,spec-reviewer,fix-guard}.md
-.github/
-  pull_request_template.md
-  workflows/                         # Real commands wired after bootstrap
-docs/
-  spec.md                            # Product invariants
-  architecture.md                    # Technical design and target tree
-  decisions.md                       # Locked decisions, delegation, external risks
-  issues.md                          # Local acceptance/dependency source
-  verification.md                     # Test strategy and evidence procedure
-  conformance.md                      # Unassessed report template until tested
-apps/
-  api/
-    src/
-      bootstrap/
-        app.ts                       # Server composition, not business logic
-        dependencies.ts              # Construct adapters and use cases
-        config.ts                    # Validate configuration; safe startup errors
-      modules/
-        identity/
-        content/
-        tutoring/
-          domain/
-            conversation.ts
-            answer.ts
-          application/
-            use-cases/ask-question.ts
-            ports/
-              answer-provider.ts
-              content-retriever.ts
-              conversation-repository.ts
-          infrastructure/
-            ai/
-            persistence/
-          presentation/http/
-        help/
-        careers/
-        notifications/
-      channels/telegram/             # Inbound transport, not duplicate domain logic
-      infrastructure/
-        database/
-          connection.ts
-          migrations/
-        http/
-          authentication.ts
-          error-handler.ts
-    tests/integration/               # Cross-module/real-database checks
-  web/
-    src/
-      app/                           # Routes and composition
-      features/
-        assistant/
-        voice/
-        human-help/
-        careers/
-        support-console/
-      shared/
-        api/
-        accessibility/
-        i18n/
-        ui/                          # Extract only when actually reused
-    tests/e2e/
-packages/
-  contracts/src/                     # Shared transport schemas, no domain code
-  embed/src/                         # Loader, frame messaging, teardown
-fixtures/
-  courses/
-  jobs/
-  evaluations/
+Hackaton/
+├── AGENTS.md
+├── README.md
+├── package.json                         # Planned workspace scripts
+├── pnpm-workspace.yaml                  # Planned workspace membership
+├── pnpm-lock.yaml                       # Generated by approved dependency install
+├── compose.yaml                         # Planned runtime packaging
+├── .env.example                         # Planned names/defaults; no secrets
+├── .agents/
+│   ├── skills/
+│   │   ├── grilling/SKILL.md
+│   │   ├── to-spec/SKILL.md
+│   │   ├── to-tickets/SKILL.md
+│   │   ├── implement/SKILL.md
+│   │   └── code-review/SKILL.md
+│   └── agents/
+│       ├── standards-reviewer.md
+│       ├── spec-reviewer.md
+│       └── fix-guard.md
+├── .github/
+│   ├── pull_request_template.md
+│   └── workflows/                       # Planned CI using real package commands
+├── docs/
+│   ├── spec.md
+│   ├── architecture.md
+│   ├── decisions.md
+│   ├── issues.md
+│   ├── verification.md
+│   └── conformance.md
+├── apps/
+│   ├── api/
+│   │   ├── package.json
+│   │   ├── src/
+│   │   │   ├── bootstrap/
+│   │   │   │   ├── app.ts
+│   │   │   │   ├── dependencies.ts
+│   │   │   │   └── config.ts
+│   │   │   ├── modules/
+│   │   │   │   ├── identity/
+│   │   │   │   ├── content/
+│   │   │   │   ├── tutoring/            # Example module layout
+│   │   │   │   │   ├── domain/
+│   │   │   │   │   │   ├── conversation.ts
+│   │   │   │   │   │   └── answer.ts
+│   │   │   │   │   ├── application/
+│   │   │   │   │   │   ├── use-cases/
+│   │   │   │   │   │   │   └── ask-question.ts
+│   │   │   │   │   │   └── ports/
+│   │   │   │   │   │       ├── answer-provider.ts
+│   │   │   │   │   │       ├── content-retriever.ts
+│   │   │   │   │   │       └── conversation-repository.ts
+│   │   │   │   │   ├── infrastructure/
+│   │   │   │   │   │   ├── ai/
+│   │   │   │   │   │   └── persistence/
+│   │   │   │   │   └── presentation/
+│   │   │   │   │       └── http/
+│   │   │   │   ├── help/
+│   │   │   │   ├── careers/
+│   │   │   │   └── notifications/       # Owns delivery use cases/adapters
+│   │   │   ├── channels/
+│   │   │   │   └── telegram/            # Inbound transport, not domain logic
+│   │   │   └── infrastructure/
+│   │   │       ├── database/
+│   │   │       │   ├── connection.ts
+│   │   │       │   └── migrations/
+│   │   │       └── http/
+│   │   │           ├── authentication.ts
+│   │   │           └── error-handler.ts
+│   │   └── tests/
+│   │       └── integration/            # Real-database / cross-module checks
+│   └── web/
+│       ├── package.json
+│       ├── src/
+│       │   ├── app/
+│       │   ├── features/
+│       │   │   ├── assistant/
+│       │   │   ├── voice/
+│       │   │   ├── human-help/
+│       │   │   ├── careers/
+│       │   │   └── support-console/
+│       │   └── shared/
+│       │       ├── api/
+│       │       ├── accessibility/
+│       │       ├── i18n/
+│       │       └── ui/                  # Only actually reused UI
+│       └── tests/
+│           └── e2e/
+├── packages/
+│   ├── contracts/
+│   │   ├── package.json
+│   │   └── src/                        # Transport schemas, not domain logic
+│   └── embed/
+│       ├── package.json
+│       └── src/                        # Loader, frame messaging, teardown
+└── fixtures/
+    ├── courses/
+    ├── jobs/
+    └── evaluations/
 ```
 
 Other backend modules use the same layer pattern only as needed. Focused unit tests live beside their implementation. Avoid an empty directory for each possible entity. The documentation tree exists now; application paths are proposed locations.
