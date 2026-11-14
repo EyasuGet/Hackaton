@@ -26,6 +26,8 @@ function newHandoffCode(principal: string): string {
   return code;
 }
 
+// Note: this re-provisions the demo principals in the configured database, so
+// demo tokens printed earlier by `pnpm demo:provision` stop working.
 test.beforeAll(() => {
   runApi('src/provision-demo.ts');
 });
@@ -34,7 +36,7 @@ test('a sign-in link works once, then the learner can sign out', async ({ page }
   const code = newHandoffCode('learner-a');
   const signInStatus = page.getByRole('status', { name: 'Sign-in status' });
 
-  await page.goto(`/?handoff=${code}`);
+  await page.goto(`/#handoff=${code}`);
 
   await expect(signInStatus).toContainText('Signed in as Demo learner A (learner)');
   await expect(signInStatus).toContainText('not real authentication');
@@ -50,7 +52,7 @@ test('a sign-in link works once, then the learner can sign out', async ({ page }
 
   // Replaying the same link in a fresh page is refused.
   const replay = await page.context().newPage();
-  await replay.goto(`/?handoff=${code}`);
+  await replay.goto(`/#handoff=${code}`);
   await expect(replay.getByRole('alert')).toContainText('already used');
 
   await page.getByRole('button', { name: 'Sign out' }).press('Enter');

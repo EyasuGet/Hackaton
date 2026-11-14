@@ -4,6 +4,8 @@
 CREATE TABLE demo_handoffs (
   code_digest text PRIMARY KEY,
   principal_id uuid NOT NULL REFERENCES principals (id) ON DELETE CASCADE,
+  -- The page origin the code was minted for; it cannot be spent anywhere else.
+  audience text NOT NULL,
   expires_at timestamptz NOT NULL,
   used_at timestamptz
 );

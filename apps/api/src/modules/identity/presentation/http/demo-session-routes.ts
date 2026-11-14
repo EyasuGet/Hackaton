@@ -30,7 +30,7 @@ export function registerDemoSessionRoutes(
       if (!origin || !allowedOrigins.includes(origin)) {
         return reply.code(403).send({ error: 'origin_not_allowed' });
       }
-      const session = await demoSessions.exchange(request.body.code);
+      const session = await demoSessions.exchange(request.body.code, origin);
       if (!session) return reply.code(401).send({ error: 'invalid_handoff' });
       return reply
         .code(201)
@@ -40,7 +40,11 @@ export function registerDemoSessionRoutes(
 
   app.delete('/api/demo/session', { preHandler: authenticated }, async (request, reply) => {
     const token = bearerToken(request);
-    if (token) await demoSessions.revoke(token);
+    // Only session tokens can be signed out; say so rather than report a false success
+    // for a long-lived provisioned operator token.
+    if (!token || !(await demoSessions.revoke(token))) {
+      return reply.code(400).send({ error: 'not_a_session' });
+    }
     return reply.code(204).send();
   });
 }

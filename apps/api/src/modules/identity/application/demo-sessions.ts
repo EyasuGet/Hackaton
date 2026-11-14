@@ -12,14 +12,21 @@ export const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 
 export interface DemoSessionRepository {
   /** Stores a handoff for the demo principal with this key; false if there is no such principal. */
-  createHandoff(principalKey: string, codeDigest: string, expiresAt: Date): Promise<boolean>;
+  createHandoff(
+    principalKey: string,
+    audience: string,
+    codeDigest: string,
+    expiresAt: Date,
+  ): Promise<boolean>;
   /**
-   * Marks an unused, unexpired handoff as used and returns its principal id, or
-   * null. Must be atomic so a code can be exchanged only once, even concurrently.
+   * Marks an unused, unexpired handoff minted for `audience` as used and returns
+   * its principal id, or null. Must be atomic so a code can be exchanged only
+   * once, even concurrently; a wrong audience leaves the code unused.
    */
-  consumeHandoff(codeDigest: string, now: Date): Promise<string | null>;
+  consumeHandoff(codeDigest: string, audience: string, now: Date): Promise<string | null>;
   createSession(principalId: string, tokenDigest: string, expiresAt: Date): Promise<void>;
-  revokeSession(tokenDigest: string, now: Date): Promise<void>;
+  /** True if an active session was revoked; false if the token was not one. */
+  revokeSession(tokenDigest: string, now: Date): Promise<boolean>;
 }
 
 export interface IssuedSecret {
@@ -47,24 +54,31 @@ export class DemoSessions {
     this.#now = now;
   }
 
-  /** Null when demo mode is off or the key names no provisioned demo principal. */
-  async issueHandoff(principalKey: string): Promise<IssuedSecret | null> {
+  /**
+   * Mints a code usable only from the page origin `audience`. Null when demo
+   * mode is off or the key names no provisioned demo principal.
+   */
+  async issueHandoff(principalKey: string, audience: string): Promise<IssuedSecret | null> {
     if (!this.#demoMode) return null;
     const code = newSecret();
     const expiresAt = new Date(this.#now().getTime() + HANDOFF_TTL_MS);
     const created = await this.#repository.createHandoff(
       principalKey,
+      audience,
       digestToken(code),
       expiresAt,
     );
     return created ? { secret: code, expiresAt } : null;
   }
 
-  /** Null for an unknown, used or expired code, indistinguishably, or when demo mode is off. */
-  async exchange(code: string): Promise<IssuedSecret | null> {
+  /**
+   * Null for an unknown, used, expired or other-audience code, indistinguishably,
+   * or when demo mode is off.
+   */
+  async exchange(code: string, origin: string): Promise<IssuedSecret | null> {
     if (!this.#demoMode) return null;
     const now = this.#now();
-    const principalId = await this.#repository.consumeHandoff(digestToken(code), now);
+    const principalId = await this.#repository.consumeHandoff(digestToken(code), origin, now);
     if (!principalId) return null;
     const token = newSecret();
     const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
@@ -72,8 +86,8 @@ export class DemoSessions {
     return { secret: token, expiresAt };
   }
 
-  /** Ends the session for this bearer token; a no-op for anything else. */
-  async revoke(token: string): Promise<void> {
-    await this.#repository.revokeSession(digestToken(token), this.#now());
+  /** Ends the session for this bearer token. False if the token is not an active session. */
+  async revoke(token: string): Promise<boolean> {
+    return this.#repository.revokeSession(digestToken(token), this.#now());
   }
 }

@@ -9,22 +9,27 @@ export class PostgresDemoSessionRepository implements DemoSessionRepository {
     this.#pool = pool;
   }
 
-  async createHandoff(principalKey: string, codeDigest: string, expiresAt: Date): Promise<boolean> {
+  async createHandoff(
+    principalKey: string,
+    audience: string,
+    codeDigest: string,
+    expiresAt: Date,
+  ): Promise<boolean> {
     const result = await this.#pool.query(
-      `INSERT INTO demo_handoffs (code_digest, principal_id, expires_at)
-       SELECT $2, id, $3 FROM principals WHERE demo_key = $1 AND is_demo`,
-      [principalKey, codeDigest, expiresAt],
+      `INSERT INTO demo_handoffs (code_digest, principal_id, audience, expires_at)
+       SELECT $3, id, $2, $4 FROM principals WHERE demo_key = $1 AND is_demo`,
+      [principalKey, audience, codeDigest, expiresAt],
     );
     return result.rowCount === 1;
   }
 
-  async consumeHandoff(codeDigest: string, now: Date): Promise<string | null> {
+  async consumeHandoff(codeDigest: string, audience: string, now: Date): Promise<string | null> {
     // One conditional UPDATE: of two concurrent exchanges, only one sees used_at IS NULL.
     const result = await this.#pool.query<{ principal_id: string }>(
-      `UPDATE demo_handoffs SET used_at = $2
-        WHERE code_digest = $1 AND used_at IS NULL AND expires_at > $2
+      `UPDATE demo_handoffs SET used_at = $3
+        WHERE code_digest = $1 AND audience = $2 AND used_at IS NULL AND expires_at > $3
         RETURNING principal_id`,
-      [codeDigest, now],
+      [codeDigest, audience, now],
     );
     return result.rows[0]?.principal_id ?? null;
   }
@@ -36,10 +41,11 @@ export class PostgresDemoSessionRepository implements DemoSessionRepository {
     );
   }
 
-  async revokeSession(tokenDigest: string, now: Date): Promise<void> {
-    await this.#pool.query(
+  async revokeSession(tokenDigest: string, now: Date): Promise<boolean> {
+    const result = await this.#pool.query(
       'UPDATE demo_sessions SET revoked_at = $2 WHERE token_digest = $1 AND revoked_at IS NULL',
       [tokenDigest, now],
     );
+    return result.rowCount === 1;
   }
 }

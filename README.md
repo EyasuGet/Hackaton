@@ -129,20 +129,20 @@ The assistant page signs in with a **single-use sign-in link** minted by whoever
 # in .env: DEMO_MODE=true and DEMO_ALLOWED_ORIGINS=http://localhost:5173
 pnpm db:migrate
 pnpm demo:provision            # once, creates the demo principals
-pnpm demo:handoff learner-a    # prints a link valid for 2 minutes, usable once
+pnpm demo:handoff learner-a    # prints a link for the first allowed origin, valid 2 minutes, usable once
 ```
 
-Open the printed link. The page removes the code from the address bar, exchanges it for a **2-hour session**, and shows "Signed in as Demo learner A (learner). Synthetic demo identity — not real authentication." **Sign out** ends the session on the server. The session token lives only in page memory (never cookies, storage or URLs), so reloading needs a new link and the future iframe embed does not depend on third-party cookies.
+Open the printed link (`…/#handoff=…`; the code is in the fragment, which browsers never send to servers, so it stays out of access logs). The page removes the code from the address bar, exchanges it for a **2-hour session**, and shows "Signed in as Demo learner A (learner). Synthetic demo identity — not real authentication." **Sign out** ends the session on the server. The session token lives only in page memory (never cookies, storage or URLs), so reloading needs a new link and the future iframe embed does not depend on third-party cookies.
 
 **Session contract** for page and embed consumers:
 
 | Request | Result |
 |---|---|
-| `POST /api/demo/session` with JSON `{"code": "…"}` from an allowed page origin | `201 {"token", "expiresAt"}`. `401 {"error":"invalid_handoff"}` for an unknown, used or expired code, or when demo mode is off; `403 {"error":"origin_not_allowed"}` for a missing, `null` or unlisted `Origin` (the code is not used up); `400` for a malformed body |
+| `POST /api/demo/session` with JSON `{"code": "…"}` from the allowed page origin the code was minted for | `201 {"token", "expiresAt"}`; other body properties are ignored. `401 {"error":"invalid_handoff"}` for an unknown, used or expired code, a code minted for another origin (not used up), or when demo mode is off; `403 {"error":"origin_not_allowed"}` for a missing, `null` or unlisted `Origin` (the code is not used up); `400` for a malformed body |
 | Any protected route with `Authorization: Bearer <token>` | Same rules as above; `401` once the session expires or is signed out |
-| `DELETE /api/demo/session` with the bearer token | `204`; the session stops working immediately |
+| `DELETE /api/demo/session` with the session token | `204`; the session stops working immediately. `400 {"error":"not_a_session"}` for a bearer that is not a session (for example a provisioned operator token, which keeps working) |
 
-Handoff codes and session tokens are stored only as SHA-256 digests. `DEMO_ALLOWED_ORIGINS` lists exact `http(s)` origins (no paths, `null` or `file:`). Hosted demos where visitors sign themselves in need a separate decision (T3-027-E); links are operator-minted today.
+Handoff codes and session tokens are stored only as SHA-256 digests. `DEMO_ALLOWED_ORIGINS` lists exact `http(s)` origins (no paths, `null` or `file:`); each code is bound to one of them (`pnpm demo:handoff learner-a http://127.0.0.1:8765` for another page). Hosted demos where visitors sign themselves in need a separate decision (T3-027-E); links are operator-minted today.
 
 ### Migrations
 

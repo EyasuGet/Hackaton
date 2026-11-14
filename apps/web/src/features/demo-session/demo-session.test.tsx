@@ -40,10 +40,11 @@ function stubApi({ exchangeStatus = 201, signOutStatus = 204 } = {}) {
 const status = () => screen.getByRole('status', { name: 'Sign-in status' });
 
 describe('takeHandoffCode', () => {
-  it('returns the code and removes it from the address bar', () => {
-    window.history.replaceState(null, '', `/?handoff=${CODE}&lang=am`);
+  it('returns the code from the fragment and removes it from the address bar', () => {
+    window.history.replaceState(null, '', `/?lang=am#handoff=${CODE}`);
 
     expect(takeHandoffCode()).toBe(CODE);
+    expect(window.location.href).not.toContain(CODE);
     expect(window.location.search).toBe('?lang=am');
     expect(takeHandoffCode()).toBeNull();
   });

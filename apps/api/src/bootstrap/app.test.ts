@@ -25,7 +25,7 @@ function appWith(
         createHandoff: () => Promise.resolve(false),
         consumeHandoff: () => Promise.resolve(null),
         createSession: () => Promise.resolve(),
-        revokeSession: () => Promise.resolve(),
+        revokeSession: () => Promise.resolve(false),
       },
       true,
     ),

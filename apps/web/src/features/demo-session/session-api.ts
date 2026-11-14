@@ -11,12 +11,17 @@ export type ExchangeResult =
   | { readonly kind: 'session'; readonly token: string; readonly identity: DemoIdentity }
   | { readonly kind: 'invalid' | 'origin' | 'failed' };
 
-/** Reads the one-time `?handoff=` code and removes it from the address bar and history entry. */
+/**
+ * Reads the one-time code from the `#handoff=` fragment — never sent to servers,
+ * so it stays out of access logs — and removes it from the address bar and history entry.
+ */
 export function takeHandoffCode(): string | null {
   const url = new URL(window.location.href);
-  const code = url.searchParams.get('handoff');
+  const fragment = new URLSearchParams(url.hash.slice(1));
+  const code = fragment.get('handoff');
   if (code === null) return null;
-  url.searchParams.delete('handoff');
+  fragment.delete('handoff');
+  url.hash = fragment.toString();
   window.history.replaceState(window.history.state, '', url);
   return code;
 }

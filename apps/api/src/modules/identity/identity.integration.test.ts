@@ -51,6 +51,8 @@ async function provision(): Promise<Record<DemoPrincipalKey, string>> {
 }
 
 const PAGE_ORIGIN = 'http://localhost:5173';
+/** A second allowed page, such as the static host the embed will add. */
+const OTHER_PAGE_ORIGIN = 'http://127.0.0.1:8765';
 
 /** Controlled clock shared by session issue, exchange and authentication. */
 let clock = new Date('2026-11-14T09:00:00Z');
@@ -66,7 +68,7 @@ function appWithDemoMode(demoMode: boolean) {
     resolvePrincipal: new ResolvePrincipal(new PostgresPrincipalRepository(pool), demoMode, now),
     demoRecords: new DemoRecords(new PostgresDemoRecordRepository(pool)),
     demoSessions: demoSessions(demoMode),
-    demoAllowedOrigins: [PAGE_ORIGIN],
+    demoAllowedOrigins: [PAGE_ORIGIN, OTHER_PAGE_ORIGIN],
   });
 }
 
@@ -242,8 +244,8 @@ describe('support permissions', () => {
 });
 
 describe('demo sessions', () => {
-  async function handoff(key: DemoPrincipalKey): Promise<string> {
-    const issued = await demoSessions().issueHandoff(key);
+  async function handoff(key: DemoPrincipalKey, audience = PAGE_ORIGIN): Promise<string> {
+    const issued = await demoSessions().issueHandoff(key, audience);
     if (!issued) throw new Error(`No handoff issued for ${key}`);
     return issued.secret;
   }
@@ -367,7 +369,7 @@ describe('demo sessions', () => {
         headers: { authorization: `Bearer ${session}` },
       });
 
-      expect(await demoSessions(false).issueHandoff('learner-a')).toBeNull();
+      expect(await demoSessions(false).issueHandoff('learner-a', PAGE_ORIGIN)).toBeNull();
       expect(exchanged.statusCode).toBe(401);
       expect(me.statusCode).toBe(401);
     } finally {
@@ -376,6 +378,45 @@ describe('demo sessions', () => {
   });
 
   it('issues no handoff for a name that is not a provisioned demo principal', async () => {
-    expect(await demoSessions().issueHandoff('admin')).toBeNull();
+    expect(await demoSessions().issueHandoff('admin', PAGE_ORIGIN)).toBeNull();
+  });
+
+  it('accepts a code only at the page origin it was minted for, without using it up elsewhere', async () => {
+    const code = await handoff('learner-a', PAGE_ORIGIN);
+
+    expect((await exchange(code, OTHER_PAGE_ORIGIN)).statusCode).toBe(401);
+    expect((await exchange(code, PAGE_ORIGIN)).statusCode).toBe(201);
+  });
+
+  it('ignores a role or other claims in the exchange body', async () => {
+    const app = appWithDemoMode(true);
+    const forged = await app.inject({
+      method: 'POST',
+      url: '/api/demo/session',
+      headers: { origin: PAGE_ORIGIN },
+      payload: { code: await handoff('learner-a'), role: 'support', courseIds: ['course-2'] },
+    });
+    await app.close();
+
+    // Unknown body properties are stripped by validation; the session is still learner A's.
+    const session = forged.json<{ token: string }>().token;
+    expect((await get('/api/me', session)).json()).toMatchObject({
+      role: 'learner',
+      courseIds: ['course-1'],
+    });
+    expect((await get('/api/demo/support-check', session)).statusCode).toBe(403);
+  });
+
+  it('does not report signing out a token that is not a session', async () => {
+    const app = appWithDemoMode(true);
+    const signOut = await app.inject({
+      method: 'DELETE',
+      url: '/api/demo/session',
+      headers: { authorization: `Bearer ${tokens['learner-a']}` },
+    });
+    await app.close();
+
+    expect(signOut.statusCode).toBe(400);
+    expect(signOut.json()).toEqual({ error: 'not_a_session' });
   });
 });
