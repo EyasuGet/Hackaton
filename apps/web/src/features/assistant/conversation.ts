@@ -1,6 +1,13 @@
 // Contract between the learner interface and whatever answers questions.
-// T3-006-A implements it only with labelled demo fixtures; the tutoring
-// (T3-007) and identity (T3-004) work provide the real implementation later.
+// T3-006-A implemented with labelled demo fixtures;
+// T3-007-A adds citations and consent-aware FAQ capability.
+
+export interface Citation {
+  readonly sourceId: string;
+  readonly sectionId: string;
+  readonly sourceTitle: string;
+  readonly heading: string;
+}
 
 export interface Reply {
   readonly id: string;
@@ -9,6 +16,7 @@ export interface Reply {
   readonly lang: string;
   /** Stored ISO 8601 instant; presentation must not rewrite it. */
   readonly createdAt: string;
+  readonly citations?: readonly Citation[];
 }
 
 /**
