@@ -21,6 +21,8 @@ const noTutoring = new Tutoring({
   findRequestByRequestId: () => Promise.resolve(null),
   listHistory: () => Promise.resolve([]),
   recordOutcome: () => Promise.resolve(null),
+  clearHistory: () => Promise.resolve(),
+  purgeExpired: () => Promise.resolve(0),
 });
 
 function appWith(

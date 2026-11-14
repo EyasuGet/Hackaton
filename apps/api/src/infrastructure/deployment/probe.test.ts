@@ -134,6 +134,8 @@ describe('Public unauthenticated request privacy boundary', () => {
       findRequestByRequestId: () => Promise.resolve(null),
       listHistory: () => Promise.resolve([]),
       recordOutcome: () => Promise.resolve(null),
+      clearHistory: () => Promise.resolve(),
+      purgeExpired: () => Promise.resolve(0),
     }),
     content: new ContentAccess(
       {

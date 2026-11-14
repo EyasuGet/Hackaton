@@ -17,4 +17,8 @@ export interface TutoringRequest {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly completedAt: string | null;
+  /** ISO-8601 timestamp after which this request may be purged (created_at + 7 days). */
+  readonly expiresAt: string;
+  /** Set when private content (question/answer) has been removed by the expiry purge. */
+  readonly purgedAt: string | null;
 }
