@@ -29,19 +29,13 @@ export class Tutoring {
     return this.#repository.findRequestById(scope, id);
   }
 
-  async getConversation(
-    principal: Principal,
-    id: string,
-  ): Promise<TutoringConversation | null> {
+  async getConversation(principal: Principal, id: string): Promise<TutoringConversation | null> {
     const scope = ownedScope(principal);
     if (!scope) return null;
     return this.#repository.findConversation(scope, id);
   }
 
-  async listHistory(
-    principal: Principal,
-    courseId?: string,
-  ): Promise<readonly TutoringRequest[]> {
+  async listHistory(principal: Principal, courseId?: string): Promise<readonly TutoringRequest[]> {
     const scope = ownedScope(principal);
     if (!scope) return [];
     return this.#repository.listHistory(scope, courseId);
