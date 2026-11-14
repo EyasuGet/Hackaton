@@ -14,6 +14,7 @@
     "test:integration": "pnpm --filter @track3/api run test:integration",
     "db:migrate": "pnpm --filter @track3/api run db:migrate",
     "demo:provision": "pnpm --filter @track3/api run demo:provision",
+    "content:import": "pnpm --filter @track3/api run content:import",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

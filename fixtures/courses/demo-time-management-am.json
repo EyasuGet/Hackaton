@@ -1,0 +1,25 @@
+{
+  "sourceId": "demo-time-management-am",
+  "version": "demo-1",
+  "title": "የጊዜ አጠቃቀም መሠረታዊ ነገሮች",
+  "courseId": "course-2",
+  "language": "am",
+  "provenance": {
+    "kind": "demo",
+    "note": "Synthetic demo lesson written for testing Ethiopic text handling; not teaching content and pending native-speaker review."
+  },
+  "sections": [
+    {
+      "id": "planning",
+      "anchor": null,
+      "heading": "እቅድ ማውጣት",
+      "text": "ቀኑን ከመጀመርዎ በፊት የሚሠሯቸውን ሥራዎች ይዘርዝሩ። በጣም አስፈላጊ የሆኑትን ሥራዎች ቀድመው ይሥሩ።"
+    },
+    {
+      "id": "breaks",
+      "anchor": null,
+      "heading": "እረፍት መውሰድ",
+      "text": "በሥራ መካከል አጭር እረፍት መውሰድ ትኩረትን ለመጠበቅ ይረዳል።"
+    }
+  ]
+}
