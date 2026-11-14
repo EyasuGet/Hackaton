@@ -1,6 +1,6 @@
 # Track 3 — Accessible learning and career assistant
 
-Specification and implementation backlog for the Digital Bridge Accessibility Hackathon, shared in [the team repository](https://github.com/EyasuGet/Hackaton). **Planning pack only: no application, package commands, or runtime verification exists yet.** The backlog has been migrated to **110 unassigned GitHub issues (26 epics and 84 leaf tasks)**; [the local index](docs/issues.md) links to the authoritative issue bodies. Check GitHub for current ownership and status.
+Specification and implementation backlog for the Digital Bridge Accessibility Hackathon, shared in [the team repository](https://github.com/EyasuGet/Hackaton). **Early implementation: only the web-to-API health slice exists (see [Runtime setup](#runtime-setup)); no learner features yet.** The backlog has been migrated to **110 unassigned GitHub issues (26 epics and 84 leaf tasks)**; [the local index](docs/issues.md) links to the authoritative issue bodies. Check GitHub for current ownership and status.
 
 ## Start here
 
@@ -43,4 +43,38 @@ The skill files and reviewer prompts are portable Markdown instructions. Their p
 
 ## Runtime setup
 
-Not available yet. The bootstrap issue must replace this section with verified install/start/test instructions, environment variables, migrations, FAQ-only mode, live-provider requirements, and a clean-install procedure. Do not fabricate commands, credentials, deployment URLs, or a licence before their owning decision is resolved.
+Current scope: a Fastify API health route and a React/Vite page that reports it ([T3-001-A](https://github.com/EyasuGet/Hackaton/issues/1)). PostgreSQL/Compose/migrations ([T3-001-B](https://github.com/EyasuGet/Hackaton/issues/2)), lint/format/browser checks ([T3-001-C](https://github.com/EyasuGet/Hackaton/issues/3)), FAQ-only mode and live-provider requirements are added by their own issues.
+
+### Requirements
+
+- Node.js 22.18 or newer (the API dev server runs TypeScript directly via Node's built-in type stripping). Tested with 22.23.1.
+- pnpm 11.21.0 (pinned in `package.json` `packageManager`; `corepack enable` provides it).
+
+### Start
+
+```sh
+pnpm install
+cp .env.example .env   # placeholder values only; never commit .env
+pnpm dev
+```
+
+Open http://localhost:5173. The page reports **API available** when the API answers `GET /api/health`, and **API unavailable** when it is stopped or failing. The Vite dev server proxies `/api` to the API.
+
+### Configuration
+
+| Variable | Required | Meaning |
+|---|---|---|
+| `API_HOST` | Yes | Interface the API listens on, for example `127.0.0.1` |
+| `API_PORT` | Yes | Integer port 1–65535, for example `3000` |
+
+The API exits with a message naming the invalid variable (never its value). The web bundle does not include these server values.
+
+### Checks
+
+| Command | Runs |
+|---|---|
+| `pnpm typecheck` | Strict TypeScript checks for every app |
+| `pnpm build` | API compile to `apps/api/dist`, web production build to `apps/web/dist` |
+| `pnpm test` | Vitest: API health route and configuration; web available/unavailable states |
+
+CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs install, typecheck, build and test on pull requests and pushes to `main`. After `pnpm build`, `pnpm --filter @track3/api start` runs the compiled API. Dependency versions are pinned exactly in each `package.json` and `pnpm-lock.yaml`.

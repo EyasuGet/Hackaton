@@ -1,6 +1,6 @@
 # Verification plan and evidence procedure
 
-Status: **NOT RUN — documentation-only workspace.** No package scripts, application, database schema, credentials, or device test results exist yet. Commands below describe the command contract bootstrap must establish, not commands claimed to work today.
+Status: **Early implementation.** Only the T3-001-A web-to-API slice and its checks exist; see the [README runtime section](../README.md#runtime-setup) for actual commands. No database schema, credentials, or device test results exist yet. The contract below describes what bootstrap must still establish.
 
 ## Command contract
 
