@@ -54,6 +54,12 @@ button {
   font: inherit;
 }
 
+/* A select sizes itself to its longest option; never let it outgrow narrow screens. */
+select {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
 .messages {
   list-style: none;
   padding: 0;

@@ -90,6 +90,7 @@ test('reply markup is shown as text and never executed', async ({ page }) => {
   ).toBeVisible();
   await expect(page.locator('main img, main script')).toHaveCount(0);
   expect(dialogs).toEqual([]);
+  expect(await seriousAccessibilityViolations(page)).toEqual([]);
 });
 
 test('the conversation reflows without horizontal scrolling at 320 CSS pixels', async ({
