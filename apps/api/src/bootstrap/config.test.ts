@@ -30,6 +30,9 @@ describe('loadConfig', () => {
       },
       demoMode: false,
       demoAllowedOrigins: [],
+      relay: {
+        enabled: false,
+      },
     });
   });
 
@@ -55,6 +58,22 @@ describe('loadConfig', () => {
     expect(loadConfig({ ...valid, DEMO_MODE: 'false' }).demoMode).toBe(false);
   });
 
+  it('accepts valid TURN relay configuration when enabled', () => {
+    const withRelay = {
+      ...valid,
+      TURN_ENABLED: 'true',
+      TURN_URL: 'turns:relay.example.org:5349',
+      TURN_REALM: 'track3.local',
+      TURN_STATIC_AUTH_SECRET: 'relay-secret-123',
+    };
+    expect(loadConfig(withRelay).relay).toEqual({
+      enabled: true,
+      url: 'turns:relay.example.org:5349',
+      realm: 'track3.local',
+      secret: 'relay-secret-123',
+    });
+  });
+
   it.each([
     ['missing API host', without('API_HOST'), 'API_HOST is required'],
     ['missing API port', without('API_PORT'), 'API_PORT is required'],
@@ -69,15 +88,64 @@ describe('loadConfig', () => {
     ['invalid database port', { ...valid, DATABASE_PORT: 'x' }, 'DATABASE_PORT must be'],
     // A typo must not leave demo access in an unintended state.
     ['ambiguous demo mode', { ...valid, DEMO_MODE: 'yes' }, 'DEMO_MODE must be true or false'],
+    [
+      'ambiguous TURN enabled flag',
+      { ...valid, TURN_ENABLED: 'yes' },
+      'TURN_ENABLED must be true or false',
+    ],
+    [
+      'missing TURN URL when enabled',
+      { ...valid, TURN_ENABLED: 'true', TURN_REALM: 'track3.local', TURN_STATIC_AUTH_SECRET: 's' },
+      'TURN_URL is required',
+    ],
+    [
+      'invalid TURN URL scheme',
+      {
+        ...valid,
+        TURN_ENABLED: 'true',
+        TURN_URL: 'http://relay.example.org',
+        TURN_REALM: 'track3.local',
+        TURN_STATIC_AUTH_SECRET: 's',
+      },
+      'TURN_URL must start with stun:, turn:, or turns:',
+    ],
+    [
+      'missing TURN realm when enabled',
+      {
+        ...valid,
+        TURN_ENABLED: 'true',
+        TURN_URL: 'turn:relay.example.org:3478',
+        TURN_STATIC_AUTH_SECRET: 's',
+      },
+      'TURN_REALM is required',
+    ],
+    [
+      'missing TURN secret when enabled',
+      {
+        ...valid,
+        TURN_ENABLED: 'true',
+        TURN_URL: 'turn:relay.example.org:3478',
+        TURN_REALM: 'track3.local',
+      },
+      'TURN_STATIC_AUTH_SECRET is required',
+    ],
   ])('rejects %s', (_case, env, message) => {
     expect(() => loadConfig(env)).toThrow(ConfigError);
     expect(() => loadConfig(env)).toThrow(message);
   });
 
-  it('keeps surrounding spaces in the database password', () => {
+  it('keeps surrounding spaces in the database password and relay secret', () => {
     expect(loadConfig({ ...valid, DATABASE_PASSWORD: ' spaced ' }).database.password).toBe(
       ' spaced ',
     );
+    const withRelaySpaced = {
+      ...valid,
+      TURN_ENABLED: 'true',
+      TURN_URL: 'turn:relay.example.org:3478',
+      TURN_REALM: 'track3.local',
+      TURN_STATIC_AUTH_SECRET: ' spaced-secret ',
+    };
+    expect(loadConfig(withRelaySpaced).relay.secret).toBe(' spaced-secret ');
   });
 
   it('does not echo the rejected value', () => {

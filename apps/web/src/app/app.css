@@ -33,6 +33,24 @@ footer {
   outline-offset: 2px;
 }
 
+/* The current language is filled and underlined, so it does not rely on colour alone. */
+.languages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.languages button[aria-pressed='false'] {
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.languages button[aria-pressed='true'] {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 .demo-session {
   border-inline-start: 4px solid var(--accent);
   padding-inline-start: 0.75rem;

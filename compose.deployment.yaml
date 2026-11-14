@@ -1,0 +1,118 @@
+# Track 3 deployment Compose file for staging/production test environment.
+# Orchestrates Caddy (automatic HTTPS), Fastify API, private PostgreSQL, and Coturn (TURN relay).
+# All secrets must be injected from the environment; none are defaulted in this file.
+
+services:
+  # Reverse proxy and automatic ACME HTTPS termination.
+  caddy:
+    image: caddy:2.9.1-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      CADDY_EMAIL: ${CADDY_EMAIL:-internal}
+      API_UPSTREAM: http://api:3000
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./apps/web/dist:/srv/web:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - public_net
+      - internal_net
+
+  # Fastify application runtime.
+  api:
+    image: node:22-alpine
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+    # Run the compiled API with production settings.
+    command: ['node', 'apps/api/dist/server.js']
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 3000
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DATABASE_NAME:?Set DATABASE_NAME in environment}
+      DATABASE_USER: ${DATABASE_USER:?Set DATABASE_USER in environment}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in environment}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      TURN_ENABLED: ${TURN_ENABLED:-false}
+      TURN_URL: ${TURN_URL:-}
+      TURN_REALM: ${TURN_REALM:-}
+      TURN_STATIC_AUTH_SECRET: ${TURN_STATIC_AUTH_SECRET:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/api/health || exit 1']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - internal_net
+
+  # PostgreSQL database: internal network only, no public ports exposed.
+  db:
+    image: postgres:18.7-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:?Set DATABASE_NAME in environment}
+      POSTGRES_USER: ${DATABASE_USER:?Set DATABASE_USER in environment}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in environment}
+    volumes:
+      - db_deployment_data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    networks:
+      - internal_net
+
+  # Optional Coturn media relay for WebRTC screen sharing across symmetric NAT/firewalls.
+  # Run with `docker compose -f compose.deployment.yaml --profile relay up -d`.
+  coturn:
+    image: coturn/coturn:4.6.3-alpine
+    profiles:
+      - relay
+    restart: unless-stopped
+    ports:
+      - '3478:3478/tcp'
+      - '3478:3478/udp'
+      - '5349:5349/tcp'
+      - '5349:5349/udp'
+      - '49152-49200:49152-49200/udp'
+    volumes:
+      - ./deploy/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command: >-
+      turnserver
+      -c /etc/coturn/turnserver.conf
+      --static-auth-secret=${TURN_STATIC_AUTH_SECRET:-placeholder_for_relay_profile}
+      --realm=${TURN_REALM:-track3.local}
+      --external-ip=${TURN_EXTERNAL_IP:-127.0.0.1}
+      --min-port=49152
+      --max-port=49200
+    networks:
+      - public_net
+
+networks:
+  public_net:
+    driver: bridge
+  internal_net:
+    driver: bridge
+    internal: true
+
+volumes:
+  caddy_data:
+  caddy_config:
+  db_deployment_data:
