@@ -43,22 +43,27 @@ The skill files and reviewer prompts are portable Markdown instructions. Their p
 
 ## Runtime setup
 
-Current scope: a Fastify API health route and a React/Vite page that reports it ([T3-001-A](https://github.com/EyasuGet/Hackaton/issues/1)). PostgreSQL/Compose/migrations ([T3-001-B](https://github.com/EyasuGet/Hackaton/issues/2)), lint/format/browser checks ([T3-001-C](https://github.com/EyasuGet/Hackaton/issues/3)), FAQ-only mode and live-provider requirements are added by their own issues.
+Current scope: an API with liveness and database readiness, a PostgreSQL migration path, and a React/Vite page that reports API health ([T3-001-A](https://github.com/EyasuGet/Hackaton/issues/1), [T3-001-B](https://github.com/EyasuGet/Hackaton/issues/2)). Lint/format/browser checks ([T3-001-C](https://github.com/EyasuGet/Hackaton/issues/3)), FAQ-only mode and live-provider requirements are added by their own issues.
 
 ### Requirements
 
-- Node.js 22.18 or newer (the API dev server runs TypeScript directly via Node's built-in type stripping). Tested with 22.23.1.
+- Node.js 22.18 or newer (the API runs TypeScript directly via Node's built-in type stripping in development). Tested with 22.23.1.
 - pnpm 11.21.0 (pinned in `package.json` `packageManager`; `corepack enable` provides it).
+- Docker with Compose v2 for PostgreSQL. Tested with Docker 29.8.0 and Compose 5.5.1.
 
 ### Start
 
 ```sh
 pnpm install
-cp .env.example .env   # placeholder values only; never commit .env
+cp .env.example .env          # then set DATABASE_PASSWORD to any local-only value
+docker compose up -d --wait   # PostgreSQL 18, reachable on 127.0.0.1 only
+pnpm db:migrate               # safe to repeat; applies only pending migrations
 pnpm dev
 ```
 
 Open http://localhost:5173. The page reports **API available** when the API answers `GET /api/health`, and **API unavailable** when it is stopped or failing. The Vite dev server proxies `/api` to the API.
+
+`GET /api/health` is liveness: it answers whenever the API process runs. `GET /api/ready` returns `200 {"status":"ready"}` only when PostgreSQL answers and every migration is applied; otherwise `503` with `reason` `database_unavailable` or `migrations_pending`. The API starts even while the database is down and becomes ready once it recovers. Stop the database with `docker compose stop`; `docker compose down -v` also deletes its data.
 
 ### Configuration
 
@@ -66,8 +71,17 @@ Open http://localhost:5173. The page reports **API available** when the API answ
 |---|---|---|
 | `API_HOST` | Yes | Interface the API listens on, for example `127.0.0.1` |
 | `API_PORT` | Yes | Integer port 1–65535, for example `3000` |
+| `DATABASE_HOST` | Yes | PostgreSQL host, `127.0.0.1` for Compose |
+| `DATABASE_PORT` | Yes | PostgreSQL port, `5432` for Compose |
+| `DATABASE_NAME` | Yes | Database name; Compose creates it |
+| `DATABASE_USER` | Yes | Database user; Compose creates it |
+| `DATABASE_PASSWORD` | Yes | Local-only password you choose; empty in `.env.example` on purpose |
 
-The API exits with a message naming the invalid variable (never its value). The web bundle does not include these server values.
+Compose, the API and the migration command all refuse to start with a missing value, and messages name the variable, never its value. The web bundle does not include these server values.
+
+### Migrations
+
+SQL files live in [`apps/api/src/infrastructure/database/migrations`](apps/api/src/infrastructure/database/migrations/README.md). `pnpm db:migrate` applies pending files in name order, each in a transaction with its history record, under a lock so concurrent runs cannot apply a file twice. It refuses to run if an already-applied file was edited.
 
 ### Checks
 
@@ -75,6 +89,7 @@ The API exits with a message naming the invalid variable (never its value). The 
 |---|---|
 | `pnpm typecheck` | Strict TypeScript checks for every app |
 | `pnpm build` | API compile to `apps/api/dist`, web production build to `apps/web/dist` |
-| `pnpm test` | Vitest: API health route and configuration; web available/unavailable states |
+| `pnpm test` | Unit tests: API routes and configuration; web available/unavailable states. No database needed |
+| `pnpm test:integration` | Real-PostgreSQL tests for migrations and readiness. Needs the Compose database; each run creates and drops its own temporary database |
 
-CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs install, typecheck, build and test on pull requests and pushes to `main`. After `pnpm build`, `pnpm --filter @track3/api start` runs the compiled API. Dependency versions are pinned exactly in each `package.json` and `pnpm-lock.yaml`.
+CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs install, typecheck, build, unit tests, `db:migrate` and integration tests against a PostgreSQL service on pull requests and pushes to `main`. After `pnpm build`, `pnpm --filter @track3/api start` runs the compiled API. Dependency versions are pinned exactly in each `package.json` and `pnpm-lock.yaml`.

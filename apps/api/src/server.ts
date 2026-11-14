@@ -1,15 +1,17 @@
-// API process entry point: validate configuration, then listen.
+// API process entry point: validate configuration, wire dependencies, then listen.
+// The API starts even if PostgreSQL is down; /api/ready reports when it can serve.
 import { buildApp } from './bootstrap/app.ts';
-import { ConfigError, loadConfig, type ApiConfig } from './bootstrap/config.ts';
+import { loadConfig, loadOrExit } from './bootstrap/config.ts';
+import { createPool } from './infrastructure/database/connection.ts';
+import { checkReadiness, loadMigrations, MIGRATIONS_DIR } from './infrastructure/database/migrations.ts';
 
-let config: ApiConfig;
-try {
-  config = loadConfig(process.env);
-} catch (error) {
-  if (!(error instanceof ConfigError)) throw error;
-  console.error(`Invalid configuration: ${error.message}. See .env.example.`);
-  process.exit(1);
-}
+const config = loadOrExit(() => loadConfig(process.env));
+const migrations = await loadMigrations(MIGRATIONS_DIR);
 
-const app = buildApp({ logger: true });
+// Log only the driver's error code: messages can include connection details.
+const pool = createPool(config.database, (error) =>
+  app.log.warn({ code: 'code' in error ? error.code : undefined }, 'Idle database connection lost'),
+);
+const app = buildApp({ checkReadiness: () => checkReadiness(pool, migrations) }, { logger: true });
+
 await app.listen({ host: config.host, port: config.port });

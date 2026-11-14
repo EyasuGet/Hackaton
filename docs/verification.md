@@ -1,6 +1,6 @@
 # Verification plan and evidence procedure
 
-Status: **Early implementation.** Only the T3-001-A web-to-API slice and its checks exist; see the [README runtime section](../README.md#runtime-setup) for actual commands. No database schema, credentials, or device test results exist yet. The contract below describes what bootstrap must still establish.
+Status: **Early implementation.** Only the T3-001-A/B foundation (web-to-API slice, PostgreSQL migrations and readiness) and its checks exist; see the [README runtime section](../README.md#runtime-setup) for actual commands. No application schema, provider credentials, or device test results exist yet. The contract below describes what bootstrap must still establish.
 
 ## Command contract
 
