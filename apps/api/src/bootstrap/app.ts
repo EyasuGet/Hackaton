@@ -33,7 +33,8 @@ export function buildApp(
   // so a plain thrown Error (no statusCode) is treated as a 500.
   app.setErrorHandler<FastifyError>((error, request, reply) => {
     if (error.statusCode !== undefined && error.statusCode < 500) return reply.send(error);
-    request.log.error({ code: error.code }, 'Request failed');
+    // Name and code identify the failure without the message, which may hold connection details.
+    request.log.error({ name: error.name, code: error.code }, 'Request failed');
     return reply.code(500).send({ error: 'internal' });
   });
 

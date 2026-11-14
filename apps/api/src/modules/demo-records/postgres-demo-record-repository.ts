@@ -1,7 +1,6 @@
 // FIXTURE ONLY: PostgreSQL storage and seeding for the synthetic demo records.
 import type pg from 'pg';
 import type { OwnedScope } from '../identity/domain/principal.ts';
-import type { DemoPrincipalKey } from '../identity/infrastructure/postgres-principal-repository.ts';
 import type { DemoRecord, DemoRecordRepository } from './demo-records.ts';
 
 // The scope condition shared by list and single-record reads, so both enforce one rule.
@@ -73,7 +72,9 @@ const DEMO_RECORDS = [
   },
 ] as const satisfies readonly {
   key: string;
-  owner: DemoPrincipalKey;
+  // Demo principal key; checked against the provisioned ids when seeding, so this
+  // fixture does not depend on identity's infrastructure types.
+  owner: string;
   courseId: string;
   body: string;
 }[];
@@ -81,7 +82,7 @@ const DEMO_RECORDS = [
 /** Creates or refreshes the fixture records; run in the provisioning transaction. */
 export async function seedDemoRecords(
   client: pg.ClientBase,
-  principalIds: ReadonlyMap<DemoPrincipalKey, string>,
+  principalIds: ReadonlyMap<string, string>,
 ): Promise<void> {
   for (const record of DEMO_RECORDS) {
     const ownerId = principalIds.get(record.owner);
