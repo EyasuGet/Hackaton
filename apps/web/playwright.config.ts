@@ -38,5 +38,10 @@ export default defineConfig({
       url: pageOrigin,
       reuseExistingServer: !process.env.CI,
     },
+    {
+      command: 'python3 -m http.server 5174 --directory ../../fixtures/hosts',
+      url: 'http://127.0.0.1:5174/localhost-5174.html',
+      reuseExistingServer: !process.env.CI,
+    },
   ],
 });
