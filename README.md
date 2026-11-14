@@ -43,7 +43,7 @@ The skill files and reviewer prompts are portable Markdown instructions. Their p
 
 ## Runtime setup
 
-Current scope: an API with liveness and database readiness, a PostgreSQL migration path, a React/Vite page that reports API health, and lint/format/unit/integration/browser checks ([T3-001](https://github.com/EyasuGet/Hackaton/issues/4)). FAQ-only mode and live-provider requirements are added by their own issues.
+Current scope: an API with liveness and database readiness, a PostgreSQL migration path, a React/Vite page that reports API health, and lint/format/unit/integration/browser checks ([T3-001](https://github.com/EyasuGet/Hackaton/issues/4)), plus synthetic demo identities with learner/support access rules ([T3-004-A](https://github.com/EyasuGet/Hackaton/issues/8); see [Demo identities](#demo-identities)). FAQ-only mode and live-provider requirements are added by their own issues.
 
 ### Requirements
 
@@ -77,8 +77,49 @@ Open http://localhost:5173. The page reports **API available** when the API answ
 | `DATABASE_NAME` | Yes | Database name; Compose creates it |
 | `DATABASE_USER` | Yes | Database user; Compose creates it |
 | `DATABASE_PASSWORD` | Yes | Local-only password you choose; empty in `.env.example` on purpose |
+| `DEMO_MODE` | No | `true` enables synthetic demo identities; default `false`. Any other value stops startup. Never enable it for a real deployment |
 
 Compose, the API and the migration command all refuse to start with a missing value, and messages name the variable, never its value. The web bundle does not include these server values.
+
+### Demo identities
+
+**Demo mode is not real authentication.** With `DEMO_MODE=true`, the API accepts bearer tokens for three synthetic principals and logs a `DEMO MODE` warning at startup; with `DEMO_MODE=false` every token is rejected. Browser sessions for the assistant and static host come later ([T3-004-C](https://github.com/EyasuGet/Hackaton/issues/9)); real Savanna sign-in is [T3-004-B](https://github.com/EyasuGet/Hackaton/issues/102).
+
+```sh
+# in .env: DEMO_MODE=true
+pnpm db:migrate
+pnpm demo:provision   # prints a new token for learner-a, learner-b and support; earlier tokens stop working
+```
+
+| Principal | Role | Course grants |
+|---|---|---|
+| `learner-a` | learner | `course-1` |
+| `learner-b` | learner | `course-1`, `course-2` |
+| `support` | support | none |
+
+Roles and grants come only from the database. Role, owner or course values in headers, query strings or bodies are ignored. Tokens are stored only as SHA-256 digests.
+
+**Contract for feature developers** (`apps/api/src/modules/identity`):
+
+- Protect a route with the `authenticate(resolvePrincipal)` preHandler, then `requireRole('learner' | 'support')` where needed; read the caller with `principalOf(request)`.
+- Restrict learner-owned data with `ownedScope(principal)`: a learner sees only their own records in courses they are granted; support staff get no scope. Apply it inside the storage query for both lists and single records.
+- Responses: `401 {"error":"unauthenticated"}` for a missing, unknown or demo-disabled token; `403 {"error":"forbidden"}` for the wrong role; `404 {"error":"not_found"}` for a record that is missing **or** outside the caller's scope, so its existence is not revealed; `500 {"error":"internal"}` for unexpected failures, without driver details.
+
+| Route | Who | Result |
+|---|---|---|
+| `GET /api/me` | any principal | Identity, role, course grants, `demo: true` and a demo notice |
+| `GET /api/demo/records`, `GET /api/demo/records/:id` | learners | Fixture records in scope; removed once real learner data exists |
+| `GET /api/demo/support-check` | support | `{"ok":true}`; shows learners cannot reach staff operations |
+
+Try it with the API running (`pnpm dev`), using tokens from `pnpm demo:provision`:
+
+```sh
+curl -H "Authorization: Bearer $A" localhost:3000/api/me            # demo: true, learner A
+curl -H "Authorization: Bearer $A" localhost:3000/api/demo/records  # only A's course-1 record
+curl -H "Authorization: Bearer $B" localhost:3000/api/demo/records  # copy one of B's ids
+curl -H "Authorization: Bearer $A" -H "x-role: support" localhost:3000/api/demo/records/<B's id>  # 404
+curl -H "Authorization: Bearer $A" localhost:3000/api/demo/support-check  # 403
+```
 
 ### Migrations
 
@@ -91,7 +132,7 @@ SQL files live in [`apps/api/src/infrastructure/database/migrations`](apps/api/s
 | `pnpm typecheck` | Strict TypeScript checks for every app |
 | `pnpm build` | API compile to `apps/api/dist`, web production build to `apps/web/dist` |
 | `pnpm test` | Unit tests: API routes and configuration; web available/unavailable states. No database needed |
-| `pnpm test:integration` | Real-PostgreSQL tests for migrations and readiness. Needs the Compose database; each run creates and drops its own temporary database |
+| `pnpm test:integration` | Real-PostgreSQL tests for migrations, readiness and demo identity/access rules. Needs the Compose database; each run creates and drops its own temporary database |
 | `pnpm lint` | ESLint with type-aware typescript-eslint recommended rules ([eslint.config.js](eslint.config.js)) |
 | `pnpm format:check` | Prettier check ([.prettierrc.json](.prettierrc.json)); `pnpm format` rewrites files. Markdown is excluded |
 | `pnpm test:e2e` | Playwright in Chromium against the real API and the Vite dev server, with axe scans failing on critical/serious WCAG 2.2 A/AA violations. First run once: `pnpm --filter @track3/web exec playwright install chromium` (on Linux add `--with-deps` if system libraries are missing). Reuses servers already running on ports 3000/5173 locally |

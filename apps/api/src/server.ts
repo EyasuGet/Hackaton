@@ -8,6 +8,10 @@ import {
   loadMigrations,
   MIGRATIONS_DIR,
 } from './infrastructure/database/migrations.ts';
+import { DemoRecords } from './modules/demo-records/demo-records.ts';
+import { PostgresDemoRecordRepository } from './modules/demo-records/postgres-demo-record-repository.ts';
+import { ResolvePrincipal } from './modules/identity/application/resolve-principal.ts';
+import { PostgresPrincipalRepository } from './modules/identity/infrastructure/postgres-principal-repository.ts';
 
 const config = loadOrExit(() => loadConfig(process.env));
 const migrations = await loadMigrations(MIGRATIONS_DIR);
@@ -16,6 +20,17 @@ const migrations = await loadMigrations(MIGRATIONS_DIR);
 const pool = createPool(config.database, (error) =>
   app.log.warn({ code: 'code' in error ? error.code : undefined }, 'Idle database connection lost'),
 );
-const app = buildApp({ checkReadiness: () => checkReadiness(pool, migrations) }, { logger: true });
+const app = buildApp(
+  {
+    checkReadiness: () => checkReadiness(pool, migrations),
+    resolvePrincipal: new ResolvePrincipal(new PostgresPrincipalRepository(pool), config.demoMode),
+    demoRecords: new DemoRecords(new PostgresDemoRecordRepository(pool)),
+  },
+  { logger: true },
+);
+
+if (config.demoMode) {
+  app.log.warn('DEMO MODE: synthetic demo identities are enabled; this is not real authentication');
+}
 
 await app.listen({ host: config.host, port: config.port });

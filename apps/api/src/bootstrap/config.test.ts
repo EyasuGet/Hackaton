@@ -28,7 +28,13 @@ describe('loadConfig', () => {
         user: 'track3',
         password: 'local-only',
       },
+      demoMode: false,
     });
+  });
+
+  it('enables demo mode only when DEMO_MODE is exactly true', () => {
+    expect(loadConfig({ ...valid, DEMO_MODE: 'true' }).demoMode).toBe(true);
+    expect(loadConfig({ ...valid, DEMO_MODE: 'false' }).demoMode).toBe(false);
   });
 
   it.each([
@@ -43,6 +49,8 @@ describe('loadConfig', () => {
       'DATABASE_PASSWORD is required',
     ],
     ['invalid database port', { ...valid, DATABASE_PORT: 'x' }, 'DATABASE_PORT must be'],
+    // A typo must not leave demo access in an unintended state.
+    ['ambiguous demo mode', { ...valid, DEMO_MODE: 'yes' }, 'DEMO_MODE must be true or false'],
   ])('rejects %s', (_case, env, message) => {
     expect(() => loadConfig(env)).toThrow(ConfigError);
     expect(() => loadConfig(env)).toThrow(message);

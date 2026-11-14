@@ -14,6 +14,8 @@ export interface ApiConfig {
   readonly host: string;
   readonly port: number;
   readonly database: DatabaseConfig;
+  /** Enables synthetic demo identities; never a form of real authentication. */
+  readonly demoMode: boolean;
 }
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -53,11 +55,20 @@ export function loadDatabaseConfig(env: Env): DatabaseConfig {
   };
 }
 
+/** Off unless explicitly `true`; any value other than `true`/`false` is a mistake worth stopping for. */
+export function loadDemoMode(env: Env): boolean {
+  const value = env.DEMO_MODE?.trim();
+  if (!value || value === 'false') return false;
+  if (value === 'true') return true;
+  throw new ConfigError('DEMO_MODE must be true or false');
+}
+
 export function loadConfig(env: Env): ApiConfig {
   return {
     host: required(env, 'API_HOST'),
     port: port(env, 'API_PORT'),
     database: loadDatabaseConfig(env),
+    demoMode: loadDemoMode(env),
   };
 }
 
