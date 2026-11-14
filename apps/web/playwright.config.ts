@@ -1,5 +1,5 @@
-// Browser tests run against the real dev servers: the API (which reads the root
-// .env or CI environment) and the Vite page that proxies /api to it.
+// Browser tests run against the real API (which reads the root
+// .env or CI environment) and the Vite dev server that proxies /api to it.
 import { defineConfig, devices } from '@playwright/test';
 
 const apiPort = process.env.API_PORT ?? '3000';

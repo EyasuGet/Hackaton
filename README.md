@@ -94,7 +94,7 @@ SQL files live in [`apps/api/src/infrastructure/database/migrations`](apps/api/s
 | `pnpm test:integration` | Real-PostgreSQL tests for migrations and readiness. Needs the Compose database; each run creates and drops its own temporary database |
 | `pnpm lint` | ESLint with type-aware typescript-eslint recommended rules ([eslint.config.js](eslint.config.js)) |
 | `pnpm format:check` | Prettier check ([.prettierrc.json](.prettierrc.json)); `pnpm format` rewrites files. Markdown is excluded |
-| `pnpm test:e2e` | Playwright in Chromium against the real API and Vite dev servers, with axe scans failing on critical/serious WCAG 2.2 A/AA violations. First run once: `pnpm --filter @track3/web exec playwright install chromium` (on Linux add `--with-deps` if system libraries are missing). Reuses servers already running on ports 3000/5173 locally |
+| `pnpm test:e2e` | Playwright in Chromium against the real API and the Vite dev server, with axe scans failing on critical/serious WCAG 2.2 A/AA violations. First run once: `pnpm --filter @track3/web exec playwright install chromium` (on Linux add `--with-deps` if system libraries are missing). Reuses servers already running on ports 3000/5173 locally |
 
 Automated accessibility checks do not establish conformance; NVDA, TalkBack and co-designer checks remain separate ([verification](docs/verification.md)).
 
