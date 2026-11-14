@@ -30,6 +30,7 @@ import { Tutoring } from '../tutoring/application/tutoring.ts';
 import { PostgresTutoringRepository } from '../tutoring/infrastructure/persistence/postgres-tutoring-repository.ts';
 import { ContentAccess } from '../content/application/content-access.ts';
 import { Help } from './application/help.ts';
+import { StaffHelp } from './application/staff-help.ts';
 import type { HelpRequest } from './domain/help-request.ts';
 import { PostgresHelpRepository } from './infrastructure/persistence/postgres-help-repository.ts';
 
@@ -65,6 +66,7 @@ async function provision(): Promise<Record<DemoPrincipalKey, string>> {
 }
 
 function makeApp() {
+  const helpRepository = new PostgresHelpRepository(pool);
   return buildApp({
     checkReadiness: () => Promise.resolve({ ready: true }),
     resolvePrincipal: new ResolvePrincipal(new PostgresPrincipalRepository(pool), true),
@@ -76,7 +78,8 @@ function makeApp() {
       { search: () => Promise.resolve([]), resolve: () => Promise.resolve({ kind: 'not_found' }) },
       [],
     ),
-    help: new Help(new PostgresHelpRepository(pool)),
+    help: new Help(helpRepository),
+    staffHelp: new StaffHelp(helpRepository),
   });
 }
 

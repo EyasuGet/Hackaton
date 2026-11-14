@@ -1,5 +1,6 @@
 // Storage port for help requests. All reads include the owner scope so another
 // learner's requests are never returned, even when their ID is known.
+// Staff operations use StaffScope to prevent cross-principal data leakage.
 import type { OwnedScope } from '../../../identity/domain/principal.ts';
 import type { HelpRequest } from '../../domain/help-request.ts';
 
@@ -13,6 +14,19 @@ export interface SubmitHelpInput {
 export type SubmitResult =
   | { readonly kind: 'submitted'; readonly request: HelpRequest }
   | { readonly kind: 'existing'; readonly request: HelpRequest };
+
+/** Metadata the queue list exposes to staff; contextSnapshot is omitted to
+ *  limit disclosure before a request is explicitly claimed. */
+export interface QueueItem {
+  readonly id: string;
+  readonly createdAt: string;
+  readonly expiresAt: string;
+  readonly state: 'waiting';
+}
+
+export type ClaimResult =
+  | { readonly kind: 'claimed'; readonly request: HelpRequest }
+  | { readonly kind: 'already_claimed'; readonly request: HelpRequest };
 
 export interface HelpRepository {
   /**
@@ -39,4 +53,20 @@ export interface HelpRepository {
    * Lists non-expired help requests for the owner, newest first.
    */
   listOwned(scope: OwnedScope): Promise<readonly HelpRequest[]>;
+
+  /**
+   * Lists all non-expired waiting requests, oldest first (support queue view).
+   * Returns only queue metadata — no context snapshots — so staff see the
+   * queue before choosing which request to claim.
+   */
+  listQueue(): Promise<readonly QueueItem[]>;
+
+  /**
+   * Atomically transitions a waiting request to claimed, assigning staffId.
+   * Returns `claimed` with the full request (including contextSnapshot) when
+   * the transition succeeds, or `already_claimed` with the existing record
+   * when another staff member beat this one. Returns null when the request
+   * does not exist or is not in waiting state.
+   */
+  claimRequest(id: string, staffId: string): Promise<ClaimResult | null>;
 }

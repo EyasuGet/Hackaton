@@ -17,7 +17,12 @@ import {
   registerIdentityRoutes,
 } from '../modules/identity/presentation/http/authentication.ts';
 import { registerDemoSessionRoutes } from '../modules/identity/presentation/http/demo-session-routes.ts';
+import type { Accommodation } from '../modules/accommodation/application/accommodation.ts';
+import { registerAccommodationRoutes } from '../modules/accommodation/presentation/http/accommodation-routes.ts';
+import type { JobRepository } from '../modules/careers/application/import-jobs.ts';
+import { registerCareersRoutes } from '../modules/careers/presentation/http/careers-routes.ts';
 import type { Help } from '../modules/help/application/help.ts';
+import type { StaffHelp } from '../modules/help/application/staff-help.ts';
 import { registerHelpRoutes } from '../modules/help/presentation/http/help-routes.ts';
 import type { Tutoring } from '../modules/tutoring/application/tutoring.ts';
 import { registerTutoringRoutes } from '../modules/tutoring/presentation/http/tutoring-routes.ts';
@@ -34,6 +39,10 @@ export interface AppDependencies {
   readonly content: ContentAccess;
   /** Optional; when omitted the help routes are not registered (for tests that do not exercise them). */
   readonly help?: Help;
+  readonly staffHelp?: StaffHelp;
+  /** Optional; when omitted accommodation and job listing routes are not registered. */
+  readonly accommodation?: Accommodation;
+  readonly jobRepository?: JobRepository;
 }
 
 export function buildApp(
@@ -78,8 +87,25 @@ export function buildApp(
     dependencies.demoRecords,
   );
   registerTutoringRoutes(app, authenticate(dependencies.resolvePrincipal), dependencies.tutoring);
-  if (dependencies.help) {
-    registerHelpRoutes(app, authenticate(dependencies.resolvePrincipal), dependencies.help);
+  if (dependencies.help && dependencies.staffHelp) {
+    registerHelpRoutes(
+      app,
+      authenticate(dependencies.resolvePrincipal),
+      dependencies.help,
+      dependencies.staffHelp,
+    );
+  }
+  if (dependencies.accommodation && dependencies.jobRepository) {
+    registerCareersRoutes(
+      app,
+      authenticate(dependencies.resolvePrincipal),
+      dependencies.jobRepository,
+    );
+    registerAccommodationRoutes(
+      app,
+      authenticate(dependencies.resolvePrincipal),
+      dependencies.accommodation,
+    );
   }
 
   return app;
