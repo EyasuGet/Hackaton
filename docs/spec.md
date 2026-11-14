@@ -6,13 +6,24 @@ Status: agreed product/design decisions translated into an implementation specif
 
 Build an accessible learning-and-career assistant that one institution can install for many learners. A learner asks a course question in Amharic or English, receives a supported answer, and can get human assistance without remaining online. The same installation supports approved job information, opt-in alerts, and interview-accommodation requests.
 
-Success is a working learner journey with evidence, not a set of screens, a model benchmark, or a simulated integration. The co-designer participates throughout implementation. Product behaviour lives here; technical design lives in [architecture.md](architecture.md); PR-sized acceptance criteria live in [issues.md](issues.md).
+Success is a working learner journey with evidence, not a set of screens, a model benchmark, or a simulated integration. Reserve early and retest sessions with the available co-designer pool; do not assume a dedicated participant is continuously available. Product behaviour lives here; technical design lives in [architecture.md](architecture.md); PR-sized acceptance criteria live in [issues.md](issues.md).
 
 ## External brief and scope
 
 The [official brief](https://digitalbridge.et/#apply) requires a cited Amharic/English voice/text tutor grounded in course material; web and Telegram access; a low-bandwidth SMS/text route; accessible announcements and RTL; human escalation with learner-controlled screen sharing; replaceable AI; Telegram/SMS job alerts, accommodation requests, and job answers. Integration must work in the supplied Savanna starter and be reusable. The accessibility gate includes NVDA, TalkBack, keyboard, 200% zoom, sound off, zero critical/serious axe findings, and a WCAG 2.2 AA report. Submission includes code, README, Docker Compose, and conformance evidence. The public page mentions a larger required-feature checklist; obtain it from organisers rather than claiming this document reproduces an unseen checklist.
 
-We target script embedding and documented REST/OpenAPI. Additional standards integration is not baseline work. Hosting, Savanna's actual contract, SMS access, speech-provider suitability, and relay infrastructure are not confirmed.
+We target script embedding and documented REST/OpenAPI. Additional standards integration is not baseline work. The supplied starter is a static capture, not a live identity/content API; see [source and meeting evidence](savanna-reconciliation.md). Hosting, production Savanna contracts, SMS access, speech-provider suitability and relay infrastructure remain unconfirmed.
+
+### Approved delivery scope — 2026-11-14
+
+- **Core / Baseline:** accessible web text/voice tutor, cited approved content, standalone/embedded paths, public-only offline FAQ, asynchronous help and supported desktop sharing, **web job Q&A and coordinator-routed accommodation requests**, isolation, privacy, accessibility and measured reliability.
+- **Time-permitting:** Telegram tutor/text/voice and Telegram/SMS alerts, including generic Telegram help notices and the delivery infrastructure they need. The user approved this prioritisation, not an organiser waiver. Omitted written-required capabilities remain explicit submission gaps. The requirements below still define their behaviour if built.
+- **Implementation home:** keep application code in Hackathon. Use the pinned official static pages as the integration host with minimal documented, sanitised changes and approved asset/content reuse. Keep the assistant/backend separate; no stack rewrite or upstream fork is required.
+- **Identity:** use clearly labelled, server-controlled synthetic demo sessions with learner/staff roles and course grants. Captured profile names, DOM IDs and tokens never authenticate anyone. Real production Savanna identity integration is a later adapter (T3-004-B); its absence cannot be described as production-ready SSO. Organiser acceptance of this demonstration boundary remains unresolved.
+- **AI choices:** the user confirms no models are provided. T3-003-B explicitly researches available answer/retrieval/speech candidates, followed by measured bilingual evaluations in the owning issues. No model, framework, paid access or local-model deployment is selected by this update.
+- **Sequence:** finish core and its evidence at T3-027-D, then final packaging, hosted MVP and explanatory slides at T3-027-A/E/F. Minimal secure hosting/relay tests happen earlier where core media evidence requires them. Full written-brief readiness is a separate T3-027-C gate, blocked by missing mandatory capabilities or required organiser acceptance.
+
+True Phase 5 enhancements (web search, simple mode, insights and employer work) remain behind the full-brief gate. Time-permitting leaves may run when ready without delaying core completion or final packaging; no whole-phase waiting barrier is introduced.
 
 ## Actors and access
 
@@ -47,11 +58,11 @@ One installation supports multiple users, not multiple independently administere
 ### R03 — Web, embed, Telegram, and offline
 
 - A small script loads an isolated assistant iframe; a standalone lightweight assistant page uses the same application behaviour.
-- Host handoff validates origin, identity, intended audience, expiry, and course scope. The Savanna adapter follows its supplied contract once inspected.
+- Host handoff validates origin, identity, intended audience, expiry, and course scope. The static demo uses our protected synthetic-session bootstrap; a future production Savanna adapter follows a verified host contract once supplied.
 - Telegram uses the same application use cases. Secure one-time linking associates a channel account with a learner; names/usernames do not authenticate a learner. Duplicate events do not duplicate effects.
 - The standalone page offers an approved, versioned FAQ cache after an explicit online preparation step. Only content explicitly authorised for non-restricted offline distribution is eligible; approval for a restricted course is not permission to cache it for everyone using the device. On offline reload it labels itself as offline and does not claim to contact a person, send alerts, or generate fresh cloud answers.
 - Cache no private conversations, restricted course sections, credentials, accommodation text, or contact details by default. Account switching/logout must not expose the previous learner's protected content. Restricted offline course access needs a separate approved design. An embedded script does not make arbitrary host pages work offline.
-- The lightweight web text path fulfils the selected low-bandwidth interaction route. Outbound job SMS remains a distinct mandatory capability; inbound SMS tutoring is not baseline work.
+- The lightweight web text path fulfils the selected low-bandwidth interaction route. Outbound job SMS remains a distinct written-brief requirement, now time-permitting for team delivery; inbound SMS tutoring is not baseline work.
 
 ### R04 — Asynchronous human help
 
@@ -59,7 +70,7 @@ One installation supports multiple users, not multiple independently administere
 2. The server persists the request and shared context. Closing the page or restarting the application does not lose it.
 3. Display `waiting`, `assigned`, `resolved`, or `cancelled`. A support person claims a waiting request atomically; concurrent claims cannot create two active owners.
 4. Learner and authorised support person exchange persisted messages. Show unread replies on return without sharing unrelated conversations.
-5. If the learner opts in and links Telegram, send a generic notification that a reply is available. Do not include message bodies or accommodation details. Without external notification opt-in, explain that they must return to the inbox.
+5. When the time-permitting notification feature is enabled and the learner opts in and links Telegram, send a generic notification that a reply is available. Do not include message bodies or accommodation details. Without that feature or external notification opt-in, explain that they must return to the inbox.
 6. Do not promise a response time or always-online staffing. Cancellation prevents new handling; any queued notice must check whether it is still appropriate.
 7. Meeting coordination is a proposal and confirmation in the conversation, with time expressed unambiguously in Addis Ababa time. No calendar booking, availability engine, automatic reminders, or built-in video meeting feature.
 
@@ -72,6 +83,8 @@ One installation supports multiple users, not multiple independently administere
 - Unsupported phone browsers keep the asynchronous help path usable and state the limitation. This is not equivalent to mobile screen sharing; organiser acceptance of the limitation/alternative remains an external gate.
 
 ### R06 — Careers and accommodation requests
+
+Web job answers and coordinator accommodation requests are core. The subscription/matching/delivery requirements below belong to time-permitting alerts, without weakening their safety when enabled.
 
 - Approved jobs include a stable source ID, title, category, location, source link, and validity information sufficient to distinguish active/expired records. Preserve provenance and record updates; do not fabricate vacancies.
 - Answer job questions from those records, with sources. Keep job evidence separate from course evidence and authorised appropriately.
@@ -101,13 +114,13 @@ One installation supports multiple users, not multiple independently administere
 
 ### R09 — Reliability, capacity, and adoption
 
-- Business actions and their pending notification work commit atomically. A backend restart does not erase pending deliveries.
+- When notification features are implemented, business actions and their pending notification work commit atomically. A backend restart does not erase pending deliveries.
 - Bound attempts and provider timeouts, recover abandoned work, and expose unresolved failures to authorised operators without leaking payloads.
 - Validate 20 simultaneously active learner sessions with configurable AI concurrency limits. This is an initial measured test target, not a capacity claim for unspecified hosting.
 - A clean install must start with documented configuration, migrations, readiness checks, and non-sensitive fixtures. Provide an operational FAQ-only mode without paid keys and clearly identify which live acceptance checks need credentials.
-- Document REST/OpenAPI and script integration. Actual Savanna operation requires its real starter, not only a lookalike host page.
+- Document REST/OpenAPI and script integration. Static Savanna integration requires the actual supplied starter, not a lookalike host page; it does not prove live platform identity integration.
 
-## Optional backlog, after the mandatory gate
+## Optional backlog, after the full written-brief gate
 
 - Explicit opt-in career web research with source links and a visibly different provenance label. Never send private history/accommodation details in search context; fetched text is untrusted and cannot trigger actions. No silent course fallback.
 - Plain-language simple mode and anonymous FAQ insights, only with an approved privacy-safe design.
@@ -119,15 +132,15 @@ Multi-institution SaaS administration, billing, microservices, Kubernetes, new g
 
 ## Implementation sequence and done
 
-Use phases 0–4 as delivery milestones and prioritise ready baseline work by explicit dependencies in [issues.md](issues.md), not a blanket previous-phase barrier. When blocked, record/escalate the blocker and pick another ready baseline issue, agree a needed contract slice, or pair on the prerequisite. Risk discovery can be complete with a named unresolved dependency, but the affected live capability cannot be marked complete. The final baseline gate remains strict, and optional Phase 5 waits for it.
+Use phases 0–4 as delivery milestones and prioritise ready baseline work by explicit dependencies in [issues.md](issues.md), not a blanket previous-phase barrier. When blocked, record/escalate the blocker and pick another ready baseline issue, agree a needed contract slice, or pair on the prerequisite. Risk discovery can be complete with a named unresolved dependency, but the affected live capability cannot be marked complete. The core gate remains strict for core behaviour; the separate full written-brief gate includes mandatory deferred channels and required organiser acceptance. Optional Phase 5 waits for the latter.
 
 An issue is done only when its acceptance criteria have evidence, relevant automated and human checks are reported honestly, and independent standards/spec AI findings are resolved. Evidence-only leaves follow the [backlog completion rule](issues.md#how-to-use-this-backlog); a reviewed result without a repository change does not need an empty PR. The following PR/merge requirements apply to code or documentation changes. The PR author reviews against the current implementation and applicable overall decisions using the template, signs off/merges their own PR within action authorisation and repository protections, and verifies integration afterward. No separate teammate PR approval is required; co-designer/device acceptance remains mandatory. A simulated provider is useful test infrastructure, never proof of a real provider's delivery or language quality.
 
-The final demonstration follows one learner from cited lesson answer, through reviewed voice input and asynchronous human help, to a sourced job answer, a real subscribed alert, and a reviewed accommodation request. Show the offline limitation and at least one failure recovery. See [verification.md](verification.md).
+The core demonstration follows one learner from cited lesson answer, through reviewed voice input and asynchronous human help, to a sourced web job answer and a reviewed accommodation request. Show supported sharing, the offline limitation and at least one failure recovery. Show real Telegram/SMS interactions only if implemented and verified; otherwise disclose those gaps. Final hosting/slides follow core completion; a full-brief completion claim additionally requires real channel evidence. See [verification.md](verification.md).
 
 ## Requirement-to-issue map
 
-The original IDs below resolve to epics or bounded tasks in [issues.md](issues.md); epics retain integrated acceptance and contain claimable child tasks. This is a coverage index, not a second issue-status tracker.
+The original IDs below resolve to epics or bounded tasks in [issues.md](issues.md); epics retain integrated acceptance and contain claimable child tasks. This is a coverage index, not a second issue-status tracker; leaf priorities and the delivery-scope section distinguish core from deferred channels.
 
 | Requirement | Principal implementing / proving issues |
 |---|---|

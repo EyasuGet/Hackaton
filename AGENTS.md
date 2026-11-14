@@ -2,10 +2,11 @@
 
 ## Scope and sources
 
-This is the Track 3 multilingual learning/help assistant. Work from the repository root. The approved direction is a TypeScript workspace with React/Vite, Fastify, PostgreSQL, and Docker Compose; application code may not exist yet.
+This is the Track 3 multilingual learning/help assistant. Work from the repository root. The approved direction is a TypeScript workspace with React/Vite, Fastify, PostgreSQL, and Docker Compose; application code may not exist yet. Implement in this Hackathon repository; the organiser’s static starter is reference/demo-host material, not a supplied backend or trusted identity service.
 
 - Read [the product spec](docs/spec.md) for required behaviour, [architecture](docs/architecture.md) for module interfaces and dependency rules, and [decisions](docs/decisions.md) before changing a settled choice.
 - [The local backlog](docs/issues.md) is authoritative for issue-specific scope, dependencies, acceptance criteria, and verification until the user explicitly authorises migration to GitHub. Do not maintain two competing issue bodies after migration.
+- Follow the backlog’s leaf priorities and core/full-brief gates. Core includes web job Q&A/accommodations; Telegram bot/voice and Telegram/SMS alerts are time-permitting, not organiser-waived. Mixed epics do not make deferred siblings prerequisites for core leaves; enabled features still require their safety evidence.
 - Read [verification](docs/verification.md) when choosing checks and [conformance](docs/conformance.md) when collecting accessibility evidence. A template or unchecked box is not evidence of a pass.
 
 ## Coding preferences

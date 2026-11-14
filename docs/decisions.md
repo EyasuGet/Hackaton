@@ -7,26 +7,27 @@ Agreed through the design interview, synthesised 2026-11-14. [spec.md](spec.md) 
 | ID | Decision | Reason / consequence |
 |---|---|---|
 | D01 | One institution's installation, multiple isolated learners | Reusability without multi-tenant SaaS administration |
-| D02 | Mandatory baseline before optional enhancements | A broad demo cannot substitute for missing required behaviour |
-| D03 | Dependency-driven baseline work across phases; strict final release gate | Revised by the user: phases are milestones, not team-wide waiting barriers; record blockers and pick ready leaf work; stable parent epics aggregate child acceptance, not giant PRs |
+| D02 | Core first; Telegram bot/voice and Telegram/SMS alerts time-permitting | User-approved delivery priority, not a waiver of written requirements; web job Q&A/accommodations remain core; T3-027-D core readiness is distinct from T3-027-C full-brief coverage |
+| D03 | Dependency-driven core work across phases; separate core/full-brief gates | Revised by the user: phases are milestones, not team-wide waiting barriers; record blockers and pick ready leaf work; stable parent epics aggregate child acceptance, not giant PRs |
 | D04 | TypeScript, React/Vite, Fastify, PostgreSQL, pnpm, Compose | One language, portable install, small operational footprint |
 | D05 | Feature-first Clean Architecture, OO backend, SOLID, explicit injection | Testable business behaviour without generic frameworks; functional React remains idiomatic |
-| D06 | Iframe loaded by script plus standalone lightweight page | Host-style isolation and a defined offline surface |
+| D06 | Separate assistant/backend, iframe loaded by script and standalone page | Keep implementation in Hackathon; supplied static starter is reference/demo host with minimal approved changes, not the application codebase |
 | D07 | Course evidence only; approved job evidence; real citations | Unsupported answers must fail honestly, not fall back silently |
 | D08 | Optional career web research is separate, consented, disabled by default | Preserve grounding and avoid sending private history to search |
-| D09 | Provider selection is evidence-led and replaceable; FAQ fallback | 'SOTA' means best verified fit to current constraints, not newest or largest |
-| D10 | Institution-controlled identity and explicit channel linking | Browser IDs and Telegram usernames cannot establish authorisation |
+| D09 | Explicit model/retrieval/speech research then evaluations; replaceable providers and FAQ | User confirms no models supplied; T3-003-B starts research. 'SOTA' means best verified fit, not newest; no paid resources or model names assumed |
+| D10 | Server-controlled synthetic demo identities now; real host identity adapter later | Static captures supply no identity contract; enforce roles/course grants and protected bootstrap, never trust DOM IDs/tokens; T3-004-B alone owns live SSO proof |
 | D11 | Durable async help/inbox, optional generic Telegram notices | Learners need not remain online; no always-available staffing claim |
 | D12 | Meeting proposals/confirmations in chat only | No scheduling product or automatic reminders in the baseline |
 | D13 | Learner-controlled supported-desktop screen sharing | No recording/remote control; mobile alternatives need organiser acceptance |
 | D14 | Approved jobs, deterministic opt-in alerts, coordinator-routed accommodations | No inference of sensitive traits or unsolicited employer contact |
-| D15 | Durable PostgreSQL delivery queue, safe retries and uncertain-outcome handling | Restart recovery without a new distributed queue platform |
+| D15 | When alerts are built, durable PostgreSQL delivery with safe retries/unknown outcomes | Time-permitting delivery work does not block core help/inbox; no queue framework is scaffolded ahead of need |
 | D16 | External-processing consent, short retention, minimal logs | Seven-day content default; local deletion does not imply provider deletion |
 | D17 | 20 active-session validation target | Measure on actual hardware, do not claim untested production scale |
 | D18 | Author reviews/merges own PR using template and standards/spec AI reviewers | No teammate PR approval; check current implementations and overall decisions, preserve independent axes and actual repository protections |
 | D19 | Smallest correct change; independent check against weakened tests | Explicitly replaces reference project's broad touched-code cleanup rule |
 | D20 | Local Markdown issue bodies until explicit GitHub issue migration | Repository is now published at the user's request; issue creation/assignment is still not authorised implicitly |
 | D21 | Employer dashboard/outreach are lowest-priority future specs | No implied permission to build a new actor model or send messages |
+| D22 | Final package, hosted MVP and explanatory deck after core completion | T3-027-D → T3-027-A/E/F; earlier HTTPS/relay test setup remains necessary for core proof. Final submission action and paid provisioning still need authorisation |
 
 ## Decisions implementation agents may make
 
@@ -40,19 +41,20 @@ Reopen only a concrete unresolved choice or a demonstrated conflict with the app
 
 | Gate | Current state | Required evidence / treatment |
 |---|---|---|
-| Savanna | Starter/auth/CSP contracts not inspected | Run actual starter, verify identity scope and embed permissions; fixture-only integration is insufficient |
+| Savanna | Static source inspected at `9e83ac7`; runtime and production contracts unverified | Run pinned supplied pages with protected synthetic sessions; test deployed headers/media permissions. Obtain judging acceptance for separate module/static demo; live SSO needs a separate supplied contract |
 | Organiser feature checklist | Public page references a fuller list | Obtain checklist; map discrepancies to issues; ask before expanding scope or claiming complete conformance |
 | Hosting | No commitment confirmed | Establish HTTPS/public callbacks, database storage, secrets, and relay/network requirements; Compose remains portable |
 | SMS | No provider/sender credentials or destination delivery verified | Obtain approved route; send to consenting Ethiopian test destination; test opt-out; distinguish provider acceptance from receipt |
 | SMS ownership | No verified-phone claim or alternative verification flow confirmed | T3-003-E resolves and records approval before T3-021-A; a typed number is not proof of ownership |
-| Voice/AI | No selected provider has passed evaluation | Human-reviewed bilingual evidence, format support, refusal/citation tests, processing consent, budget authorisation |
+| Voice/AI | User confirms no models provided; no candidate selected/evaluated | T3-003-B researches answer/retrieval/speech options, then feature-specific bilingual evidence, format/citation tests, consent and budget authorisation |
 | Screen sharing | Android browser limitation known; actual infrastructure untested | Desktop cross-network proof and organiser response on mobile alternative; do not declare requirement waived |
-| Co-design devices | No device/OS/browser inventory or gate run recorded | Test real NVDA/TalkBack, keyboard/zoom/sound-off journeys; record device versions and unaided outcome |
+| Co-design devices | Meetings describe shared consultation availability; no gate run recorded | Reserve early/retest slots; record participant continuity and real NVDA/TalkBack, keyboard/zoom/sound-off device/unaided outcomes |
 | Retention policy precision | Seven-day default agreed; timestamp anchor not specified | Confirm creation-vs-activity anchor with institution before real data; prove purge, shared-copy, backup/provider handling; no silent extension |
-| Open licence | Organiser names it at kick-off | Apply specified compatible licence; inspect third-party asset/model licences before publishing |
+| Open licence / assets | Written brief and verbal ownership wording need written reconciliation; starter has no repository-level licence | Obtain specified terms and approval for lesson extraction/offline publication/asset redistribution; library notices do not license the full capture |
+| Submission | Meetings request a functional MVP URL and explanatory slides; final form/template not verified | Finish core first, then final hosting/deck/package; obtain current template, links, schedule and private channel for team contact details |
 | Team logistics | No organiser eligibility/attendance confirmation recorded here | Team handles attendance/training/selection questions; software docs do not establish eligibility |
 
-Phase 0 may finish an investigation by recording a named external blocker and the evidence needed to resolve it. This is not completion of the blocked live feature. Follow the [blocked-work procedure](issues.md#when-work-is-blocked): choose ready baseline work across phases without waiting for a whole phase to finish. Explicit dependencies, live acceptance, and the final baseline-before-stretch gate remain binding; changing a real dependency or shared contract still needs agreement.
+Phase 0 may finish an investigation by recording a named external blocker and the evidence needed to resolve it. This is not completion of the blocked live feature. Follow the [blocked-work procedure](issues.md#when-work-is-blocked): choose ready baseline work across phases without waiting for a whole phase to finish. Explicit dependencies, live acceptance, and the full-brief-before-stretch gate remain binding; changing a real dependency or shared contract still needs agreement.
 
 ## Reference workflow provenance
 

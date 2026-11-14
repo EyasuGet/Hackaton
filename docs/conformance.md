@@ -7,6 +7,8 @@ Complete against the organiser's checklist and the WCAG 2.2 AA criteria applicab
 ## Assessment scope
 
 - Application/revision:
+- Delivery scope/gate and feature-coverage gaps (core readiness is not full-brief completion):
+- Static host revision/modifications and synthetic-session versus production identity boundary:
 - Pages/flows and complete processes assessed:
 - Languages/content/fixtures:
 - Assessment date and assessor/co-designer:
@@ -40,13 +42,14 @@ For every applicable WCAG 2.2 A/AA success criterion, record identifier/title, s
 ## Known limitations and external decisions
 
 - Mobile browser screen-capture support is limited; the approved text-help fallback is not evidence of equivalent screen sharing. Attach organiser decision and device-specific results.
-- Savanna embedding and actual co-designer devices have not been tested.
+- Official static Savanna embedding and actual co-designer devices have not been tested; production identity is a separate later integration. Host defects affecting the complete assessed task remain failures until resolved, not automatic exclusions.
+- Telegram bot/voice and Telegram/SMS alerts are time-permitting. Record absent capabilities in the feature-coverage ledger, not as passed or waived; assess added channels and retest affected shared paths before publishing them.
 - Full organiser feature checklist has not yet been obtained.
 
 ## Sign-off
 
 - Open defects, severities, and linked issues:
-- Co-designer unaided-task outcome:
+- Co-designer unaided-task outcome and early/retest session continuity:
 - Accessibility assessor review:
 - Scope/limitations accepted by organisers, if any:
 - Final report reviewed by/date:

@@ -10,24 +10,24 @@ The arrows below show runtime calls/data flow, **not source-code imports**. The 
 
 ```mermaid
 flowchart TB
-    Host["Savanna / another host"] --> Loader["Script-tag loader"]
+    Host["Official static Savanna demo / other host"] --> Loader["Script-tag loader"]
     Loader --> Frame["Isolated learner iframe"]
     Page["Standalone learner page"] --> HTTP
     Frame --> HTTP
     Staff["Support console"] --> HTTP
-    Telegram["Telegram Bot API"] <-->|"Webhook or polling; replies"| Channel
+    Telegram["Telegram Bot API (time-permitting)"] <-->|"Webhook or polling; replies"| Channel
 
     subgraph Backend["One backend deployment"]
         HTTP["Fastify HTTP interface + web assets"] --> UseCases["Application use cases"]
-        Channel["Telegram channel adapter"] --> UseCases
+        Channel["Telegram channel adapter (time-permitting)"] --> UseCases
         UseCases --> Domain["Domain rules"]
         UseCases -->|"Repository ports; atomic state + intent"| Persistence["PostgreSQL adapters"]
         UseCases -->|"Answer port"| Answer["Cloud answer adapter"]
         UseCases -->|"Answer port"| FAQ["Curated FAQ adapter"]
         UseCases -->|"Speech ports"| Speech["Speech adapters"]
         FAQ -->|"Approved entries"| Persistence
-        Worker["Notification use case + delivery worker"] -->|"Claim, recheck eligibility, record outcome"| Persistence
-        Worker --> Delivery["Telegram / SMS delivery adapters"]
+        Worker["Notification worker (time-permitting)"] -->|"Claim, recheck eligibility, record outcome"| Persistence
+        Worker --> Delivery["Telegram / SMS adapters (time-permitting)"]
     end
 
     Persistence <--> DB[("PostgreSQL: identity, content, jobs, conversations, help, outbox")]
@@ -37,6 +37,8 @@ flowchart TB
     Delivery --> SMS["Approved SMS provider"]
     SMS --> Phone["Consenting handset"]
 ```
+
+This is the target runtime, not a list of core prerequisites: Telegram, delivery worker/adapters and outbox state are added only for time-permitting channel features. Web tutoring/voice, persistent help, web job answers and accommodation requests do not need that worker. Production Savanna SSO is a later external adapter, not supplied by the static host.
 
 The worker reads committed delivery intents through persistence interfaces; the database does not execute or push messages itself. The standalone page can also read its explicitly prepared, non-restricted FAQ cache offline without reaching the backend. Direct tutoring replies use the channel/HTTP response path; durable alerts and support notifications use the worker.
 
@@ -53,7 +55,7 @@ flowchart LR
 
 Signalling authorises/negotiates the session; the screen media takes the direct or relay path, **not both by requirement**. The learner controls capture and stop. Screen media is never routed to the tutor or recorded by this application. TURN is a network dependency when required, not a new business microservice.
 
-Deploy one backend and one PostgreSQL instance initially; serve web assets and the embed loader through the documented deployment. The delivery worker belongs to the same backend deployment and uses durable database state. No Redis or separate queue product is needed initially. HTTPS, public callback/relay reachability, and suitable hosting remain provisioning requirements, not assumptions about organiser services.
+Deploy one backend and one PostgreSQL instance initially; serve web assets and the embed loader through the documented deployment. When implemented, the delivery worker belongs to the same backend deployment and uses durable database state. No Redis or separate queue product is needed initially. HTTPS, public callback/relay reachability, and suitable hosting remain provisioning requirements, not assumptions about organiser services.
 
 ## Stack and seams
 
@@ -126,6 +128,8 @@ Hackaton/
 │   ├── coding-standards.md
 │   ├── decisions.md
 │   ├── issues.md
+│   ├── assessment.md
+│   ├── savanna-reconciliation.md
 │   ├── verification.md
 │   └── conformance.md
 ├── apps/
@@ -194,12 +198,14 @@ Hackaton/
 │       ├── package.json
 │       └── src/                        # Loader, frame messaging, teardown
 └── fixtures/
+    ├── hosts/
+    │   └── savanna/                    # Approved, sanitised pinned demo host
     ├── courses/
     ├── jobs/
     └── evaluations/
 ```
 
-Other backend modules use the same layer pattern only as needed. Focused unit tests live beside their implementation. Avoid an empty directory for each possible entity. The documentation tree exists now; application paths are proposed locations.
+Other backend modules use the same layer pattern only as needed. Focused unit tests live beside their implementation. Avoid an empty directory for each possible entity. The documentation tree exists now; application paths are proposed locations. Keep all implementation in Hackathon; the upstream starter remains context. Do not copy it wholesale: approved host fixtures must remove captured profiles/tokens, record permitted assets/attribution and minimal host changes, and mount outside DOM panels replaced by the starter script.
 
 ## Module ownership and application interfaces
 
@@ -244,11 +250,13 @@ Provider interface outcomes must distinguish grounded answer, insufficient evide
 
 ### Embed and identity
 
-The script creates an iframe on the assistant origin and exposes a small initialise/open/close/teardown lifecycle. Validate `postMessage` source window, exact origin, message schema, and intended audience. Do not place reusable credentials in URLs, DOM attributes, analytics, or logs. Use a short-lived single-use bootstrap exchange whose exact signing/verification contract is determined from Savanna; all secrets remain server-side. Do not depend solely on third-party cookies. Staff access must use its own authenticated, authorised path.
+The script creates an iframe on the assistant origin and exposes a small initialise/open/close/teardown lifecycle. Validate `postMessage` source window, exact origin, message schema, and intended audience. Do not place reusable credentials in URLs, DOM attributes, analytics, or logs. For the static demonstration, use our backend-issued short-lived single-use bootstrap exchange with server-controlled synthetic learner/staff identities and course grants (T3-004-C). Provision demo access through a controlled setup, not arbitrary browser-selected principals/roles. Validate expiry/replay and revoke sessions on logout; keep secrets server-side. No captured DOM identity or token is trusted. Production Savanna exchange/claims/logout require a real supplied contract and separate live proof in T3-004-B; demo authentication is not production SSO. Do not depend solely on third-party cookies. Staff access must use its own authenticated, authorised path.
 
-Document CSP/frame permissions, microphone/display-capture delegation, allowed host origins, and how focus returns on close. Sandbox restrictions must be tested against necessary features rather than copied blindly. A development fixture host proves packaging; only the supplied starter proves Savanna integration.
+Document CSP/frame permissions, microphone/display-capture delegation, allowed host origins, and how focus returns on close. Sandbox restrictions must be tested against necessary features rather than copied blindly. A lookalike fixture proves packaging only; the pinned supplied static pages prove static-host compatibility when actually tested. Serve the demo over controlled HTTP(S); never allow a `file://`/`null` origin as an authentication shortcut. Static compatibility does not prove production SSO or organiser acceptance. Report inherited accessibility defects affecting the complete learner journey rather than hiding them behind the iframe boundary.
 
 ### Durable notifications
+
+This infrastructure is time-permitting, built with its first alert feature rather than as a prerequisite for the core inbox. When enabled, all safety rules below apply.
 
 Create the business change and logical delivery intent in one database transaction. Worker claims use bounded leases; recover expired leases after restart. Network sends occur outside the transaction. Before each send, recheck eligibility, consent, unsubscribe/cancellation, and job validity.
 
@@ -263,6 +271,8 @@ Persist support messages before notifying. Read/unread state is per authorised p
 Issue short-lived signalling permissions only for authorised support participants. Signal over an authenticated channel; negotiate browser media separately. Use configured STUN/TURN as required, with temporary credentials. No recording or raw screen material enters application logs or AI context. Test stopping, disconnection, revoked staff access, and unsupported browsers.
 
 ## Evidence-led provider selection
+
+No models are provided. T3-003-B owns bounded current-source research for answer, retrieval/embedding and speech candidates before adoption; T3-005-B, T3-007-B, T3-010-C and T3-011 own measured retrieval, answer and speech evaluations. Keep this as a step, not a predetermined model/framework choice. Use only approved authored lesson content with commit/section provenance, excluding learner chrome, forms and captured tokens; English source material must still support evaluated Amharic questions/answers.
 
 Before committing to a consequential provider/library, record in the owning issue: current official documentation/date, candidate and a reasonable alternative, required language/format support, licence, recurring cost, consent/data retention implications, installation requirements, and a focused experiment with results.
 

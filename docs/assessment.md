@@ -2,6 +2,8 @@
 
 Assessed 2026-11-14 against the [official hackathon brief](https://digitalbridge.et/#apply), local specification, architecture and newly split backlog. A separate read-only agent received that URL and repository paths with **no conversation history**. It evaluated coverage, competitiveness, task size and four-person parallel delivery before the revisions below. This is planning feedback, not organiser approval, implemented capability or a guarantee of placing.
 
+**Historical scope note:** this assessment preceded the user-approved Savanna reconciliation and channel reprioritisation. It is not a review of the revised plan. [Current delivery decisions](decisions.md) and [the updated backlog](issues.md) now separate core readiness, time-permitting Telegram/SMS, later production identity and full written-brief coverage; [the reconciliation](savanna-reconciliation.md) records the evidence. Read references below to the old baseline/authentication gate in that historical context.
+
 ## Verdict
 
 **Competitive potential if implemented and proved; high schedule risk from a documentation-only start.** The assessor found strong visible-requirement coverage and a defensible small-deployment architecture. The limiting factors are real integrations, user/device evidence, total workload and integration/review time—not lack of feature ideas. A larger ticket count does not make the project faster or guarantee that every task fits one sitting.
