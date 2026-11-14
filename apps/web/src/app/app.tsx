@@ -1,5 +1,6 @@
-// Learner page: the conversation shell driven by labelled demo fixtures, plus a
-// footer that checks API health once and reports it in a polite live region.
+// Learner page: the conversation shell driven by labelled demo fixtures, an
+// Amharic/English language switch, and a footer that checks API health once and
+// reports it in a polite live region.
 import { useEffect, useMemo, useState } from 'react';
 import { Assistant } from '../features/assistant/assistant.tsx';
 import {
@@ -8,14 +9,21 @@ import {
   isFixtureScenario,
   type FixtureScenario,
 } from '../features/assistant/fixture-client.ts';
+import { LocaleContext, lookup, T, type Locale, type MessageKey } from '../shared/i18n/i18n.tsx';
 
 type ApiStatus = 'checking' | 'available' | 'unavailable';
 
-const STATUS_TEXT: Record<ApiStatus, string> = {
-  checking: 'Checking the API…',
-  available: 'API available',
-  unavailable: 'API unavailable',
+const STATUS_TEXT: Record<ApiStatus, MessageKey> = {
+  checking: 'status.checking',
+  available: 'status.available',
+  unavailable: 'status.unavailable',
 };
+
+// Each language is named in itself, so a learner can find their own whatever is showing.
+const LANGUAGES: readonly { locale: Locale; name: string }[] = [
+  { locale: 'en', name: 'English' },
+  { locale: 'am', name: 'አማርኛ' },
+];
 
 // A hung API must not leave the page on "Checking" forever.
 export const HEALTH_TIMEOUT_MS = 5000;
@@ -44,7 +52,15 @@ async function fetchApiStatus(signal: AbortSignal): Promise<ApiStatus> {
 export function App() {
   const [status, setStatus] = useState<ApiStatus>('checking');
   const [scenario, setScenario] = useState<FixtureScenario>('english');
+  const [locale, setLocale] = useState<Locale>('en');
   const client = useMemo(() => createFixtureClient(scenario), [scenario]);
+  const t = (key: MessageKey) => lookup(locale, key).text;
+
+  // The page language drives screen-reader pronunciation and font selection.
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    document.title = lookup(locale, 'app.title').text;
+  }, [locale]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -53,16 +69,36 @@ export function App() {
     return () => controller.abort();
   }, []);
 
+  // The Assistant is never remounted on a language switch, so an unsent question survives it.
   return (
-    <>
+    <LocaleContext value={locale}>
       <main>
-        <h1>Learning assistant</h1>
+        <div className="languages" role="group" aria-label={t('app.languageLabel')}>
+          {LANGUAGES.map(({ locale: option, name }) => (
+            <button
+              key={option}
+              type="button"
+              lang={option}
+              aria-pressed={locale === option}
+              onClick={() => setLocale(option)}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+        <h1>
+          <T k="app.title" />
+        </h1>
         <section className="demo-notice" aria-labelledby="demo-heading">
-          <h2 id="demo-heading">Demo mode</h2>
+          <h2 id="demo-heading">
+            <T k="demo.heading" />
+          </h2>
           <p>
-            Replies come from labelled test fixtures. This is not a tutor, and no answer is real.
+            <T k="demo.notice" />
           </p>
-          <label htmlFor="demo-scenario">Demo reply scenario</label>
+          <label htmlFor="demo-scenario">
+            <T k="demo.scenarioLabel" />
+          </label>
           <select
             id="demo-scenario"
             value={scenario}
@@ -70,9 +106,10 @@ export function App() {
               if (isFixtureScenario(event.target.value)) setScenario(event.target.value);
             }}
           >
+            {/* An option holds plain text only, so these use the untagged lookup. */}
             {Object.entries(FIXTURE_SCENARIOS).map(([value, label]) => (
               <option key={value} value={value}>
-                {label}
+                {t(label)}
               </option>
             ))}
           </select>
@@ -80,10 +117,10 @@ export function App() {
         <Assistant client={client} />
       </main>
       <footer>
-        <p role="status" aria-label="Service status">
-          {STATUS_TEXT[status]}
+        <p role="status" aria-label={t('status.label')}>
+          <T k={STATUS_TEXT[status]} />
         </p>
       </footer>
-    </>
+    </LocaleContext>
   );
 }

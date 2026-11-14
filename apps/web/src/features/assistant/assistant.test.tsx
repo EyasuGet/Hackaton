@@ -147,8 +147,11 @@ describe('Assistant', () => {
     const replyText = screen.getAllByRole('listitem')[1]?.querySelector('[dir]');
     expect(replyText?.getAttribute('lang')).toBe('am');
     expect(replyText?.getAttribute('dir')).toBe('auto');
-    // The English prefix is outside the Amharic-tagged span in the announcement.
-    expect(updates().querySelector('span')?.getAttribute('lang')).toBe('am');
-    expect(updates().getAttribute('lang')).toBeNull();
+    // The interface-language prefix and the Amharic reply are tagged separately.
+    const spans = [...updates().querySelectorAll('span')];
+    expect(spans.map((span) => [span.textContent, span.getAttribute('lang')])).toEqual([
+      ['Assistant: ', 'en'],
+      [markup, 'am'],
+    ]);
   });
 });

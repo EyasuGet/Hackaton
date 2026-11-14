@@ -1,6 +1,7 @@
 // Accessible conversation shell: a labelled question box, a message history and
 // readable pending/error states. All text is rendered as React text, never HTML.
-import { useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useContext, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { LocaleContext, lookup, T, useT, type MessageKey } from '../../shared/i18n/i18n.tsx';
 import type { AskResult, ConversationClient } from './conversation.ts';
 
 interface Entry {
@@ -12,12 +13,10 @@ interface Entry {
 
 type Problem = 'empty' | 'denied' | 'failed';
 
-const PROBLEM_TEXT: Record<Problem, string> = {
-  empty: 'Type a question before sending.',
-  denied:
-    'You are not signed in, or your session has expired. Your question was not sent and is still in the box.',
-  failed:
-    'Your question could not be sent. Check your connection, then press Send to try again. Your question is still in the box.',
+const PROBLEM_TEXT: Record<Problem, MessageKey> = {
+  empty: 'assistant.problemEmpty',
+  denied: 'assistant.problemDenied',
+  failed: 'assistant.problemFailed',
 };
 
 export function Assistant({ client }: { client: ConversationClient }) {
@@ -25,12 +24,18 @@ export function Assistant({ client }: { client: ConversationClient }) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
-  const [announcement, setAnnouncement] = useState<{ prefix: string; text: string; lang?: string }>(
-    { prefix: '', text: '' },
-  );
+  // Captured as text when announced: a later language switch must not rewrite the
+  // live region, or screen readers would read the reply again.
+  const [announcement, setAnnouncement] = useState<{
+    prefix?: { text: string; lang: string };
+    text: string;
+    lang?: string;
+  }>({ text: '' });
   // State updates are asynchronous, so a ref blocks a second send in the same tick.
   const inFlight = useRef(false);
   const ids = { question: useId(), hint: useId(), problem: useId(), heading: useId() };
+  const t = useT();
+  const locale = useContext(LocaleContext);
 
   async function send() {
     if (inFlight.current) return;
@@ -42,7 +47,7 @@ export function Assistant({ client }: { client: ConversationClient }) {
     inFlight.current = true;
     setSending(true);
     setProblem(null);
-    setAnnouncement({ prefix: '', text: 'Sending your question…' });
+    setAnnouncement(lookup(locale, 'assistant.sending'));
 
     let result: AskResult;
     try {
@@ -57,7 +62,7 @@ export function Assistant({ client }: { client: ConversationClient }) {
     if (result.kind !== 'answer') {
       // Keep the draft so the learner can retry deliberately; the alert explains why.
       setProblem(result.kind);
-      setAnnouncement({ prefix: '', text: '' });
+      setAnnouncement({ text: '' });
       return;
     }
     const { reply } = result;
@@ -68,7 +73,11 @@ export function Assistant({ client }: { client: ConversationClient }) {
     ]);
     setDraft('');
     // Announced once, as a whole; focus stays wherever the learner left it.
-    setAnnouncement({ prefix: 'Assistant: ', text: reply.text, lang: reply.lang });
+    setAnnouncement({
+      prefix: lookup(locale, 'assistant.announcePrefix'),
+      text: reply.text,
+      lang: reply.lang,
+    });
   }
 
   function onSubmit(event: FormEvent) {
@@ -86,15 +95,27 @@ export function Assistant({ client }: { client: ConversationClient }) {
 
   return (
     <section className="assistant" aria-labelledby={ids.heading}>
-      <h2 id={ids.heading}>Conversation</h2>
+      <h2 id={ids.heading}>
+        <T k="assistant.heading" />
+      </h2>
 
       {entries.length === 0 ? (
-        <p className="empty">No messages yet. Ask a question about your course below.</p>
+        <p className="empty">
+          <T k="assistant.empty" />
+        </p>
       ) : (
         <ol className="messages">
           {entries.map((entry) => (
             <li key={entry.id} className={`message message-${entry.speaker}`}>
-              <p className="speaker">{entry.speaker === 'learner' ? 'You' : 'Assistant (demo)'}</p>
+              <p className="speaker">
+                <T
+                  k={
+                    entry.speaker === 'learner'
+                      ? 'assistant.speakerLearner'
+                      : 'assistant.speakerAssistant'
+                  }
+                />
+              </p>
               <p className="message-text" dir="auto" lang={entry.lang}>
                 {entry.text}
               </p>
@@ -104,9 +125,11 @@ export function Assistant({ client }: { client: ConversationClient }) {
       )}
 
       <form className="ask" onSubmit={onSubmit} noValidate>
-        <label htmlFor={ids.question}>Your question</label>
+        <label htmlFor={ids.question}>
+          <T k="assistant.questionLabel" />
+        </label>
         <p id={ids.hint} className="hint">
-          Press Enter to send, or Shift+Enter for a new line.
+          <T k="assistant.hint" />
         </p>
         <textarea
           id={ids.question}
@@ -124,25 +147,27 @@ export function Assistant({ client }: { client: ConversationClient }) {
         />
         {problem && (
           <p id={ids.problem} className="problem" role="alert">
-            {PROBLEM_TEXT[problem]}
+            <T k={PROBLEM_TEXT[problem]} />
           </p>
         )}
         <div className="actions">
           {/* aria-disabled keeps the button focusable, so keyboard focus is not lost while sending. */}
           <button type="submit" aria-disabled={sending}>
-            Send
+            <T k="assistant.send" />
           </button>
           {sending && (
             <span className="pending" aria-hidden="true">
-              Waiting for a reply…
+              <T k="assistant.waiting" />
             </span>
           )}
         </div>
       </form>
 
-      {/* The English prefix and the reply carry their own language tags. */}
-      <p className="visually-hidden" role="status" aria-label="Conversation updates">
-        {announcement.prefix}
+      {/* The prefix and the reply each carry their own language tag. */}
+      <p className="visually-hidden" role="status" aria-label={t('assistant.updatesLabel')}>
+        {announcement.prefix && (
+          <span lang={announcement.prefix.lang}>{announcement.prefix.text}</span>
+        )}
         <span lang={announcement.lang}>{announcement.text}</span>
       </p>
     </section>
