@@ -12,6 +12,8 @@ import {
   migrate,
   MIGRATIONS_DIR,
 } from '../../infrastructure/database/migrations.ts';
+import { ContentAccess } from '../content/application/content-access.ts';
+import { PostgresLessonReader } from '../content/infrastructure/postgres-lesson-reader.ts';
 import { DemoRecords } from '../demo-records/demo-records.ts';
 import {
   PostgresDemoRecordRepository,
@@ -69,6 +71,7 @@ function appWithDemoMode(demoMode: boolean) {
     demoRecords: new DemoRecords(new PostgresDemoRecordRepository(pool)),
     demoSessions: demoSessions(demoMode),
     demoAllowedOrigins: [PAGE_ORIGIN, OTHER_PAGE_ORIGIN],
+    content: new ContentAccess(new PostgresLessonReader(pool), []),
   });
 }
 
