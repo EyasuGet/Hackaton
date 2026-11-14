@@ -19,19 +19,21 @@ This is the strictest of the candidate anchors: creation, last activity, and hel
 | Record | Expires | Notes |
 |---|---|---|
 | Learner questions, assistant replies, transcripts | Own `expires_at` | Clearing history deletes them immediately (see below) |
-| Conversation container | When its last item is gone | Holds no content of its own beyond owner/context identifiers |
-| Help-request messages and support replies | Own `expires_at` | Expires even while the request is waiting or assigned. The request row (state, owner, timestamps) stays, and shows that the content has expired |
+| Conversation container | Deleted by the same purge that removes its last item | Holds no content of its own beyond owner/context identifiers |
+| Help-request messages and support replies | Own `expires_at` | Expires even while the request is waiting or assigned. The request row (state, owner, timestamps, no content) stays only to show that the content has expired |
+| Help-request row (no content) | When closed and its content is gone, and in any case 30 days after creation (**provisional**) | Purpose: lets the learner and support see that a request existed and how it ended. Bounded so metadata is not kept indefinitely |
 | Context a learner shares into a help request | The **earliest** `expires_at` of its source items | Copying never resets the clock. A copy can never outlive the original |
 | Accommodation request text | Own `expires_at` | Same rule |
 | Pending delivery payloads that hold or reference content | No later than the content they carry | Workers recheck that the content still exists before sending. Missing content means skip and never re-create. Scrub the payload when the source is deleted |
-| Alert contact details (phone/Telegram destination) | When unsubscribed or no longer needed | Not on the 168-hour clock. Unsubscribe deletes the contact and cancels queued sends in the same transaction |
+| Alert contact details (phone/Telegram destination) | On unsubscribe, or when the subscription ends because it is cancelled, consent is withdrawn or the learner's account is removed | Not on the 168-hour clock. Deletion and cancelling queued sends happen in the same transaction |
 | Deduplication/audit keys | 30 days after creation (**provisional**) | Opaque, with no message text or contact details. Purpose: stop a replayed import/event or a retried send from repeating an alert |
 | Temporary audio | Deleted on every terminal path (success, failure, cancel) | Never kept until the 168-hour purge |
-| Demo handoff codes and sessions | Their own short `expires_at` | Credentials, not content. Hold no learner text. Any purge removes them once they expire |
+| Demo handoff codes and sessions | Their own short `expires_at` | Credentials, not content. Hold no learner text. A purge must remove them once they expire; none exists yet |
 
 **Not covered:**
 - Approved course content, FAQs and job records. They are institution material, not learner data.
 - Principals and course grants.
+- The `demo_records` table (migration 0002). It holds synthetic fixture text only, and its migration says it is dropped once real learner data such as T3-007-D's history replaces it.
 
 ## How expiry is enforced
 
@@ -70,6 +72,7 @@ This is the strictest of the candidate anchors: creation, last activity, and hel
 | 11 | Learner unsubscribes while a send is queued | Immediately | Contact deleted and queued send cancelled |
 | 12 | Dedup key created at `T` | `T + 30 days` | Purged. It never contained content |
 | 13 | Purge runs twice, or on two instances at once | — | Same result as running once, with no errors |
+| 14 | Help request created at `T`, still open, content expired at `T + R` | `T + 30 days` | The contentless request row is purged |
 
 ## Open decisions: approval still needed
 
@@ -79,5 +82,5 @@ Ask the institution, through the team's authorised contact. Record each answer, 
 2. **Open help requests.** Should help content expire at seven days even if the request is still waiting or assigned (provisional)? Or keep it until resolution, and then for how long?
 3. **Clearing history versus shared help context.** Should clearing a conversation also delete the copies already shared with support (provisional)?
 4. **Backups and providers.** Will the deployment keep backups, with what rotation? Is the selected AI/speech provider's retention acceptable for real learner data?
-5. **Deduplication keys.** Is a 30-day bound acceptable?
+5. **Non-content records.** Is a 30-day bound acceptable for deduplication keys and for contentless help-request rows?
 6. **Overrides.** Does any record type need a longer approved period?
