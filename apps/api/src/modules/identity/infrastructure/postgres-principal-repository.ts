@@ -26,18 +26,22 @@ export class PostgresPrincipalRepository implements PrincipalRepository {
     this.#pool = pool;
   }
 
-  async findDemoByTokenDigest(digest: string): Promise<Principal | null> {
+  async findDemoByTokenDigest(digest: string, now: Date): Promise<Principal | null> {
     // `is_demo` is checked here as well as by the table constraint, so a demo
-    // token can never resolve to a real principal.
+    // token or demo session can never resolve to a real principal.
     const result = await this.#pool.query<PrincipalRow>(
       `SELECT p.id, p.role, p.label,
               coalesce(array_agg(g.course_id ORDER BY g.course_id)
                        FILTER (WHERE g.course_id IS NOT NULL), '{}') AS course_ids
          FROM principals p
          LEFT JOIN course_grants g ON g.principal_id = p.id
-        WHERE p.token_digest = $1 AND p.is_demo
+        WHERE p.is_demo
+          AND (p.token_digest = $1
+               OR EXISTS (SELECT 1 FROM demo_sessions s
+                           WHERE s.principal_id = p.id AND s.token_digest = $1
+                             AND s.revoked_at IS NULL AND s.expires_at > $2))
         GROUP BY p.id`,
-      [digest],
+      [digest, now],
     );
     const row = result.rows[0];
     if (!row) return null;
