@@ -259,7 +259,6 @@ export const am: Partial<Record<MessageKey, string>> = {
   'inbox.replyPlaceholder': 'ምላሽዎን ይጻፉ…',
   'inbox.replyFailed': 'ምላሽዎ ሊላክ አልቻለም። ግንኙነትዎን ያረጋግጡ እና እንደገና ይሞክሩ።',
   'inbox.replyTerminal': 'ይህ ጥያቄ ተዘግቷል። ተጨማሪ ምላሽ ማከል አይቻልም።',
-  'inbox.meetingNote':
-    'ስብሰባ ለማቀናጀት፣ የአዲስ አበባ ሰዓት (EAT፣ UTC+3) ተጠቅሞ ሰዓት ሀሳብ ያቅርቡ።',
+  'inbox.meetingNote': 'ስብሰባ ለማቀናጀት፣ የአዲስ አበባ ሰዓት (EAT፣ UTC+3) ተጠቅሞ ሰዓት ሀሳብ ያቅርቡ።',
   'inbox.markRead': 'እንደተነበበ ምልክት አድርግ',
 };
