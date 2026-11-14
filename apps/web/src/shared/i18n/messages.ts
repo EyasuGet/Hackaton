@@ -87,6 +87,40 @@ export const en = {
   'help.errorDenied':
     'You are not signed in, or your session has expired. Your request was not sent.',
   'help.errorFailed': 'Your request could not be sent. Check your connection and try again.',
+  'accommodation.heading': 'Request interview accommodation',
+  'accommodation.intro':
+    'You may request workplace or interview support for a job. Only you and an authorised coordinator will see your request. No medical proof or diagnosis is required.',
+  'accommodation.startButton': 'Start a request',
+  'accommodation.loadingJobs': 'Loading available jobs…',
+  'accommodation.selectJobPrompt': 'Choose the job you are applying for.',
+  'accommodation.jobLabel': 'Job',
+  'accommodation.jobPlaceholder': 'Select a job…',
+  'accommodation.nextButton': 'Next',
+  'accommodation.cancelDraft': 'Cancel',
+  'accommodation.selectedJob': 'Selected job:',
+  'accommodation.descriptionPrompt':
+    'Describe the support you are requesting. Do not include medical or diagnostic details.',
+  'accommodation.descriptionLabel': 'Support description',
+  'accommodation.reviewButton': 'Review before sending',
+  'accommodation.backButton': 'Back',
+  'accommodation.previewHeading': 'Review your request',
+  'accommodation.previewRecipient': 'Recipient:',
+  'accommodation.recipientValue': 'Authorised coordinator only',
+  'accommodation.previewJob': 'Job:',
+  'accommodation.previewDescriptionLabel': 'Your description:',
+  'accommodation.disclosureNote':
+    'Only you and an authorised coordinator will see this. It will be stored for up to 7 days.',
+  'accommodation.confirmButton': 'Confirm and send',
+  'accommodation.submitting': 'Sending your request…',
+  'accommodation.waiting':
+    'Your request has been sent. A coordinator will respond when they are available.',
+  'accommodation.cancelButton': 'Cancel this request',
+  'accommodation.cancelled': 'Your request has been cancelled.',
+  'accommodation.errorDenied':
+    'You are not signed in, or your session has expired. Your request was not sent.',
+  'accommodation.errorJobNotFound': 'That job is no longer available. Please choose another.',
+  'accommodation.errorFailed':
+    'Your request could not be sent. Check your connection and try again.',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -154,4 +188,34 @@ export const am: Partial<Record<MessageKey, string>> = {
   'help.cancelled': 'ጥያቄዎ ተሰርዟል።',
   'help.errorDenied': 'አልገቡም፤ ወይም ክፍለ ጊዜዎ አብቅቷል። ጥያቄዎ አልተላከም።',
   'help.errorFailed': 'ጥያቄዎ ሊላክ አልቻለም። ግንኙነትዎን ያረጋግጡ እና እንደገና ይሞክሩ።',
+  'accommodation.heading': 'የቃለ-መጠይቅ ማስተናገጃ ጥያቄ',
+  'accommodation.intro':
+    'ለሥራ ቦታ ወይም ለቃለ-መጠይቅ ድጋፍ መጠየቅ ይችላሉ። ጥያቄዎን ሊያዩ የሚችሉት እርስዎ እና ፈቃድ ያለው አስተባባሪ ብቻ ናቸው። ሕክምናዊ ማስረጃ ወይም ምርመራ አያስፈልግም።',
+  'accommodation.startButton': 'ጥያቄ ጀምር',
+  'accommodation.loadingJobs': 'ሥራዎች እየተጫኑ ናቸው…',
+  'accommodation.selectJobPrompt': 'የሚያመለክቱበትን ሥራ ይምረጡ።',
+  'accommodation.jobLabel': 'ሥራ',
+  'accommodation.jobPlaceholder': 'ሥራ ይምረጡ…',
+  'accommodation.nextButton': 'ቀጥል',
+  'accommodation.cancelDraft': 'ሰርዝ',
+  'accommodation.selectedJob': 'የተመረጠ ሥራ፦',
+  'accommodation.descriptionPrompt': 'የሚጠይቁትን ድጋፍ ይግለጹ። ሕክምናዊ ወይም ምርመራ ዝርዝሮችን አያካትቱ።',
+  'accommodation.descriptionLabel': 'የድጋፍ መግለጫ',
+  'accommodation.reviewButton': 'ከመላክ በፊት ይከልሱ',
+  'accommodation.backButton': 'ተመለስ',
+  'accommodation.previewHeading': 'ጥያቄዎን ይከልሱ',
+  'accommodation.previewRecipient': 'ተቀባይ፦',
+  'accommodation.recipientValue': 'ፈቃድ ያለው አስተባባሪ ብቻ',
+  'accommodation.previewJob': 'ሥራ፦',
+  'accommodation.previewDescriptionLabel': 'መግለጫዎ፦',
+  'accommodation.disclosureNote':
+    'ይህን ሊያዩ የሚችሉት እርስዎ እና ፈቃድ ያለው አስተባባሪ ብቻ ናቸው። እስከ 7 ቀናት ድረስ ይቀመጣል።',
+  'accommodation.confirmButton': 'አረጋግጥ እና ላክ',
+  'accommodation.submitting': 'ጥያቄዎ እየተላከ ነው…',
+  'accommodation.waiting': 'ጥያቄዎ ተልኳል። አስተባባሪ ሲኖር ምላሽ ይሰጣሉ።',
+  'accommodation.cancelButton': 'ይህን ጥያቄ ሰርዝ',
+  'accommodation.cancelled': 'ጥያቄዎ ተሰርዟል።',
+  'accommodation.errorDenied': 'አልገቡም፤ ወይም ክፍለ ጊዜዎ አብቅቷል። ጥያቄዎ አልተላከም።',
+  'accommodation.errorJobNotFound': 'ያ ሥራ አሁን አይገኝም። ሌላ ይምረጡ።',
+  'accommodation.errorFailed': 'ጥያቄዎ ሊላክ አልቻለም። ግንኙነትዎን ያረጋግጡ እና እንደገና ይሞክሩ።',
 };
