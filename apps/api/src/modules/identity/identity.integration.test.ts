@@ -17,7 +17,9 @@ import {
   PostgresDemoRecordRepository,
   seedDemoRecords,
 } from '../demo-records/postgres-demo-record-repository.ts';
+import { DemoSessions, HANDOFF_TTL_MS, SESSION_TTL_MS } from './application/demo-sessions.ts';
 import { ResolvePrincipal } from './application/resolve-principal.ts';
+import { PostgresDemoSessionRepository } from './infrastructure/postgres-demo-session-repository.ts';
 import {
   PostgresPrincipalRepository,
   provisionDemoPrincipals,
@@ -48,11 +50,23 @@ async function provision(): Promise<Record<DemoPrincipalKey, string>> {
   }
 }
 
+const PAGE_ORIGIN = 'http://localhost:5173';
+
+/** Controlled clock shared by session issue, exchange and authentication. */
+let clock = new Date('2026-11-14T09:00:00Z');
+const now = () => clock;
+
+function demoSessions(demoMode = true) {
+  return new DemoSessions(new PostgresDemoSessionRepository(pool), demoMode, now);
+}
+
 function appWithDemoMode(demoMode: boolean) {
   return buildApp({
     checkReadiness: () => Promise.resolve({ ready: true }),
-    resolvePrincipal: new ResolvePrincipal(new PostgresPrincipalRepository(pool), demoMode),
+    resolvePrincipal: new ResolvePrincipal(new PostgresPrincipalRepository(pool), demoMode, now),
     demoRecords: new DemoRecords(new PostgresDemoRecordRepository(pool)),
+    demoSessions: demoSessions(demoMode),
+    demoAllowedOrigins: [PAGE_ORIGIN],
   });
 }
 
@@ -224,5 +238,144 @@ describe('support permissions', () => {
     expect(list.statusCode).toBe(403);
     expect(record.statusCode).toBe(403);
     expect(record.json()).toEqual({ error: 'forbidden' });
+  });
+});
+
+describe('demo sessions', () => {
+  async function handoff(key: DemoPrincipalKey): Promise<string> {
+    const issued = await demoSessions().issueHandoff(key);
+    if (!issued) throw new Error(`No handoff issued for ${key}`);
+    return issued.secret;
+  }
+
+  /** `origin: null` sends no Origin header at all. */
+  async function exchange(code: string, origin: string | null = PAGE_ORIGIN) {
+    const app = appWithDemoMode(true);
+    try {
+      return await app.inject({
+        method: 'POST',
+        url: '/api/demo/session',
+        headers: origin === null ? {} : { origin },
+        payload: { code },
+      });
+    } finally {
+      await app.close();
+    }
+  }
+
+  async function sessionFor(key: DemoPrincipalKey): Promise<string> {
+    const response = await exchange(await handoff(key));
+    expect(response.statusCode).toBe(201);
+    return response.json<{ token: string }>().token;
+  }
+
+  it('exchanges a handoff for a session that identifies only that principal', async () => {
+    const session = await sessionFor('learner-a');
+
+    const me = await get('/api/me', session);
+    expect(me.json()).toMatchObject({ label: 'Demo learner A', role: 'learner', demo: true });
+
+    // Learner isolation and staff protection hold for session tokens too.
+    const other = await get(`/api/demo/records/${await recordId('b-course-1')}`, session, {
+      'x-role': 'support',
+    });
+    expect(other.statusCode).toBe(404);
+    expect(
+      (await get('/api/demo/support-check', session, { 'x-role': 'support' })).statusCode,
+    ).toBe(403);
+    expect((await get('/api/demo/support-check', await sessionFor('support'))).json()).toEqual({
+      ok: true,
+    });
+  });
+
+  it('accepts a handoff code only once', async () => {
+    const code = await handoff('learner-a');
+
+    expect((await exchange(code)).statusCode).toBe(201);
+    const replay = await exchange(code);
+
+    expect(replay.statusCode).toBe(401);
+    expect(replay.json()).toEqual({ error: 'invalid_handoff' });
+  });
+
+  it('gives exactly one session when the same code is exchanged concurrently', async () => {
+    const code = await handoff('learner-b');
+
+    const results = await Promise.all([exchange(code), exchange(code), exchange(code)]);
+
+    expect(results.map((r) => r.statusCode).sort()).toEqual([201, 401, 401]);
+  });
+
+  it('rejects an expired handoff code', async () => {
+    const code = await handoff('learner-a');
+    clock = new Date(clock.getTime() + HANDOFF_TTL_MS);
+
+    expect((await exchange(code)).statusCode).toBe(401);
+  });
+
+  it.each([
+    ['a different origin', 'https://attacker.example'],
+    ['the null origin', 'null'],
+    ['no origin', null],
+  ])('refuses %s without using up the code', async (_case, origin) => {
+    const code = await handoff('learner-a');
+
+    const refused = await exchange(code, origin);
+
+    expect(refused.statusCode).toBe(403);
+    expect(refused.json()).toEqual({ error: 'origin_not_allowed' });
+    expect((await exchange(code)).statusCode).toBe(201);
+  });
+
+  it('ends the session when it expires', async () => {
+    const session = await sessionFor('learner-a');
+    expect((await get('/api/me', session)).statusCode).toBe(200);
+
+    clock = new Date(clock.getTime() + SESSION_TTL_MS);
+
+    expect((await get('/api/me', session)).statusCode).toBe(401);
+  });
+
+  it('ends the session on sign-out', async () => {
+    const session = await sessionFor('learner-a');
+    const app = appWithDemoMode(true);
+    const signOut = await app.inject({
+      method: 'DELETE',
+      url: '/api/demo/session',
+      headers: { authorization: `Bearer ${session}` },
+    });
+    await app.close();
+
+    expect(signOut.statusCode).toBe(204);
+    expect((await get('/api/me', session)).statusCode).toBe(401);
+  });
+
+  it('issues, exchanges and honours nothing while demo mode is off', async () => {
+    const session = await sessionFor('learner-a');
+    const code = await handoff('learner-a');
+    const offApp = appWithDemoMode(false);
+    try {
+      const exchanged = await offApp.inject({
+        method: 'POST',
+        url: '/api/demo/session',
+        headers: { origin: PAGE_ORIGIN },
+        payload: { code },
+      });
+      const me = await offApp.inject({
+        method: 'GET',
+        url: '/api/me',
+        headers: { authorization: `Bearer ${session}` },
+      });
+
+      expect(await demoSessions(false).issueHandoff('learner-a')).toBeNull();
+      expect(exchanged.statusCode).toBe(401);
+      expect(me.statusCode).toBe(401);
+    } finally {
+      await offApp.close();
+    }
+  });
+
+  it('issues no handoff for a name that is not a provisioned demo principal', async () => {
+    expect(await demoSessions().issueHandoff('admin')).toBeNull();
   });
 });

@@ -16,6 +16,8 @@ export interface ApiConfig {
   readonly database: DatabaseConfig;
   /** Enables synthetic demo identities; never a form of real authentication. */
   readonly demoMode: boolean;
+  /** Exact page origins allowed to start a demo session, for example `http://localhost:5173`. */
+  readonly demoAllowedOrigins: readonly string[];
 }
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -63,12 +65,40 @@ export function loadDemoMode(env: Env): boolean {
   throw new ConfigError('DEMO_MODE must be true or false');
 }
 
+/**
+ * Comma-separated exact http(s) origins; empty means no page may start a demo
+ * session. `null` and file origins are never accepted.
+ */
+export function loadDemoAllowedOrigins(env: Env): string[] {
+  const entries = (env.DEMO_ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  for (const entry of entries) {
+    let url: URL | undefined;
+    try {
+      url = new URL(entry);
+    } catch {
+      url = undefined;
+    }
+    const isOrigin =
+      url && (url.protocol === 'http:' || url.protocol === 'https:') && url.origin === entry;
+    if (!isOrigin) {
+      throw new ConfigError(
+        'DEMO_ALLOWED_ORIGINS must list exact http(s) origins, comma-separated',
+      );
+    }
+  }
+  return entries;
+}
+
 export function loadConfig(env: Env): ApiConfig {
   return {
     host: required(env, 'API_HOST'),
     port: port(env, 'API_PORT'),
     database: loadDatabaseConfig(env),
     demoMode: loadDemoMode(env),
+    demoAllowedOrigins: loadDemoAllowedOrigins(env),
   };
 }
 

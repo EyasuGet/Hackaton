@@ -3,12 +3,25 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const apiPort = process.env.API_PORT ?? '3000';
+const pageOrigin = 'http://localhost:5173';
+
+// The browser tests sign in with synthetic demo sessions, so this test-only API
+// runs in demo mode and accepts the Vite page's origin.
+const apiEnv = {
+  ...Object.fromEntries(
+    Object.entries(process.env).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    ),
+  ),
+  DEMO_MODE: 'true',
+  DEMO_ALLOWED_ORIGINS: pageOrigin,
+};
 
 export default defineConfig({
   testDir: 'tests/e2e',
   forbidOnly: Boolean(process.env.CI),
   reporter: process.env.CI ? 'list' : 'line',
-  use: { baseURL: 'http://localhost:5173' },
+  use: { baseURL: pageOrigin },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     {
@@ -16,12 +29,13 @@ export default defineConfig({
       // optional .env file and crashes where it does not exist, such as CI.
       command: 'node --env-file-if-exists=../../.env src/server.ts',
       cwd: '../api',
+      env: apiEnv,
       url: `http://127.0.0.1:${apiPort}/api/health`,
       reuseExistingServer: !process.env.CI,
     },
     {
       command: 'pnpm --filter @track3/web dev',
-      url: 'http://localhost:5173',
+      url: pageOrigin,
       reuseExistingServer: !process.env.CI,
     },
   ],
