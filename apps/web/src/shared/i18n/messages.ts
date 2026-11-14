@@ -127,10 +127,22 @@ export const en = {
   'inbox.state.waiting': 'Waiting for staff',
   'inbox.state.claimed': 'Being handled by staff',
   'inbox.state.cancelled': 'Cancelled',
+  'inbox.state.resolved': 'Resolved',
   'inbox.requestedAt': 'Requested:',
   'inbox.unread': 'New reply',
   'inbox.noReplies': 'No replies yet. Staff will reply when available.',
   'inbox.loadError': 'Could not load your requests. Check your connection.',
+  // Reply thread (T3-017-B)
+  'inbox.reply': 'Reply',
+  'inbox.send': 'Send',
+  'inbox.sending': 'Sending…',
+  'inbox.replyLabel': 'Your reply',
+  'inbox.replyPlaceholder': 'Type your reply…',
+  'inbox.replyFailed': 'Your reply could not be sent. Check your connection and try again.',
+  'inbox.replyTerminal': 'This request is closed. No further replies can be added.',
+  'inbox.meetingNote':
+    'To arrange a meeting, propose a time in Addis Ababa timezone (EAT, UTC+3) in your message.',
+  'inbox.markRead': 'Mark as read',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -234,8 +246,20 @@ export const am: Partial<Record<MessageKey, string>> = {
   'inbox.state.waiting': 'ሰራተኛ እየጠበቀ ነው',
   'inbox.state.claimed': 'ሰራተኛ እየተሰጣቸው ነው',
   'inbox.state.cancelled': 'ተሰርዟል',
+  'inbox.state.resolved': 'ተፈቷል',
   'inbox.requestedAt': 'የተጠየቀበት ጊዜ፦',
   'inbox.unread': 'አዲስ ምላሽ',
   'inbox.noReplies': 'ምላሽ እስካሁን የለም። ሰራተኞች ሲኖሩ ምላሽ ይሰጣሉ።',
   'inbox.loadError': 'ጥያቄዎችዎ ሊጫኑ አልቻሉም። ግንኙነትዎን ያረጋግጡ።',
+  // Reply thread (T3-017-B) — draft; competent-speaker review required.
+  'inbox.reply': 'ምላሽ',
+  'inbox.send': 'ላክ',
+  'inbox.sending': 'እየተላከ ነው…',
+  'inbox.replyLabel': 'ምላሽዎ',
+  'inbox.replyPlaceholder': 'ምላሽዎን ይጻፉ…',
+  'inbox.replyFailed': 'ምላሽዎ ሊላክ አልቻለም። ግንኙነትዎን ያረጋግጡ እና እንደገና ይሞክሩ።',
+  'inbox.replyTerminal': 'ይህ ጥያቄ ተዘግቷል። ተጨማሪ ምላሽ ማከል አይቻልም።',
+  'inbox.meetingNote':
+    'ስብሰባ ለማቀናጀት፣ የአዲስ አበባ ሰዓት (EAT፣ UTC+3) ተጠቅሞ ሰዓት ሀሳብ ያቅርቡ።',
+  'inbox.markRead': 'እንደተነበበ ምልክት አድርግ',
 };
