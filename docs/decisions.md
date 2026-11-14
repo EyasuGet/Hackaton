@@ -37,6 +37,18 @@ Answer/speech providers, multilingual retrieval technique, and relay/SMS adapter
 
 Reopen only a concrete unresolved choice or a demonstrated conflict with the approved spec. Bring the smallest decision, a reasonable recommendation, and its evidence. Do not repeat the whole architecture interview for each issue.
 
+## Recorded implementation evaluations
+
+### Retrieval method — T3-005-B, 2026-11-14
+
+**Selected:** PostgreSQL full-text search over the current, non-withdrawn lesson versions in the learner's granted courses, plus a **draft** Amharic↔English glossary (pending competent-speaker review) that expands the question. English sources use the `english` configuration (stemming); Amharic sources use `simple` with prefix matching, because PostgreSQL has no Amharic dictionary. Headings are weighted above bodies and any matching term counts. No embedding model, vector store or external processing.
+
+**Alternatives:** `gemini-embedding-001` (the [T3-003-B shortlist](ai-feasibility.md)'s conditional option) was not needed and would send lesson text to an external provider; English-only search fails Amharic questions by construction.
+
+**Evaluation** ([`fixtures/evaluations/retrieval-cases.json`](../fixtures/evaluations/retrieval-cases.json), run as a real-PostgreSQL test). Thresholds fixed before the first run: expected section in the top 3 for at least 9 of 11 supported questions with a hit in every direction (en→en, am→en, am→am, en→am), and no passages for out-of-corpus questions. **Result: 11/11, both out-of-corpus questions returned nothing.** Without the glossary: 7/11 — all four cross-language questions failed, and one Amharic question matched the wrong lesson through the shared word `ሥራ`.
+
+**Limits:** two lessons (10 sections); the glossary and the evaluation questions were written together by the same author, so the result shows the method works on this corpus, not that it generalises. Before relying on it for new content: extend the glossary with the content, have a competent Amharic speaker review terms and questions, and add held-out questions written by someone else. Revisit embeddings only if such a measured evaluation fails.
+
 ## External gates and remaining precision checks
 
 | Gate | Current state | Required evidence / treatment |
@@ -49,7 +61,7 @@ Reopen only a concrete unresolved choice or a demonstrated conflict with the app
 | Voice/AI | [T3-003-B selections and feasibility tests](ai-feasibility.md) recorded 2026-11-14; API integration unverified | Obtain approved access/processing/budget, then feature-specific bilingual evidence and format/citation tests; shortlist recommendations do not pass downstream quality gates. **Capacity blocker:** the recorded free-tier caps (answers 500/day, transcription 25/day, speech 10/day, shared across users) cannot support the 20-session test (T3-024-A), rehearsals and the live demo; paid quota needs explicit budget authorisation, otherwise voice stays a limited path with typed input and FAQ fallback |
 | Screen sharing | Android browser limitation known; actual infrastructure untested | Desktop cross-network proof and organiser response on mobile alternative; do not declare requirement waived |
 | Co-design devices | Meetings describe shared consultation availability; no gate run recorded | Reserve early/retest slots; record participant continuity and real NVDA/TalkBack, keyboard/zoom/sound-off device/unaided outcomes |
-| Retention policy precision | Seven-day default agreed; timestamp anchor not specified | Confirm creation-vs-activity anchor with institution before real data; prove purge, shared-copy, backup/provider handling; no silent extension |
+| Retention policy precision | Seven-day default agreed; [provisional contract](retention.md) anchors expiry at each item's creation (strictest); institution confirmation not yet obtained | Confirm the anchor and the [open decisions](retention.md#open-decisions-approval-still-needed) with the institution before real data; prove purge, shared-copy, backup/provider handling; no silent extension |
 | Open licence / assets | Written brief and verbal ownership wording need written reconciliation; starter has no repository-level licence | Lesson-text extraction, translation, offline caching and redistribution approved (team-relayed, 2026-11-14; [T3-002 record](static-starter-boundary.md#contracts-and-open-questions)). Still obtain written licence terms and image/asset approval; library notices do not license the full capture |
 | Submission | Meetings request a functional MVP URL and explanatory slides; final form/template not verified | Finish core first, then final hosting/deck/package; obtain current template, links, schedule and private channel for team contact details |
 | Team logistics | No organiser eligibility/attendance confirmation recorded here | Team handles attendance/training/selection questions; software docs do not establish eligibility |
