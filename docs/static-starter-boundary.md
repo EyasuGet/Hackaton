@@ -76,6 +76,6 @@ The [earlier drafts](savanna-reconciliation.md#questions-to-send-to-organisers) 
 
 5. **Judging acceptance:** Is a separate assistant/backend demonstrated inside the official static pages through the plug-in script, using clearly labelled demo logins (live Savanna sign-in in a later phase), sufficient for judging? Will any authenticated host contract be supplied now?
 
-Still open from the earlier drafts and not repeated here: Track 3 mandatory scope and the Telegram follow-up (draft 1), device-gate surfaces, inherited-defect reporting and co-designer booking (draft 3), and presentation date, hosting/model/credit provision and ownership terms (draft 5).
+Still open from the earlier drafts and not repeated here: Track 3 mandatory scope and the Telegram follow-up (draft 1), device-gate surfaces, inherited-defect reporting and co-designer booking (draft 3), whether the single concept page is enough for the demo corpus and whether more approved material exists (draft 4), and presentation date, hosting/model/credit provision and ownership terms (draft 5).
 
 Record each answer here with its date, channel and source, then update the affected issue.
