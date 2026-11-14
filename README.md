@@ -43,7 +43,7 @@ The skill files and reviewer prompts are portable Markdown instructions. Their p
 
 ## Runtime setup
 
-Current scope: an API with liveness and database readiness, a PostgreSQL migration path, a React/Vite page that reports API health, and lint/format/unit/integration/browser checks ([T3-001](https://github.com/EyasuGet/Hackaton/issues/4)), plus synthetic demo identities with learner/support access rules ([T3-004-A](https://github.com/EyasuGet/Hackaton/issues/8); see [Demo identities](#demo-identities)). FAQ-only mode and live-provider requirements are added by their own issues.
+Current scope: an API with liveness and database readiness, a PostgreSQL migration path, a React/Vite page that reports API health, and lint/format/unit/integration/browser checks ([T3-001](https://github.com/EyasuGet/Hackaton/issues/4)), plus synthetic demo identities with learner/support access rules ([T3-004-A](https://github.com/EyasuGet/Hackaton/issues/8); see [Demo identities](#demo-identities)), and versioned lesson import ([T3-005-A](https://github.com/EyasuGet/Hackaton/issues/10); see [Lesson content](#lesson-content)). FAQ-only mode and live-provider requirements are added by their own issues.
 
 ### Requirements
 
@@ -121,6 +121,23 @@ curl -H "Authorization: Bearer $A" -H "x-role: support" localhost:3000/api/demo/
 curl -H "Authorization: Bearer $A" localhost:3000/api/demo/support-check  # 403
 ```
 
+### Lesson content
+
+Approved lesson sources are JSON files in [`fixtures/courses`](fixtures/courses/README.md): one approved Savanna lesson (English, `course-1`, pinned to starter commit `9e83ac7`) and one synthetic Amharic demo lesson (`course-2`).
+
+```sh
+pnpm db:migrate
+pnpm content:import                  # every file in fixtures/courses
+pnpm content:import path/to/x.json   # specific files; relative paths are from the repository root
+```
+
+All files are validated before anything is imported: if any file is invalid, every error is printed with its file and field and nothing is stored. Each valid source is then imported in its own transaction, so a later refused source (such as a reused version label) does not undo earlier ones. Each source then reports `imported`, `unchanged` (identical content, even under a new label) or `withdrawn`. A changed source is stored as a new immutable version that becomes current in the same transaction; sections missing from it stop being authoritative, and earlier versions stay stored for inspection. Reusing a version label for different content is refused, so restoring earlier content needs a new label. Retrieval and citations for learners come in [T3-005-B](https://github.com/EyasuGet/Hackaton/issues/11).
+
+Inspect what is stored:
+
+```sh
+docker compose exec db sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB" -c "SELECT v.source_id, v.version, v.is_demo, s.current_version_id = v.id AS current, v.imported_at FROM lesson_source_versions v JOIN lesson_sources s ON s.id = v.source_id ORDER BY v.source_id, v.imported_at"'
+```
 ### Demo sign-in for the browser
 
 The assistant page signs in with a **single-use sign-in link** minted by whoever runs the demo; nothing the browser sends chooses a role or course.
@@ -155,7 +172,7 @@ SQL files live in [`apps/api/src/infrastructure/database/migrations`](apps/api/s
 | `pnpm typecheck` | Strict TypeScript checks for every app |
 | `pnpm build` | API compile to `apps/api/dist`, web production build to `apps/web/dist` |
 | `pnpm test` | Unit tests: API routes and configuration; web available/unavailable states. No database needed |
-| `pnpm test:integration` | Real-PostgreSQL tests for migrations, readiness and demo identity/access rules. Needs the Compose database; each run creates and drops its own temporary database |
+| `pnpm test:integration` | Real-PostgreSQL tests for migrations, readiness, demo identity/access rules and lesson import. Needs the Compose database; each run creates and drops its own temporary database |
 | `pnpm lint` | ESLint with type-aware typescript-eslint recommended rules ([eslint.config.js](eslint.config.js)) |
 | `pnpm format:check` | Prettier check ([.prettierrc.json](.prettierrc.json)); `pnpm format` rewrites files. Markdown is excluded |
 | `pnpm test:e2e` | Playwright in Chromium against the real API and the Vite dev server, with axe scans failing on critical/serious WCAG 2.2 A/AA violations. First run once: `pnpm --filter @track3/web exec playwright install chromium` (on Linux add `--with-deps` if system libraries are missing). Reuses servers already running on ports 3000/5173 locally |

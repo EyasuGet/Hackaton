@@ -1,6 +1,6 @@
 # Verification plan and evidence procedure
 
-Status: **Early implementation.** Only the T3-001 foundation (web-to-API slice, PostgreSQL migrations and readiness, lint/format/unit/integration/browser checks) and T3-004-A demo identities (principal/grant schema and a fixture-only record table) exist; see the [README runtime section](../README.md#runtime-setup) for actual commands. No learner-feature schema, provider credentials, or device test results exist yet. The contract below is now met by those commands; later issues extend it.
+Status: **Early implementation.** Only the T3-001 foundation (web-to-API slice, PostgreSQL migrations and readiness, lint/format/unit/integration/browser checks), T3-004-A demo identities (principal/grant schema and a fixture-only record table) and T3-005-A lesson import (versioned lesson schema) exist; see the [README runtime section](../README.md#runtime-setup) for actual commands. No learner-feature schema, provider credentials, or device test results exist yet. The contract below is now met by those commands; later issues extend it.
 
 ## Command contract
 

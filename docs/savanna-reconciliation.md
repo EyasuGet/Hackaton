@@ -85,7 +85,7 @@ The raw transcripts/chat have not been copied into this repository. Participant 
 
 ### Questions to send to organisers
 
-These are clarification drafts, not messages already sent. Update 2026-11-14: the plug-in script part of question 2 is answered; current status is in the [T3-002 record](static-starter-boundary.md#contracts-and-open-questions); unanswered parts of these drafts remain open.
+These are clarification drafts, not messages already sent. Update 2026-11-14: the plug-in script and lesson-text reuse parts of question 2 are answered; current status is in the [T3-002 record](static-starter-boundary.md#contracts-and-open-questions); unanswered parts of these drafts remain open.
 
 1. **Track 3 scope:** Does the current mandatory checklist still include the web/Telegram tutor, voice, human help with screen sharing, Telegram/SMS job alerts, job answers and accommodation requests? Does the one-or-two-functions guidance change submission requirements, or only advise prioritisation? Please share the current checklist and the follow-up to the Telegram question.
 2. **Integration acceptance:** Is a working reusable module/backend demonstrated inside these official static pages sufficient for the hackathon, with live Savanna identity/API integration in the later sprint? Must teams modify/fork the static repository directly, or is an embedded independent module accepted? May we serve the pages over local HTTP/HTTPS rather than double-clicked files? What authenticated host contract, if any, will be supplied now?
@@ -102,6 +102,6 @@ These are clarification drafts, not messages already sent. Update 2026-11-14: th
 
 Mixed epics keep their complete integrated requirements, but core leaves depend on core leaves rather than deferred siblings. Additional channel privacy/accessibility checks are separate leaves; any enabled channel must still pass applicable safety checks, and changes to shared code require affected core retests. True Phase 5 enhancements remain gated on full written-brief coverage.
 
-The organiser questions above are still drafts, not messages sent or answers obtained. Separate-module/static-host judging acceptance, asset/course reuse, full checklist, mobile capture alternative, submission template and written licensing terms remain external questions. The user’s implementation choice is not an organiser’s acceptance decision.
+The organiser questions above are still drafts, not messages sent or answers obtained. Separate-module/static-host judging acceptance, image/asset reuse (lesson-text reuse was approved on 2026-11-14; see the [T3-002 record](static-starter-boundary.md#contracts-and-open-questions)), full checklist, mobile capture alternative, submission template and written licensing terms remain external questions. The user’s implementation choice is not an organiser’s acceptance decision.
 
 No issue is marked complete, no application or model research has been implemented, and no GitHub issues have been created. Source inspection and transcript reading establish evidence discovery only: runtime, authentication, media, accessibility, provider quality and submission acceptance remain unverified. Stable issue IDs are preserved; new slices are appended rather than renumbering previous work.
