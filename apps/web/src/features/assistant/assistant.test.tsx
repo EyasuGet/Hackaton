@@ -7,7 +7,12 @@ afterEach(cleanup);
 
 const englishAnswer: AskResult = {
   kind: 'answer',
-  reply: { id: 'r1', text: 'Photosynthesis makes sugar.', lang: 'en' },
+  reply: {
+    id: 'r1',
+    text: 'Photosynthesis makes sugar.',
+    lang: 'en',
+    createdAt: '2026-09-11T12:00:00.000Z',
+  },
 };
 
 /** A client whose replies the test releases explicitly, to observe the pending state. */
@@ -42,13 +47,44 @@ describe('Assistant', () => {
     await respond(englishAnswer);
 
     const messages = screen.getAllByRole('listitem').map((item) => item.textContent);
-    expect(messages).toEqual([
-      'YouWhat is photosynthesis?',
-      'Assistant (demo)Photosynthesis makes sugar.',
-    ]);
+    expect(messages[0]).toBe('YouWhat is photosynthesis?');
+    expect(messages[1]).toContain('Assistant (demo)Photosynthesis makes sugar.');
     expect(questionBox()).toHaveProperty('value', '');
     expect(document.activeElement).toBe(questionBox());
     expect(updates().textContent).toBe('Assistant: Photosynthesis makes sugar.');
+  });
+
+  it('shows the reply instant in Ethiopian and Gregorian calendars and Addis Ababa time', async () => {
+    const { client, respond } = controllableClient();
+    const { container } = render(<Assistant client={client} />);
+    type('Question');
+
+    fireEvent.keyDown(questionBox(), { key: 'Enter' });
+    await respond(englishAnswer);
+
+    const time = container.querySelector('time');
+    expect(time?.getAttribute('datetime')).toBe('2026-09-11T12:00:00.000Z');
+    expect(time?.textContent).toContain('1 Meskerem 2019');
+    expect(time?.textContent).toContain('Ethiopian calendar');
+    expect(time?.textContent).toContain('11 September 2026');
+    expect(time?.textContent).toContain('Gregorian');
+    expect(time?.textContent).toContain('15:00');
+    expect(time?.textContent).toContain('Addis Ababa time');
+  });
+
+  it('still shows a reply when its timestamp cannot be presented', async () => {
+    const { client, respond } = controllableClient();
+    const { container } = render(<Assistant client={client} />);
+    type('Question');
+
+    fireEvent.keyDown(questionBox(), { key: 'Enter' });
+    await respond({
+      kind: 'answer',
+      reply: { id: 'r3', text: 'Visible reply', lang: 'en', createdAt: 'not-a-date' },
+    });
+
+    expect(screen.getAllByRole('listitem')[1]?.textContent).toContain('Visible reply');
+    expect(container.querySelector('time')).toBeNull();
   });
 
   it.each([
@@ -140,13 +176,22 @@ describe('Assistant', () => {
     type('Question');
 
     fireEvent.keyDown(questionBox(), { key: 'Enter' });
-    await respond({ kind: 'answer', reply: { id: 'r2', text: markup, lang: 'am' } });
+    await respond({
+      kind: 'answer',
+      reply: {
+        id: 'r2',
+        text: markup,
+        lang: 'am',
+        createdAt: '2026-09-11T12:00:00.000Z',
+      },
+    });
 
     expect(container.querySelector('img, script')).toBeNull();
     expect(screen.getAllByText(markup).length).toBeGreaterThan(0);
     const replyText = screen.getAllByRole('listitem')[1]?.querySelector('[dir]');
     expect(replyText?.getAttribute('lang')).toBe('am');
     expect(replyText?.getAttribute('dir')).toBe('auto');
+    expect(screen.getByText('1 መስከረም 2019').getAttribute('lang')).toBe('am');
     // The English prefix is outside the Amharic-tagged span in the announcement.
     expect(updates().querySelector('span')?.getAttribute('lang')).toBe('am');
     expect(updates().getAttribute('lang')).toBeNull();

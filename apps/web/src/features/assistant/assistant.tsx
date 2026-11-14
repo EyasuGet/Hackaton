@@ -1,6 +1,7 @@
 // Accessible conversation shell: a labelled question box, a message history and
 // readable pending/error states. All text is rendered as React text, never HTML.
 import { useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { formatAddisDate, type DateLanguage } from '../../shared/dates/addis-date.ts';
 import type { AskResult, ConversationClient } from './conversation.ts';
 
 interface Entry {
@@ -8,6 +9,7 @@ interface Entry {
   readonly speaker: 'learner' | 'assistant';
   readonly text: string;
   readonly lang?: string;
+  readonly createdAt?: string;
 }
 
 type Problem = 'empty' | 'denied' | 'failed';
@@ -19,6 +21,42 @@ const PROBLEM_TEXT: Record<Problem, string> = {
   failed:
     'Your question could not be sent. Check your connection, then press Send to try again. Your question is still in the box.',
 };
+
+// Shell labels stay English until T3-006-C owns the shared translation dictionary;
+// the date values themselves follow the reply language.
+const DATE_LABELS = {
+  ethiopian: 'Ethiopian calendar',
+  gregorian: 'Gregorian',
+  timeZone: 'Addis Ababa time',
+} as const;
+
+function dateLanguage(lang: string | undefined): DateLanguage {
+  return lang?.toLowerCase().startsWith('am') ? 'am' : 'en';
+}
+
+function MessageDate({
+  instant,
+  language,
+}: {
+  readonly instant: string;
+  readonly language: DateLanguage;
+}) {
+  const date = formatAddisDate(instant, language);
+  // A malformed or unsupported timestamp must not hide the reply itself.
+  if (!date) return null;
+
+  return (
+    <p className="message-date">
+      <time dateTime={instant}>
+        <span lang={language}>{date.ethiopian}</span> ({DATE_LABELS.ethiopian})
+        <span aria-hidden="true"> · </span>
+        <span lang={language}>{date.gregorian}</span> ({DATE_LABELS.gregorian})
+        <span aria-hidden="true"> · </span>
+        <span>{date.addisAbabaTime}</span> {DATE_LABELS.timeZone}
+      </time>
+    </p>
+  );
+}
 
 export function Assistant({ client }: { client: ConversationClient }) {
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -64,7 +102,13 @@ export function Assistant({ client }: { client: ConversationClient }) {
     setEntries((current) => [
       ...current,
       { id: `${reply.id}-question`, speaker: 'learner', text: question },
-      { id: reply.id, speaker: 'assistant', text: reply.text, lang: reply.lang },
+      {
+        id: reply.id,
+        speaker: 'assistant',
+        text: reply.text,
+        lang: reply.lang,
+        createdAt: reply.createdAt,
+      },
     ]);
     setDraft('');
     // Announced once, as a whole; focus stays wherever the learner left it.
@@ -98,6 +142,9 @@ export function Assistant({ client }: { client: ConversationClient }) {
               <p className="message-text" dir="auto" lang={entry.lang}>
                 {entry.text}
               </p>
+              {entry.createdAt && (
+                <MessageDate instant={entry.createdAt} language={dateLanguage(entry.lang)} />
+              )}
             </li>
           ))}
         </ol>
