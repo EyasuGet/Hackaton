@@ -1,0 +1,17 @@
+{
+  "id": "job-va-specialist-01",
+  "version": "starter-1.0",
+  "title": "Virtual Assistant Specialist",
+  "organization": "Savanna Digital Services",
+  "category": "administrative",
+  "location": "Addis Ababa",
+  "description": "Responsible for managing executive calendars, client correspondence in English and Amharic, digital document filing, and basic web research. Requires strong communication skills, attention to detail, and proficiency with remote productivity tools.",
+  "sourceUrl": "https://digitalbridge.et/jobs/job-va-specialist-01",
+  "postedAt": "2026-11-01T08:00:00.000Z",
+  "expiresAt": "2026-12-31T23:59:59.000Z",
+  "withdrawn": false,
+  "provenance": {
+    "kind": "demo",
+    "note": "Synthetic demo job vacancy for testing job ingestion, grounding, and cited career Q&A."
+  }
+}
