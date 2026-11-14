@@ -73,10 +73,7 @@ function formatCalendarDate(formatter: Intl.DateTimeFormat, date: Date): string 
  * is invalid or the runtime cannot render the Ethiopian calendar, so callers can
  * omit the date line instead of guessing.
  */
-export function formatAddisDate(
-  instant: string,
-  language: DateLanguage,
-): AddisDate | null {
+export function formatAddisDate(instant: string, language: DateLanguage): AddisDate | null {
   if (!ETHIOPIC_AVAILABLE || !ISO_INSTANT.test(instant)) return null;
 
   const date = new Date(instant);
