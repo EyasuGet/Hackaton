@@ -22,7 +22,7 @@ Google models are proprietary hosted services, not open-source weights. Free-tie
 
 | Capability | Alternative and constraint |
 |---|---|
-| Answers | [`CohereLabs/aya-101`](https://huggingface.co/CohereLabs/aya-101): Apache-2.0 checkpoints, Amharic/English, 13B parameters. About 26 GB for 16-bit weights alone exceeds this Mac's 24 GiB RAM; quantisation/runtime suitability untested. |
+| Answers | [`CohereLabs/aya-101`](https://huggingface.co/CohereLabs/aya-101): Apache-2.0 checkpoints, Amharic/English, 13B parameters. About 26 GB for 16-bit weights alone exceeds a 24 GiB development laptop; quantisation/runtime suitability untested. |
 | Retrieval | Start with PostgreSQL lexical search plus reviewed bilingual aliases; no model/API fee beyond hosting. Conditional alternative [`gemini-embedding-001`](https://aistudio.google.com/docs/embeddings) only if measured lexical misses justify external processing/vector storage. [PostgreSQL 18 dictionaries](https://www.postgresql.org/docs/18/textsearch-dictionaries.html), [licence](https://www.postgresql.org/about/licence/). Neither retrieval path tested. |
 | Transcription | [`openai/whisper-large-v3-turbo`](https://github.com/openai/whisper): MIT code/weights, Amharic/English; Python/PyTorch/FFmpeg, upstream approximately 6 GB VRAM. No API charge locally; hardware, installation and speed untested. |
 | Spoken output | [`facebook/mms-tts-amh`](https://huggingface.co/facebook/mms-tts-amh) / [`facebook/mms-tts-eng`](https://huggingface.co/facebook/mms-tts-eng): CC-BY-NC-4.0 weights, not unrestricted open source. Amharic requires uroman; Python/PyTorch, both checkpoints and runtime storage needed. Licence fit and performance untested. |
