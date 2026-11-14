@@ -1,0 +1,102 @@
+[
+  {
+    "id": "faq-001-va-meaning",
+    "courseId": "course-1",
+    "language": "en",
+    "patterns": [
+      "what is a virtual assistant",
+      "what does virtual assistant mean",
+      "virtual assistant meaning",
+      "two meanings of virtual assistant"
+    ],
+    "answer": "In some reports, a “virtual assistant” refers to AI software assistants such as chatbots, voice assistants, and digital agents. In other contexts, it refers to human remote professionals who provide business support online. The future of the industry includes both, and increasingly, they will work together.",
+    "citations": [
+      {
+        "sourceId": "savanna-va1-future-of-va-industry",
+        "sectionId": "introduction",
+        "sourceTitle": "The Future of the VA Industry",
+        "heading": "Introduction"
+      }
+    ]
+  },
+  {
+    "id": "faq-002-ai-tasks",
+    "courseId": "course-1",
+    "language": "en",
+    "patterns": [
+      "what routine tasks can ai help with",
+      "what tasks can ai tools help a virtual assistant with",
+      "how can ai support virtual assistants",
+      "ai tools routine tasks"
+    ],
+    "answer": "AI systems can assist Virtual Assistants with many routine or time-consuming tasks, including drafting emails, notes, and first-pass documents, summarizing meetings or reports, researching information quickly, organizing tasks, reminders, and workflows, supporting scheduling and transcription, and handling simple customer queries through chatbots.",
+    "citations": [
+      {
+        "sourceId": "savanna-va1-future-of-va-industry",
+        "sectionId": "artificial-intelligence-and-the-future-of-va-work",
+        "sourceTitle": "The Future of the VA Industry",
+        "heading": "Artificial Intelligence and the Future of VA Work"
+      }
+    ]
+  },
+  {
+    "id": "faq-003-human-value",
+    "courseId": "course-1",
+    "language": "en",
+    "patterns": [
+      "what human skills will clients value",
+      "what differentiators and qualities will clients value most",
+      "where do human virtual assistants add value",
+      "what qualities will clients value"
+    ],
+    "answer": "Clients will increasingly value human differentiators and qualities such as responsiveness, dependability, emotional intelligence, professionalism, and clear communication.",
+    "citations": [
+      {
+        "sourceId": "savanna-va1-future-of-va-industry",
+        "sectionId": "what-clients-are-likely-to-value-more-and-more",
+        "sourceTitle": "The Future of the VA Industry",
+        "heading": "What Clients Are Likely to Value More and More"
+      }
+    ]
+  },
+  {
+    "id": "faq-004-daily-planning",
+    "courseId": "course-2",
+    "language": "am",
+    "patterns": [
+      "ቀኑን ከመጀመርዎ በፊት ምን እንዲያደርጉ ተመክረዋል",
+      "ስለ እቅድ ማውጣት ምን ተብሏል",
+      "ቀኑ ከመጀመሩ በፊት",
+      "የሥራ እቅድ"
+    ],
+    "answer": "ቀኑን ከመጀመርዎ በፊት የሚሠሯቸውን ሥራዎች ይዘርዝሩ። በጣም አስፈላጊ የሆኑትን ሥራዎች ቀድመው ይሥሩ።",
+    "citations": [
+      {
+        "sourceId": "demo-time-management-am",
+        "sectionId": "planning",
+        "sourceTitle": "የጊዜ አጠቃቀም መሠረታዊ ነገሮች",
+        "heading": "እቅድ ማውጣት"
+      }
+    ]
+  },
+  {
+    "id": "faq-005-breaks",
+    "courseId": "course-2",
+    "language": "am",
+    "patterns": [
+      "በሥራ መካከል አጭር እረፍት መውሰድ ምን ጥቅም ያስገኛል",
+      "ስለ እረፍት መውሰድ ምን ተብሏል",
+      "እረፍት መውሰድ",
+      "የእረፍት ጥቅም"
+    ],
+    "answer": "በሥራ መካከል አጭር እረፍት መውሰድ ትኩረትን ለመጠበቅ ይረዳል።",
+    "citations": [
+      {
+        "sourceId": "demo-time-management-am",
+        "sectionId": "breaks",
+        "sourceTitle": "የጊዜ አጠቃቀም መሠረታዊ ነገሮች",
+        "heading": "እረፍት መውሰድ"
+      }
+    ]
+  }
+]

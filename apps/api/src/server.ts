@@ -17,6 +17,7 @@ import { DemoSessions } from './modules/identity/application/demo-sessions.ts';
 import { ResolvePrincipal } from './modules/identity/application/resolve-principal.ts';
 import { PostgresDemoSessionRepository } from './modules/identity/infrastructure/postgres-demo-session-repository.ts';
 import { PostgresPrincipalRepository } from './modules/identity/infrastructure/postgres-principal-repository.ts';
+import { FaqProvider } from './modules/tutoring/application/faq-provider.ts';
 import { Tutoring } from './modules/tutoring/application/tutoring.ts';
 import { PostgresTutoringRepository } from './modules/tutoring/infrastructure/persistence/postgres-tutoring-repository.ts';
 
@@ -28,6 +29,9 @@ const glossary = await loadGlossary();
 const pool = createPool(config.database, (error) =>
   app.log.warn({ code: 'code' in error ? error.code : undefined }, 'Idle database connection lost'),
 );
+const content = new ContentAccess(new PostgresLessonReader(pool), glossary);
+const faqProvider = new FaqProvider(content);
+
 const app = buildApp(
   {
     checkReadiness: () => checkReadiness(pool, migrations),
@@ -35,8 +39,8 @@ const app = buildApp(
     demoRecords: new DemoRecords(new PostgresDemoRecordRepository(pool)),
     demoSessions: new DemoSessions(new PostgresDemoSessionRepository(pool), config.demoMode),
     demoAllowedOrigins: config.demoAllowedOrigins,
-    tutoring: new Tutoring(new PostgresTutoringRepository(pool)),
-    content: new ContentAccess(new PostgresLessonReader(pool), glossary),
+    tutoring: new Tutoring(new PostgresTutoringRepository(pool), faqProvider),
+    content,
   },
   { logger: true },
 );

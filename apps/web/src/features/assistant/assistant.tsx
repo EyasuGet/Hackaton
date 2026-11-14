@@ -1,5 +1,5 @@
-// Accessible conversation shell: a labelled question box, a message history and
-// readable pending/error states. All text is rendered as React text, never HTML.
+// Accessible conversation shell: a labelled question box, a message history,
+// source citations, and readable pending/error states. All text is rendered as React text, never HTML.
 import {
   useContext,
   useEffect,
@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { LocaleContext, lookup, T, useT, type MessageKey } from '../../shared/i18n/i18n.tsx';
 import { formatAddisDate, type DateLanguage } from '../../shared/i18n/addis-date.ts';
-import type { AskResult, ConversationClient } from './conversation.ts';
+import type { AskResult, Citation, ConversationClient } from './conversation.ts';
 
 interface Entry {
   readonly id: string;
@@ -19,6 +19,7 @@ interface Entry {
   readonly text: string;
   readonly lang?: string;
   readonly createdAt?: string;
+  readonly citations?: readonly Citation[];
 }
 
 type Problem = 'empty' | 'denied' | 'failed';
@@ -57,7 +58,13 @@ function MessageDate({
   );
 }
 
-export function Assistant({ client }: { client: ConversationClient }) {
+export function Assistant({
+  client,
+  mode = 'demo',
+}: {
+  readonly client: ConversationClient;
+  readonly mode?: 'demo' | 'faq';
+}) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -118,6 +125,7 @@ export function Assistant({ client }: { client: ConversationClient }) {
         text: reply.text,
         lang: reply.lang,
         createdAt: reply.createdAt,
+        ...(reply.citations ? { citations: reply.citations } : {}),
       },
     ]);
     setDraft('');
@@ -148,6 +156,12 @@ export function Assistant({ client }: { client: ConversationClient }) {
         <T k="assistant.heading" />
       </h2>
 
+      {mode === 'faq' && (
+        <p className="assistant-mode-notice" role="note">
+          <T k="assistant.modeNotice" />
+        </p>
+      )}
+
       {entries.length === 0 ? (
         <p className="empty">
           <T k="assistant.empty" />
@@ -161,13 +175,31 @@ export function Assistant({ client }: { client: ConversationClient }) {
                   k={
                     entry.speaker === 'learner'
                       ? 'assistant.speakerLearner'
-                      : 'assistant.speakerAssistant'
+                      : mode === 'faq'
+                        ? 'assistant.speakerFaq'
+                        : 'assistant.speakerAssistant'
                   }
                 />
               </p>
               <p className="message-text" dir="auto" lang={entry.lang}>
                 {entry.text}
               </p>
+              {entry.citations && entry.citations.length > 0 && (
+                <div className="citations" aria-label={t('assistant.citationsLabel')}>
+                  <span className="citations-label">
+                    <T k="assistant.citationsLabel" />
+                  </span>
+                  <ul>
+                    {entry.citations.map((c) => (
+                      <li key={`${c.sourceId}-${c.sectionId}`} className="citation-item">
+                        <cite>
+                          {c.sourceTitle} — {c.heading}
+                        </cite>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {entry.createdAt && (
                 <MessageDate instant={entry.createdAt} language={dateLanguage(entry.lang)} />
               )}
