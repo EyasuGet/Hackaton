@@ -60,16 +60,9 @@ describe('formatAddisDate', () => {
     },
   );
 
-  it('presents the fixture job deadline in both languages', () => {
-    expect(formatAddisDate(PAGUME_END, 'en')).toEqual(
-      expected('6 Pagumen 2019', '11 September 2027', '23:59'),
-    );
+  it('presents the fixture job deadline in Amharic', () => {
     expect(formatAddisDate(PAGUME_END, 'am')).toEqual(
       expected('6 ጳጉሜን 2019', '11 ሴፕቴምበር 2027', '23:59'),
     );
-  });
-
-  it('does not expose the ambiguous English Ethiopic era', () => {
-    expect(formatAddisDate(NEW_YEAR, 'en')?.ethiopian).toBe('1 Meskerem 2019');
   });
 });

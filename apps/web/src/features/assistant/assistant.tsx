@@ -1,7 +1,7 @@
 // Accessible conversation shell: a labelled question box, a message history and
 // readable pending/error states. All text is rendered as React text, never HTML.
 import { useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { formatAddisDate, type DateLanguage } from '../../shared/dates/addis-date.ts';
+import { formatAddisDate, type DateLanguage } from '../../shared/i18n/addis-date.ts';
 import type { AskResult, ConversationClient } from './conversation.ts';
 
 interface Entry {
