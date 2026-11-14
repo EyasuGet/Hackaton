@@ -148,10 +148,10 @@ describe('citation resolution over HTTP', () => {
 });
 
 describe('updated and withdrawn sources', () => {
-  const sourceId = 'retrieval-lifecycle-test';
   const both = learner(['course-1']);
   const section = (id: string, text: string) => ({ id, anchor: null, heading: id, text });
-  const source = (version: string, sections: unknown[], withdrawn = false) => ({
+  // Each test uses its own source, so neither depends on the other's imports.
+  const source = (sourceId: string, version: string, sections: unknown[], withdrawn = false) => ({
     sourceId,
     version,
     title: 'Lifecycle test',
@@ -163,10 +163,11 @@ describe('updated and withdrawn sources', () => {
   });
 
   it('stops citing a removed section and reports it honestly', async () => {
+    const sourceId = 'lifecycle-removed';
     await importSource(
-      source('v1', [section('kept', 'zebra stripes'), section('gone', 'quokka smiles')]),
+      source(sourceId, 'v1', [section('kept', 'zebra stripes'), section('gone', 'quokka smiles')]),
     );
-    await importSource(source('v2', [section('kept', 'zebra stripes, revised')]));
+    await importSource(source(sourceId, 'v2', [section('kept', 'zebra stripes, revised')]));
 
     expect(await content.resolve(both, sourceId, 'gone')).toEqual({
       kind: 'unavailable',
@@ -177,13 +178,15 @@ describe('updated and withdrawn sources', () => {
   });
 
   it('stops citing and finding a withdrawn source', async () => {
-    await importSource(source('v3', [], true));
+    const sourceId = 'lifecycle-withdrawn';
+    await importSource(source(sourceId, 'v1', [section('kept', 'narwhal tusks')]));
+    await importSource(source(sourceId, 'v2', [], true));
 
     expect(await content.resolve(both, sourceId, 'kept')).toEqual({
       kind: 'unavailable',
       reason: 'withdrawn',
     });
-    expect(await content.search(both, 'zebra')).toEqual([]);
+    expect(await content.search(both, 'narwhal')).toEqual([]);
   });
 });
 

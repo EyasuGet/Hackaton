@@ -41,7 +41,7 @@ Reopen only a concrete unresolved choice or a demonstrated conflict with the app
 
 ### Retrieval method — T3-005-B, 2026-11-14
 
-**Selected:** PostgreSQL full-text search over the current, non-withdrawn lesson versions in the learner's granted courses, plus a reviewed Amharic↔English glossary that expands the question. English sources use the `english` configuration (stemming); Amharic sources use `simple` with prefix matching, because PostgreSQL has no Amharic dictionary. Headings are weighted above bodies and any matching term counts. No embedding model, vector store or external processing.
+**Selected:** PostgreSQL full-text search over the current, non-withdrawn lesson versions in the learner's granted courses, plus a **draft** Amharic↔English glossary (pending competent-speaker review) that expands the question. English sources use the `english` configuration (stemming); Amharic sources use `simple` with prefix matching, because PostgreSQL has no Amharic dictionary. Headings are weighted above bodies and any matching term counts. No embedding model, vector store or external processing.
 
 **Alternatives:** `gemini-embedding-001` (the [T3-003-B shortlist](ai-feasibility.md)'s conditional option) was not needed and would send lesson text to an external provider; English-only search fails Amharic questions by construction.
 

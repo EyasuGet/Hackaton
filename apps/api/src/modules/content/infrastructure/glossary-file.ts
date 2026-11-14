@@ -1,4 +1,4 @@
-// Loads the reviewed bilingual glossary used to expand questions across
+// Loads the draft bilingual glossary (pending competent-speaker review) used to expand questions across
 // Amharic and English (fixtures/retrieval/bilingual-glossary.json).
 import { readFile } from 'node:fs/promises';
 import type { GlossaryGroup } from '../domain/retrieval.ts';

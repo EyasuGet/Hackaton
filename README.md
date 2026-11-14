@@ -141,7 +141,7 @@ docker compose exec db sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB" -c "SELECT
 
 ### Course search and citations
 
-Signed-in learners can search their granted courses and open a cited section in place (the page's *Your course material* panel). Search uses PostgreSQL full-text search plus the reviewed Amharic↔English glossary in [`fixtures/retrieval/bilingual-glossary.json`](fixtures/retrieval/bilingual-glossary.json); the method and its evaluation are recorded in [decisions](docs/decisions.md#retrieval-method--t3-005-b-2026-11-14). Run `pnpm content:import` first.
+Signed-in learners can search their granted courses and open a cited section in place (the page's *Your course material* panel). Search uses PostgreSQL full-text search plus the draft Amharic↔English glossary (pending competent-speaker review) in [`fixtures/retrieval/bilingual-glossary.json`](fixtures/retrieval/bilingual-glossary.json); the method and its evaluation are recorded in [decisions](docs/decisions.md#retrieval-method--t3-005-b-2026-11-14). Run `pnpm content:import` first.
 
 | Request (learner session token) | Result |
 |---|---|

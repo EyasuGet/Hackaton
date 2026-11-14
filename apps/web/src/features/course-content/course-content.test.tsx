@@ -70,6 +70,7 @@ describe('CourseContent', () => {
 
     const result = await screen.findByRole('button', { name: RESULT.heading });
     expect(result.getAttribute('lang')).toBe('am');
+    expect(screen.getByText(RESULT.sourceTitle).getAttribute('lang')).toBe('am');
     expect(screen.getByRole('status', { name: 'Search status' }).textContent).toBe(
       '1 matching section.',
     );

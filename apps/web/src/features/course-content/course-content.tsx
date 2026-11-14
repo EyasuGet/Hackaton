@@ -24,6 +24,8 @@ export function CourseContent({ token }: { token: string | null }) {
   const [problem, setProblem] = useState<Problem | null>(null);
   const [opener, setOpener] = useState<string | null>(null);
   const sectionHeading = useRef<HTMLHeadingElement>(null);
+  // Ignores a second click on a result while its section is still loading.
+  const opening = useRef(false);
   const resultButtons = useRef(new Map<string, HTMLButtonElement>());
   const ids = { heading: useId(), search: useId() };
 
@@ -58,10 +60,13 @@ export function CourseContent({ token }: { token: string | null }) {
   }
 
   async function onOpen(result: SearchResult, results: SearchResult[]) {
+    if (opening.current) return;
+    opening.current = true;
     setProblem(null);
     const key = `${result.sourceId}/${result.sectionId}`;
     setOpener(key);
     const outcome = await openSection(session, result.sourceId, result.sectionId);
+    opening.current = false;
     if (outcome.kind === 'section') setView({ kind: 'section', section: outcome.section, results });
     else setProblem(outcome.kind);
   }
@@ -109,7 +114,9 @@ export function CourseContent({ token }: { token: string | null }) {
                 >
                   {result.heading}
                 </button>
-                <p className="hint">{result.sourceTitle}</p>
+                <p className="hint" lang={result.language} dir="auto">
+                  {result.sourceTitle}
+                </p>
                 <p lang={result.language} dir="auto">
                   {result.excerpt}
                 </p>
