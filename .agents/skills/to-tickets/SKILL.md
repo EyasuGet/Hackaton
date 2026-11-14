@@ -7,7 +7,7 @@ description: Decompose an agreed project spec into dependency-ordered local issu
 
 Turn an oversized issue into an epic while retaining its ID and integrated acceptance criteria. Give its children stable IDs such as `T3-001-A`; keep already-small issues as leaves. Epics track completion, are not claimable implementation tasks, and never imply one giant PR. Claimable children each deliver one independently verifiable outcome. Preserve completed/history-bearing IDs and append new child IDs rather than silently renumbering work.
 
-Read [the product spec](../../../docs/spec.md), [architecture](../../../docs/architecture.md), and existing [local issues](../../../docs/issues.md). Preserve IDs, approved exclusions, and other people's ownership. The local file is the tracker until the user authorises a specific GitHub migration.
+Read [the product spec](../../../docs/spec.md), [architecture](../../../docs/architecture.md), and existing [local issues](../../../docs/issues.md). Preserve IDs, approved exclusions, and other people's ownership. Migration is complete: the local file is the ID/link index and execution guide; linked GitHub issue bodies are authoritative. Draft additional slices without publishing or assigning them until the user authorises those actions.
 
 For each leaf slice record:
 - Stable ID, parent epic if any, title, phase, priority, planned status, and owner (unassigned unless explicitly claimed).

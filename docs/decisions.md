@@ -25,7 +25,7 @@ Agreed through the design interview, synthesised 2026-11-14. [spec.md](spec.md) 
 | D17 | 20 active-session validation target | Measure on actual hardware, do not claim untested production scale |
 | D18 | Author reviews/merges own PR using template and standards/spec AI reviewers | No teammate PR approval; check current implementations and overall decisions, preserve independent axes and actual repository protections |
 | D19 | Smallest correct change; independent check against weakened tests | Explicitly replaces reference project's broad touched-code cleanup rule |
-| D20 | Local Markdown issue bodies until explicit GitHub issue migration | Repository is now published at the user's request; issue creation/assignment is still not authorised implicitly |
+| D20 | GitHub issue bodies authoritative after the user-authorised 2026-11-14 migration | Local docs/issues.md is the stable ID/link index and execution guide; 110 issues were created unassigned. Future issue creation/assignment still needs actual action authorisation |
 | D21 | Employer dashboard/outreach are lowest-priority future specs | No implied permission to build a new actor model or send messages |
 | D22 | Final package, hosted MVP and explanatory deck after core completion | T3-027-D → T3-027-A/E/F; earlier HTTPS/relay test setup remains necessary for core proof. Final submission action and paid provisioning still need authorisation |
 

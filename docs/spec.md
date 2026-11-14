@@ -1,12 +1,12 @@
 # Track 3 implementation specification
 
-Status: agreed product/design decisions translated into an implementation specification on 2026-11-14. No application has been built or verified. The local backlog is a proposed PR-sized decomposition, not completed work.
+Status: agreed product/design decisions translated into an implementation specification on 2026-11-14. No application has been built or verified. The approved decomposition is published as GitHub issues linked from the local index, not completed work.
 
 ## Goal
 
 Build an accessible learning-and-career assistant that one institution can install for many learners. A learner asks a course question in Amharic or English, receives a supported answer, and can get human assistance without remaining online. The same installation supports approved job information, opt-in alerts, and interview-accommodation requests.
 
-Success is a working learner journey with evidence, not a set of screens, a model benchmark, or a simulated integration. Reserve early and retest sessions with the available co-designer pool; do not assume a dedicated participant is continuously available. Product behaviour lives here; technical design lives in [architecture.md](architecture.md); PR-sized acceptance criteria live in [issues.md](issues.md).
+Success is a working learner journey with evidence, not a set of screens, a model benchmark, or a simulated integration. Reserve early and retest sessions with the available co-designer pool; do not assume a dedicated participant is continuously available. Product behaviour lives here; technical design lives in [architecture.md](architecture.md); PR-sized acceptance criteria live in the GitHub issues linked from [issues.md](issues.md).
 
 ## External brief and scope
 

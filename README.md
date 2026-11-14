@@ -1,13 +1,13 @@
 # Track 3 — Accessible learning and career assistant
 
-Specification and implementation backlog for the Digital Bridge Accessibility Hackathon, shared in [the team repository](https://github.com/abnsol/Hackathon). **Planning pack only: no application, package commands, or runtime verification exists yet.** Issue bodies remain local Markdown; no GitHub issues have been created.
+Specification and implementation backlog for the Digital Bridge Accessibility Hackathon, shared in [the team repository](https://github.com/abnsol/Hackathon). **Planning pack only: no application, package commands, or runtime verification exists yet.** The backlog has been migrated to **110 unassigned GitHub issues (26 epics and 84 leaf tasks)**; [the local index](docs/issues.md) links to the authoritative issue bodies. Check GitHub for current ownership and status.
 
 ## Start here
 
 1. [Product specification](docs/spec.md): what must work and what is excluded.
 2. [Architecture](docs/architecture.md): stack, detailed target folders, module interfaces, identity/answer/delivery flows.
 3. [Decision register](docs/decisions.md): settled choices, implementation discretion, and external blockers.
-4. [Issue backlog](docs/issues.md): original IDs retained as epics or bounded tasks, small claimable children, dependencies, blocked-work procedure, acceptance and verification.
+4. [Issue index and execution guide](docs/issues.md): stable IDs, direct GitHub links, first parallel picks and blocked-work rules. Each remote issue contains its scope, dependencies, acceptance, verification and agent handoff.
 5. [Verification](docs/verification.md) and [conformance template](docs/conformance.md): what evidence is required; neither claims tests have passed.
 6. [Agent instructions](AGENTS.md): how to take an issue through implementation and independent reviews.
 7. [Coding standards](docs/coding-standards.md): Occam's razor, comments, TypeScript style and efficient implementation.
@@ -35,9 +35,9 @@ design-impact decisions. Do not create GitHub resources or provision paid
 services without explicit authorisation. Report actual verification evidence.
 ```
 
-## Local backlog and later GitHub migration
+## GitHub issues and local index
 
-The local issue bodies are authoritative until explicitly migrated. Preserve their stable IDs and dependencies when GitHub issue numbers are assigned. After migration, designate the remote issue bodies as authoritative and keep a local ID/link index rather than two diverging specs. Do not automatically assign the entire backlog or mark it in progress.
+GitHub issue bodies are authoritative after the 2026-11-14 migration. Use the local ID/link index to find one ready leaf and its parent; check live dependencies and ownership before starting. Preserve stable IDs, check for duplicates before adding tasks, and update scope/evidence in GitHub rather than maintaining a second local body. No one was assigned and no work was marked in progress by migration.
 
 The skill files and reviewer prompts are portable Markdown instructions. Their presence does not prove a particular agent tool has automatically registered them; [AGENTS.md](AGENTS.md) points to the instructions to read explicitly.
 
