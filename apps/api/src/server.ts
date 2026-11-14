@@ -10,7 +10,9 @@ import {
 } from './infrastructure/database/migrations.ts';
 import { DemoRecords } from './modules/demo-records/demo-records.ts';
 import { PostgresDemoRecordRepository } from './modules/demo-records/postgres-demo-record-repository.ts';
+import { DemoSessions } from './modules/identity/application/demo-sessions.ts';
 import { ResolvePrincipal } from './modules/identity/application/resolve-principal.ts';
+import { PostgresDemoSessionRepository } from './modules/identity/infrastructure/postgres-demo-session-repository.ts';
 import { PostgresPrincipalRepository } from './modules/identity/infrastructure/postgres-principal-repository.ts';
 
 const config = loadOrExit(() => loadConfig(process.env));
@@ -25,6 +27,8 @@ const app = buildApp(
     checkReadiness: () => checkReadiness(pool, migrations),
     resolvePrincipal: new ResolvePrincipal(new PostgresPrincipalRepository(pool), config.demoMode),
     demoRecords: new DemoRecords(new PostgresDemoRecordRepository(pool)),
+    demoSessions: new DemoSessions(new PostgresDemoSessionRepository(pool), config.demoMode),
+    demoAllowedOrigins: config.demoAllowedOrigins,
   },
   { logger: true },
 );

@@ -33,6 +33,16 @@ footer {
   outline-offset: 2px;
 }
 
+.demo-session {
+  border-inline-start: 4px solid var(--accent);
+  padding-inline-start: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.demo-session h2 {
+  margin-top: 0;
+}
+
 .demo-notice {
   border: 2px dashed var(--muted);
   border-radius: 0.5rem;
@@ -89,6 +99,12 @@ select {
   margin: 0.25rem 0 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.message-date {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.875rem;
 }
 
 .empty,
