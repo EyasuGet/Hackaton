@@ -5,9 +5,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildApp } from '../../bootstrap/app.ts';
+import { ContentAccess } from '../../modules/content/application/content-access.ts';
 import { DemoRecords } from '../../modules/demo-records/demo-records.ts';
 import { DemoSessions } from '../../modules/identity/application/demo-sessions.ts';
 import { ResolvePrincipal } from '../../modules/identity/application/resolve-principal.ts';
+import { Tutoring } from '../../modules/tutoring/application/tutoring.ts';
 
 const REPO_ROOT = resolve(__dirname, '../../../../..');
 
@@ -124,6 +126,22 @@ describe('Public unauthenticated request privacy boundary', () => {
       true,
     ),
     demoAllowedOrigins: [],
+    tutoring: new Tutoring({
+      createConversation: () => Promise.resolve(null),
+      findConversation: () => Promise.resolve(null),
+      claimRequest: () => Promise.resolve(null),
+      findRequestById: () => Promise.resolve(null),
+      findRequestByRequestId: () => Promise.resolve(null),
+      listHistory: () => Promise.resolve([]),
+      recordOutcome: () => Promise.resolve(null),
+    }),
+    content: new ContentAccess(
+      {
+        search: () => Promise.resolve([]),
+        resolve: () => Promise.resolve({ kind: 'not_found' }),
+      },
+      [],
+    ),
   });
 
   it('allows unauthenticated access to /api/health and /api/ready for proxy health checks', async () => {
