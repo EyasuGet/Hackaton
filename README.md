@@ -62,7 +62,7 @@ pnpm db:migrate               # safe to repeat; applies only pending migrations
 pnpm dev
 ```
 
-Open http://localhost:5173. The page reports **API available** when the API answers `GET /api/health`, and **API unavailable** when it is stopped or failing. The Vite dev server proxies `/api` to the API.
+Open http://localhost:5173. The page shows the accessible conversation shell in **demo mode**: replies come from labelled test fixtures chosen with *Demo reply scenario* (English, Amharic, mixed-direction, HTML markup, slow, session expired, network failure), not from a tutor. The footer reports **API available** when the API answers `GET /api/health`, and **API unavailable** when it is stopped or failing. The Vite dev server proxies `/api` to the API.
 
 `GET /api/health` is liveness: it answers whenever the API process runs. `GET /api/ready` returns `200 {"status":"ready"}` only when PostgreSQL answers and every migration is applied; otherwise `503` with `reason` `database_unavailable` or `migrations_pending`. The API starts even while the database is down and becomes ready once it recovers. Stop the database with `docker compose stop`; `docker compose down -v` also deletes its data.
 

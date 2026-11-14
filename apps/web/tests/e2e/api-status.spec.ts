@@ -18,7 +18,7 @@ test('reports the running API as available, with no serious accessibility violat
 }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('status')).toHaveText('API available');
+  await expect(page.getByRole('status', { name: 'Service status' })).toHaveText('API available');
   expect(await seriousAccessibilityViolations(page)).toEqual([]);
 });
 
@@ -28,6 +28,6 @@ test('the unavailable state has no serious accessibility violations', async ({ p
   await page.route('**/api/health', (route) => route.fulfill({ status: 503 }));
   await page.goto('/');
 
-  await expect(page.getByRole('status')).toHaveText('API unavailable');
+  await expect(page.getByRole('status', { name: 'Service status' })).toHaveText('API unavailable');
   expect(await seriousAccessibilityViolations(page)).toEqual([]);
 });
