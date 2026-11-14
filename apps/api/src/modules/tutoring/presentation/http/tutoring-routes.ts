@@ -138,4 +138,23 @@ export function registerTutoringRoutes(
       return conv ?? reply.code(404).send({ error: 'not_found' });
     },
   );
+
+  // Clears the authenticated learner's own conversation history.
+  // Returns 204 No Content on success; non-learners receive 403.
+  app.delete('/api/tutoring/history', learnerOnly, async (request, reply) => {
+    const principal = principalOf(request);
+    await tutoring.clearHistory(principal);
+    return reply.code(204).send();
+  });
+
+  // Triggers an expiry purge up to the current instant. Restricted to support role
+  // only; learners cannot trigger purges. Returns the count of purged rows.
+  app.post(
+    '/api/tutoring/admin/purge',
+    { preHandler: [authenticated, requireRole('support')] },
+    async (_request, reply) => {
+      const purged = await tutoring.purgeExpired(new Date());
+      return reply.code(200).send({ purged });
+    },
+  );
 }

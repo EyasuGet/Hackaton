@@ -317,3 +317,171 @@ describe('Tutoring Persistence Integration (T3-007-D)', () => {
     expect(verifyResult.rows[0]?.answer_text).toBe('Yes, persisted safely in PostgreSQL.');
   });
 });
+
+describe('Tutoring History Clear and Expiry Integration (T3-023-B)', () => {
+  it('a learner can clear their own history via DELETE /api/tutoring/history; another learner is unaffected', async () => {
+    const app = makeApp();
+    try {
+      await app.inject({
+        method: 'POST',
+        url: '/api/tutoring/requests',
+        headers: { authorization: `Bearer ${tokens['learner-a']}` },
+        payload: {
+          courseId: 'course-1',
+          requestId: 'req-clear-a1',
+          question: 'Learner A question to clear',
+        },
+      });
+      await app.inject({
+        method: 'POST',
+        url: '/api/tutoring/requests',
+        headers: { authorization: `Bearer ${tokens['learner-b']}` },
+        payload: {
+          courseId: 'course-1',
+          requestId: 'req-clear-b1',
+          question: 'Learner B question to keep',
+        },
+      });
+
+      const del = await app.inject({
+        method: 'DELETE',
+        url: '/api/tutoring/history',
+        headers: { authorization: `Bearer ${tokens['learner-a']}` },
+      });
+      expect(del.statusCode).toBe(204);
+
+      // Learner A history is now empty
+      const histA = await app.inject({
+        method: 'GET',
+        url: '/api/tutoring/history',
+        headers: { authorization: `Bearer ${tokens['learner-a']}` },
+      });
+      expect(histA.json<HistoryResponse>().history).toHaveLength(0);
+
+      // Learner B history is unaffected
+      const histB = await app.inject({
+        method: 'GET',
+        url: '/api/tutoring/history',
+        headers: { authorization: `Bearer ${tokens['learner-b']}` },
+      });
+      expect(histB.json<HistoryResponse>().history.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('support principal cannot clear history (403 from learner-only route)', async () => {
+    const app = makeApp();
+    try {
+      const res = await app.inject({
+        method: 'DELETE',
+        url: '/api/tutoring/history',
+        headers: { authorization: `Bearer ${tokens.support}` },
+      });
+      expect(res.statusCode).toBe(403);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('purgeExpired redacts content of expired rows and remains idempotent on restart', async () => {
+    const repo = new PostgresTutoringRepository(pool);
+    const learnerScope = {
+      ownerId: (
+        await pool.query<{ id: string }>('SELECT id FROM principals WHERE demo_key = $1', [
+          'learner-a',
+        ])
+      ).rows[0]!.id,
+      courseIds: ['course-1'],
+    };
+
+    const claim = await repo.claimRequest(learnerScope, {
+      courseId: 'course-1',
+      requestId: 'req-purge-integ',
+      question: 'Sensitive question to be purged',
+    });
+    expect(claim).not.toBeNull();
+    const reqId = claim!.request.id;
+
+    await repo.recordOutcome(learnerScope, reqId, {
+      state: 'completed',
+      answerText: 'Sensitive answer',
+      answerLang: 'en',
+    });
+
+    // Force expiry into the past
+    await pool.query(
+      `UPDATE tutoring_requests SET expires_at = now() - INTERVAL '1 day' WHERE id = $1`,
+      [reqId],
+    );
+    await pool.query(
+      `UPDATE tutoring_conversations SET expires_at = now() - INTERVAL '1 day'
+       WHERE id = (SELECT conversation_id FROM tutoring_requests WHERE id = $1)`,
+      [reqId],
+    );
+
+    const purged = await repo.purgeExpired(new Date());
+    expect(purged).toBeGreaterThanOrEqual(1);
+
+    const row = await pool.query<{
+      question: string;
+      answer_text: string | null;
+      purged_at: Date | null;
+    }>('SELECT question, answer_text, purged_at FROM tutoring_requests WHERE id = $1', [reqId]);
+    expect(row.rows[0]?.question).toBe('');
+    expect(row.rows[0]?.answer_text).toBeNull();
+    expect(row.rows[0]?.purged_at).not.toBeNull();
+
+    // Purged records must not appear in listHistory
+    const history = await repo.listHistory(learnerScope);
+    expect(history.some((r) => r.id === reqId)).toBe(false);
+
+    // Second run is idempotent: the already-purged row is not counted again
+    await repo.purgeExpired(new Date());
+    const check = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM tutoring_requests WHERE id = $1 AND purged_at IS NULL`,
+      [reqId],
+    );
+    expect(Number(check.rows[0]?.count)).toBe(0);
+  });
+
+  it('purged content does not reappear through the history endpoint', async () => {
+    const app = makeApp();
+    try {
+      const claimRes = await app.inject({
+        method: 'POST',
+        url: '/api/tutoring/requests',
+        headers: { authorization: `Bearer ${tokens['learner-a']}` },
+        payload: {
+          courseId: 'course-1',
+          requestId: 'req-purge-hidden',
+          question: 'Hidden after purge',
+        },
+      });
+      expect(claimRes.statusCode).toBe(201);
+      const reqId = claimRes.json<ClaimResponse>().request.id;
+
+      await pool.query(
+        `UPDATE tutoring_requests SET expires_at = now() - INTERVAL '1 day' WHERE id = $1`,
+        [reqId],
+      );
+
+      const purgeRes = await app.inject({
+        method: 'POST',
+        url: '/api/tutoring/admin/purge',
+        headers: { authorization: `Bearer ${tokens.support}` },
+      });
+      expect(purgeRes.statusCode).toBe(200);
+      expect(purgeRes.json<{ purged: number }>().purged).toBeGreaterThanOrEqual(1);
+
+      const histRes = await app.inject({
+        method: 'GET',
+        url: '/api/tutoring/history',
+        headers: { authorization: `Bearer ${tokens['learner-a']}` },
+      });
+      expect(histRes.json<HistoryResponse>().history.some((r) => r.id === reqId)).toBe(false);
+    } finally {
+      await app.close();
+    }
+  });
+});

@@ -109,4 +109,24 @@ export class Tutoring {
     if (!scope) return null;
     return this.#repository.recordOutcome(scope, requestId, outcome);
   }
+
+  /**
+   * Removes all conversations and requests owned by the principal. Non-learners
+   * receive a no-op (no scope, no delete).
+   */
+  async clearHistory(principal: Principal): Promise<boolean> {
+    const scope = ownedScope(principal);
+    if (!scope) return false;
+    await this.#repository.clearHistory(scope);
+    return true;
+  }
+
+  /**
+   * Purges expired records as of `now`. Content (question/answer/error) is
+   * redacted in-place and purged_at is stamped. Idempotent across restarts.
+   * Returns the count of request rows purged.
+   */
+  async purgeExpired(now: Date): Promise<number> {
+    return this.#repository.purgeExpired(now);
+  }
 }
