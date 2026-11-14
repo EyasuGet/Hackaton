@@ -1,10 +1,11 @@
-// Learner page: the conversation shell driven by labelled demo fixtures, an
-// Amharic/English language switch, and a footer that checks API health once and
-// reports it in a polite live region.
+// Learner page: the conversation shell driven by labelled demo fixtures or
+// real course FAQ mode when authenticated, an Amharic/English language switch,
+// and a footer that checks API health once and reports it in a polite live region.
 import { useEffect, useMemo, useState } from 'react';
 import { Assistant } from '../features/assistant/assistant.tsx';
 import { CourseContent } from '../features/course-content/course-content.tsx';
 import { DemoSession } from '../features/demo-session/demo-session.tsx';
+import { createFaqClient } from '../features/assistant/faq-client.ts';
 import {
   createFixtureClient,
   FIXTURE_SCENARIOS,
@@ -58,7 +59,19 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
   const [locale, setLocale] = useState<Locale>('en');
   // The demo session token lives only in memory and is shared with features that call the API.
   const [sessionToken, setSessionToken] = useState<string | null>(null);
-  const client = useMemo(() => createFixtureClient(scenario), [scenario]);
+
+  // When a valid learner session token is present, connect the Assistant to real course FAQ
+  // using course-1 (Savanna Virtual Assistant) by default, while supporting fixture override.
+  const client = useMemo(() => {
+    if (sessionToken) {
+      return createFaqClient({
+        courseId: 'course-1',
+        getToken: () => sessionToken,
+      });
+    }
+    return createFixtureClient(scenario);
+  }, [sessionToken, scenario]);
+
   const t = (key: MessageKey) => lookup(locale, key).text;
 
   // The page language drives screen-reader pronunciation and font selection.
@@ -96,32 +109,34 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
         </h1>
         <DemoSession handoffCode={handoffCode} onSession={setSessionToken} />
         <CourseContent token={sessionToken} />
-        <section className="demo-notice" aria-labelledby="demo-heading">
-          <h2 id="demo-heading">
-            <T k="demo.heading" />
-          </h2>
-          <p>
-            <T k="demo.notice" />
-          </p>
-          <label htmlFor="demo-scenario">
-            <T k="demo.scenarioLabel" />
-          </label>
-          <select
-            id="demo-scenario"
-            value={scenario}
-            onChange={(event) => {
-              if (isFixtureScenario(event.target.value)) setScenario(event.target.value);
-            }}
-          >
-            {/* An option holds plain text only, so these use the untagged lookup. */}
-            {Object.entries(FIXTURE_SCENARIOS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {t(label)}
-              </option>
-            ))}
-          </select>
-        </section>
-        <Assistant client={client} />
+        {!sessionToken && (
+          <section className="demo-notice" aria-labelledby="demo-heading">
+            <h2 id="demo-heading">
+              <T k="demo.heading" />
+            </h2>
+            <p>
+              <T k="demo.notice" />
+            </p>
+            <label htmlFor="demo-scenario">
+              <T k="demo.scenarioLabel" />
+            </label>
+            <select
+              id="demo-scenario"
+              value={scenario}
+              onChange={(event) => {
+                if (isFixtureScenario(event.target.value)) setScenario(event.target.value);
+              }}
+            >
+              {/* An option holds plain text only, so these use the untagged lookup. */}
+              {Object.entries(FIXTURE_SCENARIOS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {t(label)}
+                </option>
+              ))}
+            </select>
+          </section>
+        )}
+        <Assistant client={client} mode={sessionToken ? 'faq' : 'demo'} />
       </main>
       <footer>
         <p role="status" aria-label={t('status.label')}>

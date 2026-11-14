@@ -1,5 +1,6 @@
-// Unit tests for tutoring use cases and routes.
-// Verifies ownership boundaries, course scope, atomic claims, idempotency and input validation.
+// Unit tests for tutoring use cases, FAQ answers, and routes (T3-007-A & T3-007-D).
+// Verifies ownership boundaries, course scope, atomic claims, FAQ citation resolution,
+// honest limitations for missing evidence, duplicate submission idempotency and input validation.
 import { describe, expect, it } from 'vitest';
 import { buildApp } from '../../bootstrap/app.ts';
 import type { Readiness } from '../../infrastructure/database/migrations.ts';
@@ -14,9 +15,11 @@ import type {
   TutoringRepository,
 } from './application/ports/tutoring-repository.ts';
 import { Tutoring } from './application/tutoring.ts';
+import { FaqProvider } from './application/faq-provider.ts';
 import type { TutoringConversation } from './domain/conversation.ts';
 import type { TutoringRequest } from './domain/tutoring-request.ts';
 import { ContentAccess } from '../content/application/content-access.ts';
+import type { CitationResult, CitedSection } from '../content/domain/retrieval.ts';
 
 class InMemoryTutoringRepository implements TutoringRepository {
   readonly conversations: TutoringConversation[] = [];
@@ -166,14 +169,66 @@ const supportUser: Principal = {
 };
 
 const learnerAToken = 'a'.repeat(43);
+const learnerBToken = 'b'.repeat(43);
 const supportToken = 'c'.repeat(43);
 
 const tokenMap: Record<string, Principal> = {
   [digestToken(learnerAToken)]: learnerA,
+  [digestToken(learnerBToken)]: learnerB,
   [digestToken(supportToken)]: supportUser,
 };
 
-function createTestApp(repo: TutoringRepository) {
+function createMockContentAccess(): ContentAccess {
+  return new ContentAccess(
+    {
+      search: () => Promise.resolve([]),
+      resolve: (courseIds, sourceId, sectionId): Promise<CitationResult> => {
+        if (sourceId === 'savanna-va1-future-of-va-industry' && courseIds.includes('course-1')) {
+          const sec: CitedSection = {
+            sourceId,
+            sectionId,
+            sourceTitle: 'The Future of the VA Industry',
+            heading:
+              sectionId === 'introduction'
+                ? 'Introduction'
+                : 'Artificial Intelligence and the Future of VA Work',
+            text: 'Section content...',
+            language: 'en',
+            courseId: 'course-1',
+            version: 'starter-9e83ac7',
+            anchor: sectionId,
+            provenance: {
+              kind: 'organiser',
+              repository: 'alx-africa/Savanna-static-pages',
+              commit: '9e83ac7',
+              path: 'pages/concept-with-navigation.html',
+            },
+          };
+          return Promise.resolve({ kind: 'section', section: sec });
+        }
+        if (sourceId === 'demo-time-management-am' && courseIds.includes('course-2')) {
+          const sec: CitedSection = {
+            sourceId,
+            sectionId,
+            sourceTitle: 'የጊዜ አጠቃቀም መሠረታዊ ነገሮች',
+            heading: sectionId === 'planning' ? 'እቅድ ማውጣት' : 'እረፍት መውሰድ',
+            text: 'የክፍል ጽሑፍ...',
+            language: 'am',
+            courseId: 'course-2',
+            version: 'demo-1',
+            anchor: null,
+            provenance: { kind: 'demo', note: 'test' },
+          };
+          return Promise.resolve({ kind: 'section', section: sec });
+        }
+        return Promise.resolve({ kind: 'not_found' });
+      },
+    },
+    [],
+  );
+}
+
+function createTestApp(tutoringService: Tutoring, contentAccess?: ContentAccess) {
   const readiness: Readiness = { ready: true };
   const resolvePrincipal = new ResolvePrincipal(
     {
@@ -181,6 +236,8 @@ function createTestApp(repo: TutoringRepository) {
     },
     true,
   );
+
+  const content = contentAccess ?? createMockContentAccess();
 
   return buildApp({
     checkReadiness: () => Promise.resolve(readiness),
@@ -199,11 +256,8 @@ function createTestApp(repo: TutoringRepository) {
       true,
     ),
     demoAllowedOrigins: [],
-    tutoring: new Tutoring(repo),
-    content: new ContentAccess(
-      { search: () => Promise.resolve([]), resolve: () => Promise.resolve({ kind: 'not_found' }) },
-      [],
-    ),
+    tutoring: tutoringService,
+    content,
   });
 }
 
@@ -333,10 +387,140 @@ describe('Tutoring Use Cases', () => {
   });
 });
 
-describe('Tutoring HTTP Routes', () => {
-  it('validates required request fields and enforces learner role', async () => {
+describe('Tutoring FAQ Provider (T3-007-A)', () => {
+  it('answers supported English questions and returns verified citations', async () => {
+    const content = createMockContentAccess();
+    const faq = new FaqProvider(content);
     const repo = new InMemoryTutoringRepository();
-    const app = createTestApp(repo);
+    const tutoring = new Tutoring(repo, faq);
+
+    const res = await tutoring.askFaq(learnerA, {
+      courseId: 'course-1',
+      requestId: 'faq-req-1',
+      question: 'What is a virtual assistant?',
+    });
+
+    expect(res).not.toBeNull();
+    expect(res?.faqResult.kind).toBe('answered');
+    expect(res?.faqResult.answerLang).toBe('en');
+    expect(res?.faqResult.answerText).toContain('human remote professionals');
+    expect(res?.faqResult.citations).toHaveLength(1);
+    expect(res?.faqResult.citations[0]?.sourceId).toBe('savanna-va1-future-of-va-industry');
+    expect(res?.faqResult.citations[0]?.sectionId).toBe('introduction');
+
+    // Persisted in repository with completed state and answer text
+    expect(res?.request.state).toBe('completed');
+    expect(res?.request.answerText).toBe(res?.faqResult.answerText);
+    expect(res?.request.completedAt).not.toBeNull();
+  });
+
+  it('answers supported Amharic questions with verified Amharic citations', async () => {
+    const content = createMockContentAccess();
+    const faq = new FaqProvider(content);
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo, faq);
+
+    const res = await tutoring.askFaq(learnerB, {
+      courseId: 'course-2',
+      requestId: 'faq-req-am',
+      question: 'ቀኑን ከመጀመርዎ በፊት ምን እንዲያደርጉ ተመክረዋል?',
+    });
+
+    expect(res).not.toBeNull();
+    expect(res?.faqResult.kind).toBe('answered');
+    expect(res?.faqResult.answerLang).toBe('am');
+    expect(res?.faqResult.answerText).toContain('የሚሠሯቸውን ሥራዎች ይዘርዝሩ');
+    expect(res?.faqResult.citations).toHaveLength(1);
+    expect(res?.faqResult.citations[0]?.sourceId).toBe('demo-time-management-am');
+    expect(res?.faqResult.citations[0]?.sectionId).toBe('planning');
+  });
+
+  it('returns explicit honest limitation when evidence is absent', async () => {
+    const content = createMockContentAccess();
+    const faq = new FaqProvider(content);
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo, faq);
+
+    const res = await tutoring.askFaq(learnerA, {
+      courseId: 'course-1',
+      requestId: 'faq-req-missing',
+      question: 'What is the hourly rate in US dollars?',
+    });
+
+    expect(res).not.toBeNull();
+    expect(res?.faqResult.kind).toBe('insufficient_evidence');
+    expect(res?.faqResult.answerText).toContain('do not have an approved course answer');
+    expect(res?.faqResult.citations).toEqual([]);
+
+    // Persisted as completed limitation, not unhandled failure
+    expect(res?.request.state).toBe('completed');
+    expect(res?.request.answerText).toContain('do not have an approved course answer');
+  });
+
+  it('returns limitation in Amharic when Amharic question lacks evidence', async () => {
+    const content = createMockContentAccess();
+    const faq = new FaqProvider(content);
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo, faq);
+
+    const res = await tutoring.askFaq(learnerB, {
+      courseId: 'course-2',
+      requestId: 'faq-req-am-missing',
+      question: 'ስለ ፖሞዶሮ ስንት ደቂቃ ነው?',
+    });
+
+    expect(res).not.toBeNull();
+    expect(res?.faqResult.kind).toBe('insufficient_evidence');
+    expect(res?.faqResult.answerLang).toBe('am');
+    expect(res?.faqResult.answerText).toContain('የተረጋገጠ መልስ አልተገኘም');
+    expect(res?.faqResult.citations).toEqual([]);
+  });
+
+  it('refuses to answer or access FAQs for an ungranted course', async () => {
+    const content = createMockContentAccess();
+    const faq = new FaqProvider(content);
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo, faq);
+
+    // Learner A does not have course-2
+    const res = await tutoring.askFaq(learnerA, {
+      courseId: 'course-2',
+      requestId: 'faq-req-ungranted',
+      question: 'ቀኑን ከመጀመርዎ በፊት ምን እንዲያደርጉ ተመክረዋል?',
+    });
+
+    expect(res).toBeNull();
+  });
+
+  it('handles duplicate submissions idempotently returning the original answer', async () => {
+    const content = createMockContentAccess();
+    const faq = new FaqProvider(content);
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo, faq);
+
+    const first = await tutoring.askFaq(learnerA, {
+      courseId: 'course-1',
+      requestId: 'faq-idempotent',
+      question: 'What is a virtual assistant?',
+    });
+
+    const second = await tutoring.askFaq(learnerA, {
+      courseId: 'course-1',
+      requestId: 'faq-idempotent',
+      question: 'What is a virtual assistant?',
+    });
+
+    expect(first?.request.id).toBe(second?.request.id);
+    expect(second?.faqResult.answerText).toBe(first?.faqResult.answerText);
+    expect(repo.requests).toHaveLength(1);
+  });
+});
+
+describe('Tutoring HTTP Routes', () => {
+  it('validates required request fields and enforces learner role on /api/tutoring/requests', async () => {
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo);
+    const app = createTestApp(tutoring);
 
     // Missing authorization
     const unauth = await app.inject({
@@ -380,6 +564,40 @@ describe('Tutoring HTTP Routes', () => {
         question: 'Hello?',
       },
     });
+
+    await app.close();
+  });
+
+  it('answers cited FAQ questions via POST /api/tutoring/faq', async () => {
+    const repo = new InMemoryTutoringRepository();
+    const content = createMockContentAccess();
+    const faq = new FaqProvider(content);
+    const tutoring = new Tutoring(repo, faq);
+    const app = createTestApp(tutoring, content);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/tutoring/faq',
+      headers: { authorization: `Bearer ${learnerAToken}` },
+      payload: {
+        courseId: 'course-1',
+        requestId: 'req-faq-route-1',
+        question: 'What is a virtual assistant?',
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json<{
+      kind: string;
+      answer: string;
+      citations: Array<{ sourceId: string }>;
+      request: { state: string };
+    }>();
+    expect(body.kind).toBe('answered');
+    expect(body.answer).toContain('human remote professionals');
+    expect(body.citations).toHaveLength(1);
+    expect(body.citations[0]?.sourceId).toBe('savanna-va1-future-of-va-industry');
+    expect(body.request.state).toBe('completed');
 
     await app.close();
   });
