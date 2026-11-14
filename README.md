@@ -131,7 +131,7 @@ pnpm content:import                  # every file in fixtures/courses
 pnpm content:import path/to/x.json   # specific files; relative paths are from the repository root
 ```
 
-All files are validated before anything is imported; any error is printed with its file and field, and nothing is stored. Each source then reports `imported`, `unchanged` (identical content, even under a new label) or `withdrawn`. A changed source is stored as a new immutable version that becomes current in the same transaction; sections missing from it stop being authoritative, and earlier versions stay stored for inspection. Reusing a version label for different content is refused, so restoring earlier content needs a new label. Retrieval and citations for learners come in [T3-005-B](https://github.com/EyasuGet/Hackaton/issues/11).
+All files are validated before anything is imported: if any file is invalid, every error is printed with its file and field and nothing is stored. Each valid source is then imported in its own transaction, so a later refused source (such as a reused version label) does not undo earlier ones. Each source then reports `imported`, `unchanged` (identical content, even under a new label) or `withdrawn`. A changed source is stored as a new immutable version that becomes current in the same transaction; sections missing from it stop being authoritative, and earlier versions stay stored for inspection. Reusing a version label for different content is refused, so restoring earlier content needs a new label. Retrieval and citations for learners come in [T3-005-B](https://github.com/EyasuGet/Hackaton/issues/11).
 
 Inspect what is stored:
 

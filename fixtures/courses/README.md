@@ -9,6 +9,6 @@ One JSON file per lesson source, imported with `pnpm content:import` (all files 
 
 ## How the Savanna lesson was extracted
 
-Only the children of `#curriculum_navigation_content .savanna-styles` were used, split at each `<h4>` heading; each section keeps that heading's anchor id. Text before the first heading is the `introduction` section (no anchor). Markup was reduced to plain text with list items as `- ` lines; images, links' URLs, forms and scripts were dropped. Everything outside that container (learner profile and progress, navigation, the completion form and its token, the congratulations and Markdown-guide modals) was excluded. The extraction was a one-off review step, not a crawler; re-check the pinned page before changing this file.
+The title is the lesson `<h1>` inside `#curriculum_navigation_content`; the sections are the children of `#curriculum_navigation_content .savanna-styles`, split at each `<h4>` heading; each section keeps that heading's anchor id. Text before the first heading is the `introduction` section (no anchor). Markup was reduced to plain text with list items as `- ` lines; images, links' URLs, forms and scripts were dropped. Everything outside that container (learner profile and progress, navigation, the completion form and its token, the congratulations and Markdown-guide modals) was excluded. The extraction was a one-off review step, not a crawler; re-check the pinned page before changing this file.
 
 `course-1` and `course-2` match the demo principals' course grants (see the README's demo identities section).

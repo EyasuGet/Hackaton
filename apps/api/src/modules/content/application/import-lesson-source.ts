@@ -32,7 +32,7 @@ export class VersionConflictError extends Error {
     // Also covers re-importing an older version after a newer one: restoring
     // earlier content needs a new label, so the history stays unambiguous.
     super(
-      `Version "${version}" of ${sourceId} was already imported and is not the current content; use a new version label`,
+      `Version "${version}" of ${sourceId} is already used for different content; use a new version label`,
     );
   }
 }
