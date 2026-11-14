@@ -11,6 +11,26 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.7-alpine
+        env:
+          POSTGRES_DB: track3
+          POSTGRES_USER: track3
+          POSTGRES_PASSWORD: ci-only-password # Throwaway CI container, not a real credential.
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U track3 -d track3"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_PORT: 5432
+      DATABASE_NAME: track3
+      DATABASE_USER: track3
+      DATABASE_PASSWORD: ci-only-password
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6 # Version comes from package.json "packageManager".
@@ -22,3 +42,5 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm build
       - run: pnpm test
+      - run: pnpm db:migrate
+      - run: pnpm test:integration

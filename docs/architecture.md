@@ -97,7 +97,7 @@ flowchart LR
 
 ## Target folder structure
 
-This is a **target layout**, not a claim that the application files exist. Only the T3-001-A workspace slice (root package files, CI, the API health route under `apps/api/src/bootstrap` and the web page under `apps/web/src/app`) exists so far. Compose/configuration, further `apps` content, `packages`, and `fixtures` are created by their owning implementation issues as needed. Compact entries such as `grilling/SKILL.md` mean a file inside that directory; no brace-expanded placeholder paths are used.
+This is a **target layout**, not a claim that the application files exist. Only the T3-001-A/B foundation exists so far: root package files, `compose.yaml`, CI, the API bootstrap under `apps/api/src/bootstrap`, the migration runner under `apps/api/src/infrastructure/database`, and the web page under `apps/web/src/app`. Further `apps` content, `packages`, and `fixtures` are created by their owning implementation issues as needed. Compact entries such as `grilling/SKILL.md` mean a file inside that directory; no brace-expanded placeholder paths are used.
 
 ```text
 Hackaton/

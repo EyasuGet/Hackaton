@@ -1,0 +1,22 @@
+# Local PostgreSQL for development and integration tests. Values come from the
+# root .env (see .env.example); the password has no default on purpose.
+services:
+  db:
+    image: postgres:18.7-alpine
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:?Set DATABASE_NAME in .env}
+      POSTGRES_USER: ${DATABASE_USER:?Set DATABASE_USER in .env}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in .env}
+    ports:
+      # Loopback only: the database is not exposed to the local network.
+      - 127.0.0.1:${DATABASE_PORT:?Set DATABASE_PORT in .env}:5432
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  db-data:
