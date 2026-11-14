@@ -3,7 +3,7 @@ import type { Readiness } from '../infrastructure/database/migrations.ts';
 import { buildApp } from './app.ts';
 
 function appWithReadiness(readiness: Readiness) {
-  return buildApp({ checkReadiness: async () => readiness });
+  return buildApp({ checkReadiness: () => Promise.resolve(readiness) });
 }
 
 describe('GET /api/health', () => {

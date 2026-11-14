@@ -37,7 +37,11 @@ describe('loadConfig', () => {
     ['non-numeric API port', { ...valid, API_PORT: '3000abc' }, 'API_PORT must be'],
     ['out-of-range API port', { ...valid, API_PORT: '70000' }, 'API_PORT must be'],
     ['missing database password', without('DATABASE_PASSWORD'), 'DATABASE_PASSWORD is required'],
-    ['blank database password', { ...valid, DATABASE_PASSWORD: '  ' }, 'DATABASE_PASSWORD is required'],
+    [
+      'blank database password',
+      { ...valid, DATABASE_PASSWORD: '  ' },
+      'DATABASE_PASSWORD is required',
+    ],
     ['invalid database port', { ...valid, DATABASE_PORT: 'x' }, 'DATABASE_PORT must be'],
   ])('rejects %s', (_case, env, message) => {
     expect(() => loadConfig(env)).toThrow(ConfigError);
@@ -45,13 +49,15 @@ describe('loadConfig', () => {
   });
 
   it('keeps surrounding spaces in the database password', () => {
-    expect(loadConfig({ ...valid, DATABASE_PASSWORD: ' spaced ' }).database.password).toBe(' spaced ');
+    expect(loadConfig({ ...valid, DATABASE_PASSWORD: ' spaced ' }).database.password).toBe(
+      ' spaced ',
+    );
   });
 
   it('does not echo the rejected value', () => {
     const secretLike = 'sk-not-a-port';
-    expect(() => loadConfig({ ...valid, DATABASE_PORT: secretLike })).toThrow(
-      expect.objectContaining({ message: expect.not.stringContaining(secretLike) }),
-    );
+    const load = () => loadConfig({ ...valid, DATABASE_PORT: secretLike });
+    expect(load).toThrow(ConfigError);
+    expect(load).not.toThrow(secretLike);
   });
 });

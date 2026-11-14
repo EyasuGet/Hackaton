@@ -3,7 +3,7 @@
 // unless it is prefixed with VITE_, so server values stay out of the bundle.
 import react from '@vitejs/plugin-react';
 import { loadEnv } from 'vite';
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '../..', 'API_');
@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: { proxy: { '/api': apiTarget } },
-    test: { environment: 'jsdom' },
+    // Browser tests under tests/e2e run with Playwright, not Vitest.
+    test: { environment: 'jsdom', exclude: [...configDefaults.exclude, 'tests/e2e/**'] },
   };
 });

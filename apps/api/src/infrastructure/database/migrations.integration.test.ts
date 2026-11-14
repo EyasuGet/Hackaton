@@ -51,9 +51,15 @@ const FIXTURES = {
 describe('migrate', () => {
   it('migrates a fresh database and is a no-op when run again', async () => {
     const migrations = await writeMigrations(FIXTURES);
-    expect(await checkReadiness(pool, migrations)).toEqual({ ready: false, reason: 'migrations_pending' });
+    expect(await checkReadiness(pool, migrations)).toEqual({
+      ready: false,
+      reason: 'migrations_pending',
+    });
 
-    expect(await migrate(pool, migrations)).toEqual(['0001_create_notes.sql', '0002_seed_note.sql']);
+    expect(await migrate(pool, migrations)).toEqual([
+      '0001_create_notes.sql',
+      '0002_seed_note.sql',
+    ]);
     expect(await migrate(pool, migrations)).toEqual([]);
 
     const notes = await pool.query('SELECT body FROM notes');
@@ -62,10 +68,18 @@ describe('migrate', () => {
   });
 
   it('reports a newly added migration as pending until applied', async () => {
-    await migrate(pool, await writeMigrations({ '0001_create_notes.sql': FIXTURES['0001_create_notes.sql'] }));
-    const migrations = await writeMigrations({ '0002_seed_note.sql': FIXTURES['0002_seed_note.sql'] });
+    await migrate(
+      pool,
+      await writeMigrations({ '0001_create_notes.sql': FIXTURES['0001_create_notes.sql'] }),
+    );
+    const migrations = await writeMigrations({
+      '0002_seed_note.sql': FIXTURES['0002_seed_note.sql'],
+    });
 
-    expect(await checkReadiness(pool, migrations)).toEqual({ ready: false, reason: 'migrations_pending' });
+    expect(await checkReadiness(pool, migrations)).toEqual({
+      ready: false,
+      reason: 'migrations_pending',
+    });
     expect(await migrate(pool, migrations)).toEqual(['0002_seed_note.sql']);
     expect(await checkReadiness(pool, migrations)).toEqual({ ready: true });
   });
@@ -98,7 +112,9 @@ describe('migrate', () => {
 
   it('refuses to continue when an applied migration was edited', async () => {
     await migrate(pool, await writeMigrations(FIXTURES));
-    const edited = await writeMigrations({ '0002_seed_note.sql': "INSERT INTO notes (body) VALUES ('edited');" });
+    const edited = await writeMigrations({
+      '0002_seed_note.sql': "INSERT INTO notes (body) VALUES ('edited');",
+    });
 
     await expect(migrate(pool, edited)).rejects.toThrow('0002_seed_note.sql was modified');
   });
@@ -122,9 +138,10 @@ describe('checkReadiness', () => {
       // Simulates a database restart: the server terminates every session the pool holds.
       // Waiting for the pool to observe each drop mirrors a real outage, where the
       // database is down long enough for idle connections to be discarded first.
-      await admin.query('SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1', [
-        testDatabase,
-      ]);
+      await admin.query(
+        'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1',
+        [testDatabase],
+      );
       await observedDrops;
 
       expect(await checkReadiness(restartPool, migrations)).toEqual({ ready: true });
@@ -137,7 +154,10 @@ describe('checkReadiness', () => {
     // Port 1 is reserved and closed, so the connection is refused immediately.
     const unreachable = createPool({ ...config, port: 1 }, () => {});
     try {
-      expect(await checkReadiness(unreachable, [])).toEqual({ ready: false, reason: 'database_unavailable' });
+      expect(await checkReadiness(unreachable, [])).toEqual({
+        ready: false,
+        reason: 'database_unavailable',
+      });
     } finally {
       await unreachable.end();
     }

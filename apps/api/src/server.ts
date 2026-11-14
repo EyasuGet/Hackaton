@@ -3,7 +3,11 @@
 import { buildApp } from './bootstrap/app.ts';
 import { loadConfig, loadOrExit } from './bootstrap/config.ts';
 import { createPool } from './infrastructure/database/connection.ts';
-import { checkReadiness, loadMigrations, MIGRATIONS_DIR } from './infrastructure/database/migrations.ts';
+import {
+  checkReadiness,
+  loadMigrations,
+  MIGRATIONS_DIR,
+} from './infrastructure/database/migrations.ts';
 
 const config = loadOrExit(() => loadConfig(process.env));
 const migrations = await loadMigrations(MIGRATIONS_DIR);
