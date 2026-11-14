@@ -33,6 +33,24 @@ footer {
   outline-offset: 2px;
 }
 
+/* The current language is filled and underlined, so it does not rely on colour alone. */
+.languages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.languages button[aria-pressed='false'] {
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.languages button[aria-pressed='true'] {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 .demo-session {
   border-inline-start: 4px solid var(--accent);
   padding-inline-start: 0.75rem;
@@ -173,4 +191,37 @@ button[aria-disabled='true'] {
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
+}
+
+.search-results {
+  padding-inline-start: 1.25rem;
+}
+
+.search-results li {
+  margin-bottom: 0.75rem;
+}
+
+/* A button that reads like a link: it opens a section without leaving the page. */
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  text-align: start;
+  font-weight: 600;
+}
+
+.cited-section {
+  border-inline-start: 4px solid var(--accent);
+  padding-inline-start: 0.75rem;
+  margin: 1rem 0;
+}
+
+input[type='search'] {
+  box-sizing: border-box;
+  max-width: 100%;
+  font: inherit;
+  padding: 0.4rem;
+  margin-inline-end: 0.5rem;
 }

@@ -29,6 +29,7 @@ import {
 import { Tutoring } from './application/tutoring.ts';
 import type { TutoringRequest } from './domain/tutoring-request.ts';
 import { PostgresTutoringRepository } from './infrastructure/persistence/postgres-tutoring-repository.ts';
+import { ContentAccess } from '../content/application/content-access.ts';
 
 interface ClaimResponse {
   readonly kind: 'claimed' | 'existing';
@@ -69,6 +70,10 @@ function makeApp() {
     demoSessions: new DemoSessions(new PostgresDemoSessionRepository(pool), true),
     demoAllowedOrigins: ['http://localhost:5173'],
     tutoring: new Tutoring(new PostgresTutoringRepository(pool)),
+    content: new ContentAccess(
+      { search: () => Promise.resolve([]), resolve: () => Promise.resolve({ kind: 'not_found' }) },
+      [],
+    ),
   });
 }
 

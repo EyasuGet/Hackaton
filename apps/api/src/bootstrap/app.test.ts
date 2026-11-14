@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Readiness } from '../infrastructure/database/migrations.ts';
+import { ContentAccess } from '../modules/content/application/content-access.ts';
 import { DemoRecords } from '../modules/demo-records/demo-records.ts';
 import { DemoSessions } from '../modules/identity/application/demo-sessions.ts';
 import type { PrincipalRepository } from '../modules/identity/application/principal-repository.ts';
@@ -41,6 +42,13 @@ function appWith(
     ),
     demoAllowedOrigins: [],
     tutoring: noTutoring,
+    content: new ContentAccess(
+      {
+        search: () => Promise.resolve([]),
+        resolve: () => Promise.resolve({ kind: 'not_found' }),
+      },
+      [],
+    ),
   });
 }
 

@@ -8,6 +8,9 @@ import {
   loadMigrations,
   MIGRATIONS_DIR,
 } from './infrastructure/database/migrations.ts';
+import { ContentAccess } from './modules/content/application/content-access.ts';
+import { loadGlossary } from './modules/content/infrastructure/glossary-file.ts';
+import { PostgresLessonReader } from './modules/content/infrastructure/postgres-lesson-reader.ts';
 import { DemoRecords } from './modules/demo-records/demo-records.ts';
 import { PostgresDemoRecordRepository } from './modules/demo-records/postgres-demo-record-repository.ts';
 import { DemoSessions } from './modules/identity/application/demo-sessions.ts';
@@ -19,6 +22,7 @@ import { PostgresTutoringRepository } from './modules/tutoring/infrastructure/pe
 
 const config = loadOrExit(() => loadConfig(process.env));
 const migrations = await loadMigrations(MIGRATIONS_DIR);
+const glossary = await loadGlossary();
 
 // Log only the driver's error code: messages can include connection details.
 const pool = createPool(config.database, (error) =>
@@ -32,6 +36,7 @@ const app = buildApp(
     demoSessions: new DemoSessions(new PostgresDemoSessionRepository(pool), config.demoMode),
     demoAllowedOrigins: config.demoAllowedOrigins,
     tutoring: new Tutoring(new PostgresTutoringRepository(pool)),
+    content: new ContentAccess(new PostgresLessonReader(pool), glossary),
   },
   { logger: true },
 );

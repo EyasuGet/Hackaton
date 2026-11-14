@@ -16,6 +16,7 @@ import type {
 import { Tutoring } from './application/tutoring.ts';
 import type { TutoringConversation } from './domain/conversation.ts';
 import type { TutoringRequest } from './domain/tutoring-request.ts';
+import { ContentAccess } from '../content/application/content-access.ts';
 
 class InMemoryTutoringRepository implements TutoringRepository {
   readonly conversations: TutoringConversation[] = [];
@@ -199,6 +200,10 @@ function createTestApp(repo: TutoringRepository) {
     ),
     demoAllowedOrigins: [],
     tutoring: new Tutoring(repo),
+    content: new ContentAccess(
+      { search: () => Promise.resolve([]), resolve: () => Promise.resolve({ kind: 'not_found' }) },
+      [],
+    ),
   });
 }
 

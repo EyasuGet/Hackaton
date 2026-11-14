@@ -6,6 +6,8 @@ import Fastify, {
   type FastifyServerOptions,
 } from 'fastify';
 import type { Readiness } from '../infrastructure/database/migrations.ts';
+import type { ContentAccess } from '../modules/content/application/content-access.ts';
+import { registerContentRoutes } from '../modules/content/presentation/http/content-routes.ts';
 import type { DemoRecords } from '../modules/demo-records/demo-records.ts';
 import { registerDemoRecordRoutes } from '../modules/demo-records/http.ts';
 import type { DemoSessions } from '../modules/identity/application/demo-sessions.ts';
@@ -27,6 +29,7 @@ export interface AppDependencies {
   /** Exact page origins allowed to start a demo session. */
   readonly demoAllowedOrigins: readonly string[];
   readonly tutoring: Tutoring;
+  readonly content: ContentAccess;
 }
 
 export function buildApp(
@@ -64,6 +67,7 @@ export function buildApp(
     dependencies.demoSessions,
     dependencies.demoAllowedOrigins,
   );
+  registerContentRoutes(app, authenticate(dependencies.resolvePrincipal), dependencies.content);
   registerDemoRecordRoutes(
     app,
     authenticate(dependencies.resolvePrincipal),
