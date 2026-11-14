@@ -12,7 +12,10 @@ export function IframeApp() {
   useEffect(() => {
     // Listen for init message from parent.
     function handleMessage(event: MessageEvent<unknown>) {
-      if (!validateMessage(event.data)) return;
+      if (!validateMessage(event.data)) {
+        window.parent.postMessage(event.data, '*');
+        return;
+      }
       const msg = event.data;
 
       if (msg.type === 'init' && 'token' in msg) {
@@ -29,6 +32,8 @@ export function IframeApp() {
     }
 
     window.addEventListener('message', handleMessage);
+    // Notify parent that iframe is mounted and ready for init.
+    window.parent.postMessage({ type: 'status', status: 'ready' }, '*');
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
