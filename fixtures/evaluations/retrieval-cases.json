@@ -1,0 +1,45 @@
+{
+  "description": "T3-005-B retrieval evaluation over fixtures/courses. Thresholds were fixed before the first run: for supported cases the expected section must appear in the top 3 for at least 9 of 11 cases, with at least one hit in every direction; out-of-corpus cases must return no passages. Amharic questions are drafts pending competent-speaker review.",
+  "supported": [
+    {
+      "direction": "en→en",
+      "question": "How is AI changing the work of virtual assistants?",
+      "expect": "artificial-intelligence-and-the-future-of-va-work"
+    },
+    {
+      "direction": "en→en",
+      "question": "What do clients value in a VA?",
+      "expect": "what-clients-are-likely-to-value-more-and-more"
+    },
+    {
+      "direction": "en→en",
+      "question": "What skills should an aspiring virtual assistant build?",
+      "expect": "what-this-means-for-aspiring-virtual-assistants"
+    },
+    {
+      "direction": "en→en",
+      "question": "Is the VA profession promising?",
+      "expect": "so-is-the-future-of-va-promising"
+    },
+    {
+      "direction": "en→en",
+      "question": "Why are businesses hiring remotely?",
+      "expect": "what-is-shaping-the-future-of-va-work"
+    },
+    {
+      "direction": "am→en",
+      "question": "ሰው ሰራሽ አስተውሎት የምናባዊ ረዳትን ሥራ እንዴት ይቀይራል?",
+      "expect": "artificial-intelligence-and-the-future-of-va-work"
+    },
+    {
+      "direction": "am→en",
+      "question": "ደንበኞች ምን ይፈልጋሉ?",
+      "expect": "what-clients-are-likely-to-value-more-and-more"
+    },
+    { "direction": "am→am", "question": "እቅድ እንዴት ማውጣት እችላለሁ?", "expect": "planning" },
+    { "direction": "am→am", "question": "እረፍት መውሰድ ለምን ይጠቅማል?", "expect": "breaks" },
+    { "direction": "en→am", "question": "How should I plan my day?", "expect": "planning" },
+    { "direction": "en→am", "question": "Why should I take breaks?", "expect": "breaks" }
+  ],
+  "outOfCorpus": ["What is the capital of France?", "የኢትዮጵያ ዋና ከተማ ማን ናት?"]
+}

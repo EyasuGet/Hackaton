@@ -1,15 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import type { Readiness } from '../infrastructure/database/migrations.ts';
+import { ContentAccess } from '../modules/content/application/content-access.ts';
 import { DemoRecords } from '../modules/demo-records/demo-records.ts';
 import { DemoSessions } from '../modules/identity/application/demo-sessions.ts';
 import type { PrincipalRepository } from '../modules/identity/application/principal-repository.ts';
 import { ResolvePrincipal } from '../modules/identity/application/resolve-principal.ts';
+import { Tutoring } from '../modules/tutoring/application/tutoring.ts';
 import { buildApp } from './app.ts';
 
 const noPrincipals: PrincipalRepository = { findDemoByTokenDigest: () => Promise.resolve(null) };
 const noRecords = new DemoRecords({
   list: () => Promise.resolve([]),
   find: () => Promise.resolve(null),
+});
+const noTutoring = new Tutoring({
+  createConversation: () => Promise.resolve(null),
+  findConversation: () => Promise.resolve(null),
+  claimRequest: () => Promise.resolve(null),
+  findRequestById: () => Promise.resolve(null),
+  findRequestByRequestId: () => Promise.resolve(null),
+  listHistory: () => Promise.resolve([]),
+  recordOutcome: () => Promise.resolve(null),
 });
 
 function appWith(
@@ -30,6 +41,14 @@ function appWith(
       true,
     ),
     demoAllowedOrigins: [],
+    tutoring: noTutoring,
+    content: new ContentAccess(
+      {
+        search: () => Promise.resolve([]),
+        resolve: () => Promise.resolve({ kind: 'not_found' }),
+      },
+      [],
+    ),
   });
 }
 

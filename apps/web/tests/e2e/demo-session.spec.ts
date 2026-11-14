@@ -1,30 +1,8 @@
 // The synthetic demo sign-in journey in a real browser, using the real
 // provisioning and handoff commands against the test database.
-import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-
-const apiDir = fileURLToPath(new URL('../../../api/', import.meta.url));
-const demoEnv = {
-  ...process.env,
-  DEMO_MODE: 'true',
-  DEMO_ALLOWED_ORIGINS: 'http://localhost:5173',
-};
-
-function runApi(script: string, ...args: string[]): string {
-  return execFileSync('node', ['--env-file-if-exists=../../.env', script, ...args], {
-    cwd: apiDir,
-    env: demoEnv,
-    encoding: 'utf8',
-  });
-}
-
-function newHandoffCode(principal: string): string {
-  const code = /^Code: (\S+)$/m.exec(runApi('src/demo-handoff.ts', principal))?.[1];
-  if (!code) throw new Error('demo:handoff printed no code');
-  return code;
-}
+import { newHandoffCode, runApi } from './demo-api.ts';
 
 // Note: this re-provisions the demo principals in the configured database, so
 // demo tokens printed earlier by `pnpm demo:provision` stop working.
