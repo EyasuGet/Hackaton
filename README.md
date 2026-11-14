@@ -139,6 +139,24 @@ Inspect what is stored:
 docker compose exec db sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB" -c "SELECT v.source_id, v.version, v.is_demo, s.current_version_id = v.id AS current, v.imported_at FROM lesson_source_versions v JOIN lesson_sources s ON s.id = v.source_id ORDER BY v.source_id, v.imported_at"'
 ```
 
+### Job vacancies and career records
+
+Approved job records live in [`fixtures/jobs`](fixtures/jobs/README.md): an active Virtual Assistant position (`demo-va-specialist.json`) and an expired record (`demo-expired-data-clerk.json`) for verifying status queries.
+
+```sh
+pnpm db:migrate
+pnpm jobs:import                  # every file in fixtures/jobs
+pnpm jobs:import path/to/x.json   # specific files; relative paths are from the repository root
+```
+
+All files are validated before anything is imported. Re-importing identical content is a no-op that does not duplicate rows. Each valid change creates an immutable version that becomes current, while preserving the job's stable publication identity. Expired (`expiresAt <= now`) and withdrawn vacancies are consistently queryable.
+
+Inspect stored jobs:
+
+```sh
+docker compose exec db sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB" -c "SELECT j.id, j.publication_id, v.version, v.category, v.location, v.expires_at, v.withdrawn FROM jobs j JOIN job_versions v ON v.id = j.current_version_id ORDER BY j.id"'
+```
+
 ### Course search and citations
 
 Signed-in learners can search their granted courses and open a cited section in place (the page's *Your course material* panel). Search uses PostgreSQL full-text search plus the draft Amharic↔English glossary (pending competent-speaker review) in [`fixtures/retrieval/bilingual-glossary.json`](fixtures/retrieval/bilingual-glossary.json); the method and its evaluation are recorded in [decisions](docs/decisions.md#retrieval-method--t3-005-b-2026-11-14). Run `pnpm content:import` first.
