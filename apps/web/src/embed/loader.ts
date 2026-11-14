@@ -11,6 +11,17 @@ let iframe: HTMLIFrameElement | null = null;
 let previousFocusedElement: HTMLElement | null = null;
 const listeners: Array<() => void> = [];
 
+let activeConfig: EmbedConfig = {
+  origin: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173',
+  token: '',
+};
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('message', (event: MessageEvent<unknown>) => {
+    onMessage(event, activeConfig);
+  });
+}
+
 function cleanup() {
   listeners.forEach((remove) => remove());
   listeners.length = 0;
@@ -42,6 +53,12 @@ function onMessage(event: MessageEvent<unknown>, config: EmbedConfig) {
   const message: EmbedMessage = event.data;
 
   switch (message.type) {
+    case 'status':
+      if (message.status === 'ready' && iframe && iframe.contentWindow) {
+        const initMsg: EmbedMessage = { type: 'init', token: config.token };
+        iframe.contentWindow.postMessage(initMsg, config.origin);
+      }
+      break;
     case 'close':
       previousFocusedElement = (document.activeElement as HTMLElement) || null;
       if (iframe) {
@@ -54,6 +71,7 @@ function onMessage(event: MessageEvent<unknown>, config: EmbedConfig) {
 }
 
 export function embedAssistant(config: EmbedConfig): void {
+  activeConfig = config;
   // If already loaded, clean up and reload (idempotent).
   cleanup();
 
@@ -64,8 +82,10 @@ export function embedAssistant(config: EmbedConfig): void {
     position: fixed;
     bottom: 0;
     right: 0;
-    width: 100%;
-    height: 100%;
+    width: 420px;
+    height: 600px;
+    max-width: 100%;
+    max-height: 100%;
     border: none;
     box-shadow: -2px -2px 8px rgba(0,0,0,0.15);
     z-index: 999999;
