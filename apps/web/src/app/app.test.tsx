@@ -10,7 +10,10 @@ afterEach(() => {
 
 describe('App API status', () => {
   it('reports the API as available when /api/health returns ok', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ status: 'ok' })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(Response.json({ status: 'ok' }))),
+    );
     render(<App />);
 
     expect(await screen.findByText('API available')).toBeTruthy();
@@ -19,8 +22,11 @@ describe('App API status', () => {
 
   it.each([
     // The body would pass validation, so only the HTTP status check can reject it.
-    ['the API returns an error status', async () => Response.json({ status: 'ok' }, { status: 503 })],
-    ['the request fails', async () => Promise.reject(new TypeError('Failed to fetch'))],
+    [
+      'the API returns an error status',
+      () => Promise.resolve(Response.json({ status: 'ok' }, { status: 503 })),
+    ],
+    ['the request fails', () => Promise.reject(new TypeError('Failed to fetch'))],
   ])('reports the API as unavailable when %s', async (_case, fetchImpl) => {
     vi.stubGlobal('fetch', vi.fn(fetchImpl));
     render(<App />);
@@ -36,7 +42,7 @@ describe('App API status', () => {
       vi.fn(
         (_url: string, init: RequestInit) =>
           new Promise<Response>((_resolve, reject) => {
-            init.signal?.addEventListener('abort', () => reject(init.signal?.reason));
+            init.signal?.addEventListener('abort', () => reject(new Error('aborted')));
           }),
       ),
     );

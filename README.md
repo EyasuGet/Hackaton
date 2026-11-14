@@ -43,13 +43,14 @@ The skill files and reviewer prompts are portable Markdown instructions. Their p
 
 ## Runtime setup
 
-Current scope: an API with liveness and database readiness, a PostgreSQL migration path, and a React/Vite page that reports API health ([T3-001-A](https://github.com/EyasuGet/Hackaton/issues/1), [T3-001-B](https://github.com/EyasuGet/Hackaton/issues/2)). Lint/format/browser checks ([T3-001-C](https://github.com/EyasuGet/Hackaton/issues/3)), FAQ-only mode and live-provider requirements are added by their own issues.
+Current scope: an API with liveness and database readiness, a PostgreSQL migration path, a React/Vite page that reports API health, and lint/format/unit/integration/browser checks ([T3-001](https://github.com/EyasuGet/Hackaton/issues/4)). FAQ-only mode and live-provider requirements are added by their own issues.
 
 ### Requirements
 
 - Node.js 22.18 or newer (the API runs TypeScript directly via Node's built-in type stripping in development). Tested with 22.23.1.
 - pnpm 11.21.0 (pinned in `package.json` `packageManager`; `corepack enable` provides it).
 - Docker with Compose v2 for PostgreSQL. Tested with Docker 29.8.0 and Compose 5.5.1.
+- TypeScript is pinned to 6.0.x because typescript-eslint does not yet support the TypeScript 7 native compiler.
 
 ### Start
 
@@ -91,5 +92,10 @@ SQL files live in [`apps/api/src/infrastructure/database/migrations`](apps/api/s
 | `pnpm build` | API compile to `apps/api/dist`, web production build to `apps/web/dist` |
 | `pnpm test` | Unit tests: API routes and configuration; web available/unavailable states. No database needed |
 | `pnpm test:integration` | Real-PostgreSQL tests for migrations and readiness. Needs the Compose database; each run creates and drops its own temporary database |
+| `pnpm lint` | ESLint with type-aware typescript-eslint recommended rules ([eslint.config.js](eslint.config.js)) |
+| `pnpm format:check` | Prettier check ([.prettierrc.json](.prettierrc.json)); `pnpm format` rewrites files. Markdown is excluded |
+| `pnpm test:e2e` | Playwright in Chromium against the real API and the Vite dev server, with axe scans failing on critical/serious WCAG 2.2 A/AA violations. First run once: `pnpm --filter @track3/web exec playwright install chromium` (on Linux add `--with-deps` if system libraries are missing). Reuses servers already running on ports 3000/5173 locally |
 
-CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs install, typecheck, build, unit tests, `db:migrate` and integration tests against a PostgreSQL service on pull requests and pushes to `main`. After `pnpm build`, `pnpm --filter @track3/api start` runs the compiled API. Dependency versions are pinned exactly in each `package.json` and `pnpm-lock.yaml`.
+Automated accessibility checks do not establish conformance; NVDA, TalkBack and co-designer checks remain separate ([verification](docs/verification.md)).
+
+CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs install, format check, lint, typecheck, build, unit tests, `db:migrate`, integration tests against a PostgreSQL service, and the browser tests on pull requests and pushes to `main`. After `pnpm build`, `pnpm --filter @track3/api start` runs the compiled API. Dependency versions are pinned exactly in each `package.json` and `pnpm-lock.yaml`.

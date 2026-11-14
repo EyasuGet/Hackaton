@@ -15,7 +15,7 @@ export function buildApp(
   const app = Fastify(options);
 
   // Liveness: the process is up, regardless of dependencies.
-  app.get('/api/health', async () => ({ status: 'ok' }));
+  app.get('/api/health', (_request, reply) => reply.send({ status: 'ok' }));
 
   // Readiness: the API can serve requests that need the database. The reason is
   // a fixed code; driver errors are never returned to the client.

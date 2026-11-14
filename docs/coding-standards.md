@@ -1,6 +1,6 @@
 # Coding standards
 
-Read this when implementing or reviewing code. This is our project style guide, not a claim that TypeScript has a universal PEP 8 equivalent. [Architecture](architecture.md) owns module/dependency rules; [verification](verification.md#test-writing-rules) owns test rules. Tooling below is a bootstrap requirement, not configuration already installed.
+Read this when implementing or reviewing code. This is our project style guide, not a claim that TypeScript has a universal PEP 8 equivalent. [Architecture](architecture.md) owns module/dependency rules; [verification](verification.md#test-writing-rules) owns test rules. The tooling below is configured in the repository root (`eslint.config.js`, `.prettierrc.json`) and run by CI; see the [README checks](../README.md#checks).
 
 ## Occam's razor: simplest adequate implementation
 
