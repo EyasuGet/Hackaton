@@ -34,7 +34,7 @@ The goal is to capture the co-designer's current experience *before* they see ou
 3. Observe without guiding. Record each step, where they hesitated, any barriers they met (unlabelled controls, unreadable Ethiopic text, focus lost, no announcement, zoom breaking the layout, sound needed), and the assistance level (section 5).
 4. Ask: *"What would make this easier?"* Record their words as close to verbatim as possible, without identifying details.
 
-Ask the organisers for any accessibility feedback they hold on the starter. Do not invent it. Record "not obtained" until it arrives.
+Ask the organisers for any accessibility feedback they hold on the starter, and note the request in the issue. Do not invent it. Record "not obtained" until it arrives.
 
 ## 4. Assistant task steps (T3-009-B and later retests)
 
@@ -44,7 +44,7 @@ Read each prompt as written. Do not point at controls or name them.
 |---|---|---|
 | 1 | "Please open the assistant." | Can they find and enter it? Where does focus land? |
 | 2 | "Ask it your question about this lesson." | Is the question box labelled? Can they send by keyboard? |
-| 3 | *(wait)* | Is the answer announced once, without focus being taken? Is Ethiopic text readable? |
+| 3 | *(wait)* | Is the answer announced once, without focus being taken? Is Ethiopic text readable, and does mixed Amharic/English or right-to-left text stay understandable? Are any displayed dates/times clear in Addis Ababa terms? |
 | 4 | "Where did that answer come from?" | Can they open the citation, and get back afterwards? |
 | 5 | "Now ask something this course does not cover." | Do they understand the limitation, and do they see the offer of human help? |
 | 6 | "Can you find the frequently asked questions?" | Do they reach the FAQ path? |
@@ -75,6 +75,7 @@ Only **Unaided** counts toward the unaided-task gate. Keep what was observed sep
 - Device, OS, browser, AT and versions; zoom; sound; network:
 - Per step: result (Unaided / Prompted / Assisted / Not completed / NOT BUILT / NOT RUN) and observations:
 - Defect source: **module** (our assistant/embed) or **inherited host** (static starter). An inherited defect that blocks the complete user task still blocks the task; record it, and do not exclude it:
+- Language review: Ethiopic rendering, mixed-direction text, displayed local date/time or calendar (gaps recorded against the spec, not guessed):
 - Co-designer's own words (non-identifying):
 - Organiser feedback obtained / not obtained:
 - Follow-up defects (link a separate small repair issue for each):
