@@ -121,13 +121,13 @@ Multi-institution SaaS administration, billing, microservices, Kubernetes, new g
 
 Use phases 0–4 as delivery milestones and prioritise ready baseline work by explicit dependencies in [issues.md](issues.md), not a blanket previous-phase barrier. When blocked, record/escalate the blocker and pick another ready baseline issue, agree a needed contract slice, or pair on the prerequisite. Risk discovery can be complete with a named unresolved dependency, but the affected live capability cannot be marked complete. The final baseline gate remains strict, and optional Phase 5 waits for it.
 
-An issue is done only when its acceptance criteria have evidence, relevant automated and human checks are reported honestly, and independent standards/spec AI findings are resolved. The PR author reviews against the current implementation and applicable overall decisions using the template, signs off/merges their own PR within action authorisation and repository protections, and verifies integration afterward. No separate teammate PR approval is required; co-designer/device acceptance remains mandatory. A simulated provider is useful test infrastructure, never proof of a real provider's delivery or language quality.
+An issue is done only when its acceptance criteria have evidence, relevant automated and human checks are reported honestly, and independent standards/spec AI findings are resolved. Evidence-only leaves follow the [backlog completion rule](issues.md#how-to-use-this-backlog); a reviewed result without a repository change does not need an empty PR. The following PR/merge requirements apply to code or documentation changes. The PR author reviews against the current implementation and applicable overall decisions using the template, signs off/merges their own PR within action authorisation and repository protections, and verifies integration afterward. No separate teammate PR approval is required; co-designer/device acceptance remains mandatory. A simulated provider is useful test infrastructure, never proof of a real provider's delivery or language quality.
 
 The final demonstration follows one learner from cited lesson answer, through reviewed voice input and asynchronous human help, to a sourced job answer, a real subscribed alert, and a reviewed accommodation request. Show the offline limitation and at least one failure recovery. See [verification.md](verification.md).
 
 ## Requirement-to-issue map
 
-The IDs below resolve in [issues.md](issues.md). This is a coverage index, not a second issue-status tracker.
+The original IDs below resolve to epics or bounded tasks in [issues.md](issues.md); epics retain integrated acceptance and contain claimable child tasks. This is a coverage index, not a second issue-status tracker.
 
 | Requirement | Principal implementing / proving issues |
 |---|---|

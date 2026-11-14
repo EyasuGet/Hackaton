@@ -7,14 +7,16 @@ Specification and implementation backlog for the Digital Bridge Accessibility Ha
 1. [Product specification](docs/spec.md): what must work and what is excluded.
 2. [Architecture](docs/architecture.md): stack, detailed target folders, module interfaces, identity/answer/delivery flows.
 3. [Decision register](docs/decisions.md): settled choices, implementation discretion, and external blockers.
-4. [Issue backlog](docs/issues.md): stable local IDs, dependencies, blocked-work procedure, acceptance and verification.
+4. [Issue backlog](docs/issues.md): original IDs retained as epics or bounded tasks, small claimable children, dependencies, blocked-work procedure, acceptance and verification.
 5. [Verification](docs/verification.md) and [conformance template](docs/conformance.md): what evidence is required; neither claims tests have passed.
 6. [Agent instructions](AGENTS.md): how to take an issue through implementation and independent reviews.
 7. [Coding standards](docs/coding-standards.md): Occam's razor, comments, TypeScript style and efficient implementation.
 
+The [independent delivery assessment](docs/assessment.md) records competitive potential, schedule risk and unresolved external gates; this is not a claim of hackathon readiness.
+
 ## How implementation starts
 
-Read the Phase 0 issues, claim one whose blockers are satisfied, and inspect the current project before editing. Establish the runnable workspace while other team members investigate the supplied Savanna contract and live provider/device risks. Do not build a giant empty skeleton first. The first learner increment is a narrow authorised, source-backed text interaction; later phases extend the same use cases across voice, channels, help, and careers.
+Read the backlog's first-parallel-picks table, claim one ready leaf task and read its parent scope before editing. Epics group outcomes; they are not giant PRs. Establish the runnable workspace while other team members investigate the supplied Savanna contract and live provider/device risks. Do not build a giant empty skeleton first. The first learner increment is a narrow authorised, source-backed text interaction; later phases extend the same use cases across voice, channels, help, and careers.
 
 Delivery milestones are foundation/risk checks → accessible tutor → voice/channels → help/careers → submission verification. Work follows explicit dependencies, not a whole-phase waiting barrier. When blocked, [record the blocker and pick other ready baseline work](docs/issues.md#when-work-is-blocked). Optional research mode and lowest-priority employer features still wait for baseline acceptance.
 
@@ -24,9 +26,9 @@ Each author reviews and merges their own PR using the [review skill](.agents/ski
 
 ```text
 Read AGENTS.md, docs/spec.md, docs/architecture.md, docs/decisions.md,
-and the Phase 0 section of docs/issues.md. Inspect the current workspace.
-Identify the unclaimed issue frontier, propose the issue to claim, and follow
-the local implement skill for one approved issue. Reopen only unresolved
+and the first-parallel-picks section of docs/issues.md. Inspect the workspace.
+Identify the unclaimed leaf-task frontier, propose a leaf and read its parent
+epic, then follow the implement skill for that approved task. Reopen only unresolved
 design-impact decisions. Do not create GitHub resources or provision paid
 services without explicit authorisation. Report actual verification evidence.
 ```

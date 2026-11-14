@@ -8,7 +8,7 @@ Agreed through the design interview, synthesised 2026-11-14. [spec.md](spec.md) 
 |---|---|---|
 | D01 | One institution's installation, multiple isolated learners | Reusability without multi-tenant SaaS administration |
 | D02 | Mandatory baseline before optional enhancements | A broad demo cannot substitute for missing required behaviour |
-| D03 | Dependency-driven baseline work across phases; strict final release gate | Revised by the user: phases are milestones, not team-wide waiting barriers; record blockers and pick ready work |
+| D03 | Dependency-driven baseline work across phases; strict final release gate | Revised by the user: phases are milestones, not team-wide waiting barriers; record blockers and pick ready leaf work; stable parent epics aggregate child acceptance, not giant PRs |
 | D04 | TypeScript, React/Vite, Fastify, PostgreSQL, pnpm, Compose | One language, portable install, small operational footprint |
 | D05 | Feature-first Clean Architecture, OO backend, SOLID, explicit injection | Testable business behaviour without generic frameworks; functional React remains idiomatic |
 | D06 | Iframe loaded by script plus standalone lightweight page | Host-style isolation and a defined offline surface |
@@ -44,6 +44,7 @@ Reopen only a concrete unresolved choice or a demonstrated conflict with the app
 | Organiser feature checklist | Public page references a fuller list | Obtain checklist; map discrepancies to issues; ask before expanding scope or claiming complete conformance |
 | Hosting | No commitment confirmed | Establish HTTPS/public callbacks, database storage, secrets, and relay/network requirements; Compose remains portable |
 | SMS | No provider/sender credentials or destination delivery verified | Obtain approved route; send to consenting Ethiopian test destination; test opt-out; distinguish provider acceptance from receipt |
+| SMS ownership | No verified-phone claim or alternative verification flow confirmed | T3-003-E resolves and records approval before T3-021-A; a typed number is not proof of ownership |
 | Voice/AI | No selected provider has passed evaluation | Human-reviewed bilingual evidence, format support, refusal/citation tests, processing consent, budget authorisation |
 | Screen sharing | Android browser limitation known; actual infrastructure untested | Desktop cross-network proof and organiser response on mobile alternative; do not declare requirement waived |
 | Co-design devices | No device/OS/browser inventory or gate run recorded | Test real NVDA/TalkBack, keyboard/zoom/sound-off journeys; record device versions and unaided outcome |
