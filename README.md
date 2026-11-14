@@ -77,6 +77,4 @@ The API exits with a message naming the invalid variable (never its value). The 
 | `pnpm build` | API compile to `apps/api/dist`, web production build to `apps/web/dist` |
 | `pnpm test` | Vitest: API health route and configuration; web available/unavailable states |
 
-CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs install, typecheck, build and test on pull requests and pushes to `main`. After `pnpm build`, `pnpm --filter @track3/api start` runs the compiled API.
-
-Pinned versions: TypeScript 7.0.2, Fastify 5.12.8, React 19.3.1, Vite 8.3.8, Vitest 5.1.0.
+CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs install, typecheck, build and test on pull requests and pushes to `main`. After `pnpm build`, `pnpm --filter @track3/api start` runs the compiled API. Dependency versions are pinned exactly in each `package.json` and `pnpm-lock.yaml`.

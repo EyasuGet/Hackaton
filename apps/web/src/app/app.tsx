@@ -10,16 +10,26 @@ const STATUS_TEXT: Record<ApiStatus, string> = {
   unavailable: 'API unavailable',
 };
 
+// A hung API must not leave the page on "Checking" forever.
+export const HEALTH_TIMEOUT_MS = 5000;
+
 async function fetchApiStatus(signal: AbortSignal): Promise<ApiStatus> {
+  const timeout = new AbortController();
+  const timer = setTimeout(() => timeout.abort(), HEALTH_TIMEOUT_MS);
   try {
-    const response = await fetch('/api/health', { signal });
+    const response = await fetch('/api/health', {
+      signal: AbortSignal.any([signal, timeout.signal]),
+    });
     if (!response.ok) return 'unavailable';
     const body: unknown = await response.json();
     const ok = typeof body === 'object' && body !== null && 'status' in body && body.status === 'ok';
     return ok ? 'available' : 'unavailable';
   } catch (error) {
+    // Unmount aborts propagate; network failures and timeouts mean unavailable.
     if (signal.aborted) throw error;
     return 'unavailable';
+  } finally {
+    clearTimeout(timer);
   }
 }
 

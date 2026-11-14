@@ -1,6 +1,6 @@
 // API process entry point: validate configuration, then listen.
-import { buildApp } from './app.ts';
-import { ConfigError, loadConfig, type ApiConfig } from './config.ts';
+import { buildApp } from './bootstrap/app.ts';
+import { ConfigError, loadConfig, type ApiConfig } from './bootstrap/config.ts';
 
 let config: ApiConfig;
 try {
