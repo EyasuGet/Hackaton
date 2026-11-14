@@ -12,7 +12,7 @@ Specification and implementation backlog for the Digital Bridge Accessibility Ha
 6. [Agent instructions](AGENTS.md): how to take an issue through implementation and independent reviews.
 7. [Coding standards](docs/coding-standards.md): Occam's razor, comments, TypeScript style and efficient implementation.
 
-The [Savanna/meeting reconciliation](docs/savanna-reconciliation.md) records source evidence and the user-approved updates. **Implement in this Hackathon repository**; the organiser’s static starter is reference material and the integration demo host, not a supplied backend, authentication service or model platform.
+The [Savanna/meeting reconciliation](docs/savanna-reconciliation.md) records source evidence and the user-approved updates; the [static starter boundary record](docs/static-starter-boundary.md) adds runtime observations, the safe script mount point and open organiser questions. **Implement in this Hackathon repository**; the organiser’s static starter is reference material and the integration demo host, not a supplied backend, authentication service or model platform.
 
 The [independent delivery assessment](docs/assessment.md) records competitive potential, schedule risk and unresolved external gates; this is not a claim of hackathon readiness.
 
