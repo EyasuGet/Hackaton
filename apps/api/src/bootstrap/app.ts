@@ -24,6 +24,8 @@ import { registerCareersRoutes } from '../modules/careers/presentation/http/care
 import type { Help } from '../modules/help/application/help.ts';
 import type { StaffHelp } from '../modules/help/application/staff-help.ts';
 import { registerHelpRoutes } from '../modules/help/presentation/http/help-routes.ts';
+import type { Sharing } from '../modules/sharing/application/sharing.ts';
+import { registerSharingRoutes } from '../modules/sharing/presentation/http/sharing-routes.ts';
 import type { Tutoring } from '../modules/tutoring/application/tutoring.ts';
 import { registerTutoringRoutes } from '../modules/tutoring/presentation/http/tutoring-routes.ts';
 
@@ -40,6 +42,8 @@ export interface AppDependencies {
   /** Optional; when omitted the help routes are not registered (for tests that do not exercise them). */
   readonly help?: Help;
   readonly staffHelp?: StaffHelp;
+  /** Optional; when omitted sharing session routes are not registered. */
+  readonly sharing?: Sharing;
   /** Optional; when omitted accommodation and job listing routes are not registered. */
   readonly accommodation?: Accommodation;
   readonly jobRepository?: JobRepository;
@@ -94,6 +98,9 @@ export function buildApp(
       dependencies.help,
       dependencies.staffHelp,
     );
+  }
+  if (dependencies.sharing) {
+    registerSharingRoutes(app, authenticate(dependencies.resolvePrincipal), dependencies.sharing);
   }
   if (dependencies.accommodation && dependencies.jobRepository) {
     registerCareersRoutes(
