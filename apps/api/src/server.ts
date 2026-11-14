@@ -23,6 +23,9 @@ import { PostgresJobRepository } from './modules/careers/infrastructure/postgres
 import { Help } from './modules/help/application/help.ts';
 import { StaffHelp } from './modules/help/application/staff-help.ts';
 import { PostgresHelpRepository } from './modules/help/infrastructure/persistence/postgres-help-repository.ts';
+import { Sharing } from './modules/sharing/application/sharing.ts';
+import { PostgresHelpRequestLookup } from './modules/sharing/infrastructure/persistence/postgres-help-request-lookup.ts';
+import { PostgresSharingRepository } from './modules/sharing/infrastructure/persistence/postgres-sharing-repository.ts';
 import { FaqProvider } from './modules/tutoring/application/faq-provider.ts';
 import { Tutoring } from './modules/tutoring/application/tutoring.ts';
 import { PostgresTutoringRepository } from './modules/tutoring/infrastructure/persistence/postgres-tutoring-repository.ts';
@@ -38,6 +41,8 @@ const pool = createPool(config.database, (error) =>
 const content = new ContentAccess(new PostgresLessonReader(pool), glossary);
 const faqProvider = new FaqProvider(content);
 const helpRepository = new PostgresHelpRepository(pool);
+const sharingRepository = new PostgresSharingRepository(pool);
+const helpRequestLookup = new PostgresHelpRequestLookup(pool);
 
 const app = buildApp(
   {
@@ -50,6 +55,7 @@ const app = buildApp(
     content,
     help: new Help(helpRepository),
     staffHelp: new StaffHelp(helpRepository),
+    sharing: new Sharing(sharingRepository, helpRequestLookup),
     accommodation: new Accommodation(new PostgresAccommodationRepository(pool)),
     jobRepository: new PostgresJobRepository(pool),
   },
