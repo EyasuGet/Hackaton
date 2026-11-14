@@ -61,6 +61,44 @@ export function registerTutoringRoutes(
     },
   );
 
+  // Ask an approved FAQ answer directly through tutoring, returning cited answers or limitation (T3-007-A).
+  app.post<{ Body: ClaimRequestBody }>('/api/tutoring/faq', learnerOnly, async (request, reply) => {
+    const { courseId, requestId, question, conversationId } = request.body ?? {};
+
+    if (!courseId || typeof courseId !== 'string' || courseId.trim() === '') {
+      return reply.code(400).send({ error: 'invalid_course_id' });
+    }
+    if (!requestId || typeof requestId !== 'string' || requestId.trim() === '') {
+      return reply.code(400).send({ error: 'invalid_request_id' });
+    }
+    if (!question || typeof question !== 'string' || question.trim() === '') {
+      return reply.code(400).send({ error: 'invalid_question' });
+    }
+    if (conversationId !== undefined && !UUID.test(conversationId)) {
+      return reply.code(404).send({ error: 'not_found' });
+    }
+
+    const principal = principalOf(request);
+    const result = await tutoring.askFaq(principal, {
+      courseId: courseId.trim(),
+      requestId: requestId.trim(),
+      question: question.trim(),
+      ...(conversationId !== undefined ? { conversationId } : {}),
+    });
+
+    if (!result) {
+      return reply.code(404).send({ error: 'not_found' });
+    }
+
+    return reply.code(200).send({
+      request: result.request,
+      answer: result.faqResult.answerText,
+      lang: result.faqResult.answerLang,
+      kind: result.faqResult.kind,
+      citations: result.faqResult.citations,
+    });
+  });
+
   // Lists request history for the learner, optionally filtered by courseId.
   app.get<{ Querystring: { courseId?: string } }>(
     '/api/tutoring/history',
