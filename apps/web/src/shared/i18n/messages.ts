@@ -59,6 +59,34 @@ export const en = {
   'date.ethiopianCalendar': 'Ethiopian calendar',
   'date.gregorianCalendar': 'Gregorian',
   'date.addisAbabaTime': 'Addis Ababa time',
+  // Human help request (T3-016-A)
+  'help.heading': 'Request human help',
+  'help.intro':
+    'If you need help from a staff member, you can submit a request with context about your question. Staff will respond when available.',
+  'help.requestButton': 'Request help',
+  'help.contextPrompt':
+    'Describe what you need help with. You will review exactly what is shared before it is submitted.',
+  'help.contextLabel': 'Your context (what you want to share)',
+  'help.reviewButton': 'Review before sending',
+  'help.cancelDraft': 'Discard',
+  'help.disclosureHeading': 'What will be shared with support staff',
+  'help.disclosureBody':
+    'The text you wrote will be sent to and stored by support staff so they can respond to your request. It will be kept for up to 7 days.',
+  'help.disclosureNoStaffPromise':
+    'Staff respond when available. This request does not guarantee a specific response time.',
+  'help.previewLabel': 'Your context:',
+  'help.confirmButton': 'Confirm and send',
+  'help.backButton': 'Go back and edit',
+  'help.submitting': 'Sending your request…',
+  'help.waiting':
+    'Your request is waiting for a staff member. You can close this page and return later.',
+  'help.noStaffPromise':
+    'Staff respond when they are available. No specific response time is guaranteed.',
+  'help.cancelButton': 'Cancel this request',
+  'help.cancelled': 'Your request has been cancelled.',
+  'help.errorDenied':
+    'You are not signed in, or your session has expired. Your request was not sent.',
+  'help.errorFailed': 'Your request could not be sent. Check your connection and try again.',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -105,4 +133,25 @@ export const am: Partial<Record<MessageKey, string>> = {
   'date.ethiopianCalendar': 'የኢትዮጵያ አቆጣጠር',
   'date.gregorianCalendar': 'የግሪጎሪያን አቆጣጠር',
   'date.addisAbabaTime': 'የአዲስ አበባ ሰዓት',
+  // Human help request (T3-016-A) — draft; competent-speaker review required.
+  'help.heading': 'የሰው እርዳታ ይጠይቁ',
+  'help.intro': 'ከሰራተኛ አባል እርዳታ ከፈለጉ፣ ስለ ጥያቄዎ አውዳዊ መረጃ ያካተተ ጥያቄ ማቅረብ ይችላሉ። ሰራተኞች ሲገኙ ምላሽ ይሰጣሉ።',
+  'help.requestButton': 'እርዳታ ይጠይቁ',
+  'help.contextPrompt': 'እርዳታ የሚፈልጉበትን ሁኔታ ይግለጹ። ከመላክዎ በፊት ምን እንደሚጋራ ይከልሳሉ።',
+  'help.contextLabel': 'አውዳዊ መረጃዎ (ማጋራት የሚፈልጉት)',
+  'help.reviewButton': 'ከመላክ በፊት ይከልሱ',
+  'help.cancelDraft': 'ሰርዝ',
+  'help.disclosureHeading': 'ለድጋፍ ሰራተኞች የሚጋራው ነገር',
+  'help.disclosureBody': 'የጻፉት ጽሑፍ ለድጋፍ ሰራተኞች ይላካል እናም ተቀምጦ ምላሽ ይሰጣሉ። እስከ 7 ቀናት ድረስ ይቀመጣል።',
+  'help.disclosureNoStaffPromise': 'ሰራተኞች ሲገኙ ምላሽ ይሰጣሉ። ይህ ጥያቄ ልዩ የምላሽ ጊዜ አያረጋግጥም።',
+  'help.previewLabel': 'አውዳዊ መረጃዎ፦',
+  'help.confirmButton': 'አረጋግጥ እና ላክ',
+  'help.backButton': 'ተመለስ እና ያርትዑ',
+  'help.submitting': 'ጥያቄዎ እየተላከ ነው…',
+  'help.waiting': 'ጥያቄዎ ሰራተኛ እስኪሰጣቸው እየጠበቀ ነው። ይህን ገጽ ዝጋ እና ቆይተው ይመለሱ።',
+  'help.noStaffPromise': 'ሰራተኞች ሲገኙ ምላሽ ይሰጣሉ። ልዩ የምላሽ ጊዜ አይረጋገጥም።',
+  'help.cancelButton': 'ይህን ጥያቄ ሰርዝ',
+  'help.cancelled': 'ጥያቄዎ ተሰርዟል።',
+  'help.errorDenied': 'አልገቡም፤ ወይም ክፍለ ጊዜዎ አብቅቷል። ጥያቄዎ አልተላከም።',
+  'help.errorFailed': 'ጥያቄዎ ሊላክ አልቻለም። ግንኙነትዎን ያረጋግጡ እና እንደገና ይሞክሩ።',
 };

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Assistant } from '../features/assistant/assistant.tsx';
 import { CourseContent } from '../features/course-content/course-content.tsx';
 import { DemoSession } from '../features/demo-session/demo-session.tsx';
+import { HumanHelp } from '../features/human-help/human-help.tsx';
 import { createFaqClient } from '../features/assistant/faq-client.ts';
 import {
   createFixtureClient,
@@ -137,6 +138,7 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
           </section>
         )}
         <Assistant client={client} mode={sessionToken ? 'faq' : 'demo'} />
+        {sessionToken && <HumanHelp token={sessionToken} />}
       </main>
       <footer>
         <p role="status" aria-label={t('status.label')}>
