@@ -1,4 +1,4 @@
-// Browser-side client for the help request API (T3-016-A).
+// Browser-side client for the help request API (T3-016-A, T3-017-B).
 // Never rejects: errors are returned as typed results.
 
 export interface HelpRequest {
@@ -7,13 +7,25 @@ export interface HelpRequest {
   readonly clientRequestId: string;
   readonly contextSnapshot: string;
   readonly consentGiven: boolean;
-  readonly state: 'waiting' | 'cancelled' | 'claimed';
+  readonly state: 'waiting' | 'cancelled' | 'claimed' | 'resolved';
   readonly createdAt: string;
   readonly expiresAt: string;
   readonly updatedAt: string;
   readonly cancelledAt: string | null;
   readonly claimedBy: string | null;
   readonly claimedAt: string | null;
+  readonly resolvedAt: string | null;
+  readonly resolvedBy: string | null;
+}
+
+export interface HelpReply {
+  readonly id: string;
+  readonly helpRequestId: string;
+  readonly authorId: string;
+  readonly clientReplyId: string;
+  readonly body: string;
+  readonly createdAt: string;
+  readonly readAt: string | null;
 }
 
 export type SubmitResult =
@@ -22,6 +34,14 @@ export type SubmitResult =
 
 export type CancelResult =
   | { readonly kind: 'cancelled'; readonly request: HelpRequest }
+  | { readonly kind: 'not_found' | 'denied' | 'failed' };
+
+export type AddReplyResult =
+  | { readonly kind: 'added' | 'existing'; readonly reply: HelpReply }
+  | { readonly kind: 'terminal' | 'denied' | 'failed' };
+
+export type ListRepliesResult =
+  | { readonly kind: 'ok'; readonly replies: readonly HelpReply[] }
   | { readonly kind: 'not_found' | 'denied' | 'failed' };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -37,7 +57,10 @@ function parseRequest(raw: unknown): HelpRequest | null {
     typeof r.clientRequestId !== 'string' ||
     typeof r.contextSnapshot !== 'string' ||
     typeof r.consentGiven !== 'boolean' ||
-    (r.state !== 'waiting' && r.state !== 'cancelled' && r.state !== 'claimed') ||
+    (r.state !== 'waiting' &&
+      r.state !== 'cancelled' &&
+      r.state !== 'claimed' &&
+      r.state !== 'resolved') ||
     typeof r.createdAt !== 'string' ||
     typeof r.expiresAt !== 'string' ||
     typeof r.updatedAt !== 'string'
@@ -57,6 +80,32 @@ function parseRequest(raw: unknown): HelpRequest | null {
     cancelledAt: typeof r.cancelledAt === 'string' ? r.cancelledAt : null,
     claimedBy: typeof r.claimedBy === 'string' ? r.claimedBy : null,
     claimedAt: typeof r.claimedAt === 'string' ? r.claimedAt : null,
+    resolvedAt: typeof r.resolvedAt === 'string' ? r.resolvedAt : null,
+    resolvedBy: typeof r.resolvedBy === 'string' ? r.resolvedBy : null,
+  };
+}
+
+function parseReply(raw: unknown): HelpReply | null {
+  const r = isRecord(raw) ? raw : null;
+  if (
+    !r ||
+    typeof r.id !== 'string' ||
+    typeof r.helpRequestId !== 'string' ||
+    typeof r.authorId !== 'string' ||
+    typeof r.clientReplyId !== 'string' ||
+    typeof r.body !== 'string' ||
+    typeof r.createdAt !== 'string'
+  ) {
+    return null;
+  }
+  return {
+    id: r.id,
+    helpRequestId: r.helpRequestId,
+    authorId: r.authorId,
+    clientReplyId: r.clientReplyId,
+    body: r.body,
+    createdAt: r.createdAt,
+    readAt: typeof r.readAt === 'string' ? r.readAt : null,
   };
 }
 
@@ -128,5 +177,71 @@ export async function listHelpRequests(token: string): Promise<ListResult> {
     return { kind: 'ok', requests };
   } catch {
     return { kind: 'failed' };
+  }
+}
+
+/** Sends a reply to a help request. */
+export async function addReply(
+  token: string,
+  helpRequestId: string,
+  clientReplyId: string,
+  body: string,
+): Promise<AddReplyResult> {
+  try {
+    const response = await fetch(`/api/help/requests/${helpRequestId}/replies`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ clientReplyId, body }),
+    });
+    if (response.status === 401 || response.status === 403) return { kind: 'denied' };
+    if (response.status === 409) return { kind: 'terminal' };
+    if (!response.ok) return { kind: 'failed' };
+    const responseBody: unknown = await response.json();
+    if (!isRecord(responseBody)) return { kind: 'failed' };
+    const kind = responseBody.kind === 'existing' ? 'existing' : 'added';
+    const reply = parseReply(responseBody.reply);
+    if (!reply) return { kind: 'failed' };
+    return { kind, reply };
+  } catch {
+    return { kind: 'failed' };
+  }
+}
+
+/** Lists replies for a help request. */
+export async function listReplies(
+  token: string,
+  helpRequestId: string,
+): Promise<ListRepliesResult> {
+  try {
+    const response = await fetch(`/api/help/requests/${helpRequestId}/replies`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (response.status === 401 || response.status === 403) return { kind: 'denied' };
+    if (response.status === 404) return { kind: 'not_found' };
+    if (!response.ok) return { kind: 'failed' };
+    const body: unknown = await response.json();
+    if (!isRecord(body) || !Array.isArray(body.replies)) return { kind: 'failed' };
+    const replies = (body.replies as unknown[])
+      .map(parseReply)
+      .filter((r): r is HelpReply => r !== null);
+    return { kind: 'ok', replies };
+  } catch {
+    return { kind: 'failed' };
+  }
+}
+
+/** Marks all unread replies on a help request as read. */
+export async function markRepliesRead(token: string, helpRequestId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`/api/help/requests/${helpRequestId}/replies/read`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    return response.ok || response.status === 204;
+  } catch {
+    return false;
   }
 }
