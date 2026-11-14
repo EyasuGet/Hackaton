@@ -22,7 +22,8 @@ async function fetchApiStatus(signal: AbortSignal): Promise<ApiStatus> {
     });
     if (!response.ok) return 'unavailable';
     const body: unknown = await response.json();
-    const ok = typeof body === 'object' && body !== null && 'status' in body && body.status === 'ok';
+    const ok =
+      typeof body === 'object' && body !== null && 'status' in body && body.status === 'ok';
     return ok ? 'available' : 'unavailable';
   } catch (error) {
     // Unmount aborts propagate; network failures and timeouts mean unavailable.

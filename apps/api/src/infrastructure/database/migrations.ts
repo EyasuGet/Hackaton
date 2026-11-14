@@ -13,7 +13,10 @@ export interface Migration {
 }
 
 /** Shipped migrations; the path resolves the same from src/ and the compiled dist/. */
-export const MIGRATIONS_DIR = new URL('../../../src/infrastructure/database/migrations/', import.meta.url);
+export const MIGRATIONS_DIR = new URL(
+  '../../../src/infrastructure/database/migrations/',
+  import.meta.url,
+);
 
 // Arbitrary constant identifying this application's migration lock.
 const MIGRATION_LOCK_ID = 7_301_001;
@@ -56,7 +59,9 @@ export async function migrate(pool: pg.Pool, migrations: readonly Migration[]): 
       const checksum = applied.get(migration.name);
       if (checksum !== undefined) {
         if (checksum !== migration.checksum) {
-          throw new Error(`Applied migration ${migration.name} was modified; add a new migration instead`);
+          throw new Error(
+            `Applied migration ${migration.name} was modified; add a new migration instead`,
+          );
         }
         continue;
       }
@@ -88,7 +93,10 @@ export type Readiness =
   | { readonly ready: false; readonly reason: 'database_unavailable' | 'migrations_pending' };
 
 /** Ready only when the database answers and every shipped migration has been applied. */
-export async function checkReadiness(pool: pg.Pool, migrations: readonly Migration[]): Promise<Readiness> {
+export async function checkReadiness(
+  pool: pg.Pool,
+  migrations: readonly Migration[],
+): Promise<Readiness> {
   let applied: Set<string>;
   try {
     const result = await pool.query<{ name: string }>('SELECT name FROM schema_migrations');
