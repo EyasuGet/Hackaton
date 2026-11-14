@@ -85,7 +85,7 @@ The raw transcripts/chat have not been copied into this repository. Participant 
 
 ### Questions to send to organisers
 
-These are clarification drafts, not messages already sent:
+These are clarification drafts, not messages already sent. Update 2026-11-14: the plug-in script part of question 2 is answered; current status is in the [T3-002 record](static-starter-boundary.md#contracts-and-open-questions); unanswered parts of these drafts remain open.
 
 1. **Track 3 scope:** Does the current mandatory checklist still include the web/Telegram tutor, voice, human help with screen sharing, Telegram/SMS job alerts, job answers and accommodation requests? Does the one-or-two-functions guidance change submission requirements, or only advise prioritisation? Please share the current checklist and the follow-up to the Telegram question.
 2. **Integration acceptance:** Is a working reusable module/backend demonstrated inside these official static pages sufficient for the hackathon, with live Savanna identity/API integration in the later sprint? Must teams modify/fork the static repository directly, or is an embedded independent module accepted? May we serve the pages over local HTTP/HTTPS rather than double-clicked files? What authenticated host contract, if any, will be supplied now?
