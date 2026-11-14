@@ -7,6 +7,8 @@ export interface Reply {
   readonly text: string;
   /** BCP 47 language tag of the reply text, for example `am` or `en`. */
   readonly lang: string;
+  /** Stored ISO 8601 instant; presentation must not rewrite it. */
+  readonly createdAt: string;
 }
 
 /**
