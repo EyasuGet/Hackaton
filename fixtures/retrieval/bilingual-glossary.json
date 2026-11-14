@@ -1,0 +1,12 @@
+{
+  "review": "Draft Amharic terms pending competent-speaker review (T3-006-C reviewer). Each group lists equivalent English and Amharic terms used to expand a question across languages.",
+  "groups": [
+    { "en": ["artificial intelligence", "AI"], "am": ["ሰው ሰራሽ አስተውሎት"] },
+    { "en": ["virtual assistant", "virtual assistants", "VA"], "am": ["ምናባዊ ረዳት"] },
+    { "en": ["client", "clients"], "am": ["ደንበኛ", "ደንበኞች"] },
+    { "en": ["skill", "skills"], "am": ["ክህሎት"] },
+    { "en": ["future"], "am": ["ወደፊት"] },
+    { "en": ["plan", "planning"], "am": ["እቅድ"] },
+    { "en": ["break", "breaks", "rest"], "am": ["እረፍት"] }
+  ]
+}

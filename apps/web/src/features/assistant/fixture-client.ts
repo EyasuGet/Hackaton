@@ -1,16 +1,18 @@
 // Deterministic, explicitly labelled demo replies for building and testing the
 // interface before the real tutor exists. Nothing here is a tutor answer.
+import type { MessageKey } from '../../shared/i18n/i18n.tsx';
 import type { AskResult, ConversationClient } from './conversation.ts';
 
+/** Each scenario and the dictionary key of its label in the demo selector. */
 export const FIXTURE_SCENARIOS = {
-  english: 'English reply',
-  amharic: 'Amharic reply',
-  mixed: 'Mixed-direction reply (Arabic first)',
-  markup: 'Reply containing HTML markup',
-  slow: 'Slow reply (3 seconds)',
-  denied: 'Session expired',
-  failed: 'Network failure',
-} as const;
+  english: 'demo.scenario.english',
+  amharic: 'demo.scenario.amharic',
+  mixed: 'demo.scenario.mixed',
+  markup: 'demo.scenario.markup',
+  slow: 'demo.scenario.slow',
+  denied: 'demo.scenario.denied',
+  failed: 'demo.scenario.failed',
+} as const satisfies Record<string, MessageKey>;
 
 export type FixtureScenario = keyof typeof FIXTURE_SCENARIOS;
 
