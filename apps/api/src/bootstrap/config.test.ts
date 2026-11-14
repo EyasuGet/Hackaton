@@ -29,7 +29,25 @@ describe('loadConfig', () => {
         password: 'local-only',
       },
       demoMode: false,
+      demoAllowedOrigins: [],
     });
+  });
+
+  it.each(['null', 'file:///tmp/page.html', 'http://localhost:5173/', 'https://a.example/path'])(
+    'rejects %s as a demo origin',
+    (origin) => {
+      expect(() => loadConfig({ ...valid, DEMO_ALLOWED_ORIGINS: origin })).toThrow(
+        'DEMO_ALLOWED_ORIGINS must list exact http(s) origins',
+      );
+    },
+  );
+
+  it('reads a comma-separated list of exact demo origins', () => {
+    const origins = ' http://localhost:5173 , https://demo.example.org ';
+    expect(loadConfig({ ...valid, DEMO_ALLOWED_ORIGINS: origins }).demoAllowedOrigins).toEqual([
+      'http://localhost:5173',
+      'https://demo.example.org',
+    ]);
   });
 
   it('enables demo mode only when DEMO_MODE is exactly true', () => {
