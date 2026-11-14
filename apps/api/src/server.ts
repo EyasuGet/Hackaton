@@ -18,6 +18,7 @@ import { ResolvePrincipal } from './modules/identity/application/resolve-princip
 import { PostgresDemoSessionRepository } from './modules/identity/infrastructure/postgres-demo-session-repository.ts';
 import { PostgresPrincipalRepository } from './modules/identity/infrastructure/postgres-principal-repository.ts';
 import { Help } from './modules/help/application/help.ts';
+import { StaffHelp } from './modules/help/application/staff-help.ts';
 import { PostgresHelpRepository } from './modules/help/infrastructure/persistence/postgres-help-repository.ts';
 import { FaqProvider } from './modules/tutoring/application/faq-provider.ts';
 import { Tutoring } from './modules/tutoring/application/tutoring.ts';
@@ -33,6 +34,7 @@ const pool = createPool(config.database, (error) =>
 );
 const content = new ContentAccess(new PostgresLessonReader(pool), glossary);
 const faqProvider = new FaqProvider(content);
+const helpRepository = new PostgresHelpRepository(pool);
 
 const app = buildApp(
   {
@@ -43,7 +45,8 @@ const app = buildApp(
     demoAllowedOrigins: config.demoAllowedOrigins,
     tutoring: new Tutoring(new PostgresTutoringRepository(pool), faqProvider),
     content,
-    help: new Help(new PostgresHelpRepository(pool)),
+    help: new Help(helpRepository),
+    staffHelp: new StaffHelp(helpRepository),
   },
   { logger: true },
 );
