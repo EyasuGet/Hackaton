@@ -24,6 +24,8 @@ const FAKE_REQUEST: HelpRequest = {
   cancelledAt: null,
   claimedBy: null,
   claimedAt: null,
+  resolvedAt: null,
+  resolvedBy: null,
 };
 
 afterEach(cleanup);
@@ -61,6 +63,7 @@ describe('HelpInbox (T3-016-B)', () => {
       kind: 'ok',
       requests: [FAKE_REQUEST],
     });
+    vi.spyOn(helpApi, 'listReplies').mockResolvedValue({ kind: 'ok', replies: [] });
     wrap(<HelpInbox token="tok" />);
     await waitFor(() => {
       expect(screen.getByText(/no replies yet/i)).toBeTruthy();
