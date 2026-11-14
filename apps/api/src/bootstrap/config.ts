@@ -10,6 +10,14 @@ export interface DatabaseConfig {
   readonly password: string;
 }
 
+export interface RelayConfig {
+  /** True when an approved TURN relay is configured for screen sharing. */
+  readonly enabled: boolean;
+  readonly url?: string;
+  readonly realm?: string;
+  readonly secret?: string;
+}
+
 export interface ApiConfig {
   readonly host: string;
   readonly port: number;
@@ -18,6 +26,8 @@ export interface ApiConfig {
   readonly demoMode: boolean;
   /** Exact page origins allowed to start a demo session, for example `http://localhost:5173`. */
   readonly demoAllowedOrigins: readonly string[];
+  /** Optional media relay configuration for WebRTC screen sharing across symmetric NAT. */
+  readonly relay: RelayConfig;
 }
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -92,6 +102,24 @@ export function loadDemoAllowedOrigins(env: Env): string[] {
   return entries;
 }
 
+export function loadRelayConfig(env: Env): RelayConfig {
+  const flag = env.TURN_ENABLED?.trim();
+  if (!flag || flag === 'false') return { enabled: false };
+  if (flag !== 'true') throw new ConfigError('TURN_ENABLED must be true or false');
+
+  const url = required(env, 'TURN_URL');
+  if (!/^(stun|turn|turns):/i.test(url)) {
+    throw new ConfigError('TURN_URL must start with stun:, turn:, or turns:');
+  }
+
+  return {
+    enabled: true,
+    url,
+    realm: required(env, 'TURN_REALM'),
+    secret: untrimmed(env, 'TURN_STATIC_AUTH_SECRET'),
+  };
+}
+
 export function loadConfig(env: Env): ApiConfig {
   return {
     host: required(env, 'API_HOST'),
@@ -99,6 +127,7 @@ export function loadConfig(env: Env): ApiConfig {
     database: loadDatabaseConfig(env),
     demoMode: loadDemoMode(env),
     demoAllowedOrigins: loadDemoAllowedOrigins(env),
+    relay: loadRelayConfig(env),
   };
 }
 
