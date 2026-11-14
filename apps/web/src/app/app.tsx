@@ -60,6 +60,7 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
   const [status, setStatus] = useState<ApiStatus>('checking');
   const [scenario, setScenario] = useState<FixtureScenario>('english');
   const [locale, setLocale] = useState<Locale>('en');
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   // The demo session token lives only in memory and is shared with features that call the API.
   const [sessionToken, setSessionToken] = useState<string | null>(null);
 
@@ -76,6 +77,17 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
   }, [sessionToken, scenario]);
 
   const t = (key: MessageKey) => lookup(locale, key).text;
+
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
+    return () => {
+      window.removeEventListener('offline', goOffline);
+      window.removeEventListener('online', goOnline);
+    };
+  }, []);
 
   // The page language drives screen-reader pronunciation and font selection.
   useEffect(() => {
@@ -110,6 +122,11 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
         <h1>
           <T k="app.title" />
         </h1>
+        {isOffline && (
+          <p role="status" aria-live="polite" className="offline-banner">
+            <T k="app.offline" />
+          </p>
+        )}
         <DemoSession handoffCode={handoffCode} onSession={setSessionToken} />
         <CourseContent token={sessionToken} />
         {!sessionToken && (

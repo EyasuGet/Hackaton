@@ -61,6 +61,60 @@ describe('App API status', () => {
   });
 });
 
+describe('App offline banner', () => {
+  it('shows the offline banner immediately when navigator.onLine is false', () => {
+    vi.stubGlobal('navigator', { ...navigator, onLine: false });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(Response.json({ status: 'ok' }))),
+    );
+    render(<App />);
+    expect(screen.getByText(/You are offline/i)).toBeTruthy();
+  });
+
+  it('does not show the offline banner when navigator.onLine is true', () => {
+    vi.stubGlobal('navigator', { ...navigator, onLine: true });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(Response.json({ status: 'ok' }))),
+    );
+    render(<App />);
+    expect(screen.queryByText(/You are offline/i)).toBeNull();
+  });
+
+  it('shows the offline banner when the offline event fires', () => {
+    vi.stubGlobal('navigator', { ...navigator, onLine: true });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(Response.json({ status: 'ok' }))),
+    );
+    render(<App />);
+    expect(screen.queryByText(/You are offline/i)).toBeNull();
+
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+
+    expect(screen.getByText(/You are offline/i)).toBeTruthy();
+  });
+
+  it('hides the offline banner when the online event fires', () => {
+    vi.stubGlobal('navigator', { ...navigator, onLine: false });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(Response.json({ status: 'ok' }))),
+    );
+    render(<App />);
+    expect(screen.getByText(/You are offline/i)).toBeTruthy();
+
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+
+    expect(screen.queryByText(/You are offline/i)).toBeNull();
+  });
+});
+
 describe('App language', () => {
   it('switches the interface to Amharic without losing an unsent question', async () => {
     vi.stubGlobal(
