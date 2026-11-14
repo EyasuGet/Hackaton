@@ -12,7 +12,10 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     {
-      command: 'pnpm --filter @track3/api dev',
+      // Plain node, not the watch-mode dev script: `--watch` tries to watch the
+      // optional .env file and crashes where it does not exist, such as CI.
+      command: 'node --env-file-if-exists=../../.env src/server.ts',
+      cwd: '../api',
       url: `http://127.0.0.1:${apiPort}/api/health`,
       reuseExistingServer: !process.env.CI,
     },
