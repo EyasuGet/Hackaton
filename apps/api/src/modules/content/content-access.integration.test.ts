@@ -29,6 +29,8 @@ import { ImportLessonSource } from './application/import-lesson-source.ts';
 import { loadGlossary } from './infrastructure/glossary-file.ts';
 import { PostgresLessonReader } from './infrastructure/postgres-lesson-reader.ts';
 import { PostgresLessonRepository } from './infrastructure/postgres-lesson-repository.ts';
+import { Tutoring } from '../tutoring/application/tutoring.ts';
+import { PostgresTutoringRepository } from '../tutoring/infrastructure/persistence/postgres-tutoring-repository.ts';
 
 const config = loadDatabaseConfig(process.env);
 const testDatabase = `track3_test_${randomUUID().replaceAll('-', '')}`;
@@ -62,6 +64,7 @@ async function get(url: string, key: DemoPrincipalKey) {
     demoRecords: new DemoRecords(new PostgresDemoRecordRepository(pool)),
     demoSessions: new DemoSessions(new PostgresDemoSessionRepository(pool), true),
     demoAllowedOrigins: [],
+    tutoring: new Tutoring(new PostgresTutoringRepository(pool)),
     content,
   });
   try {

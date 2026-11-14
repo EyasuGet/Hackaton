@@ -17,6 +17,8 @@ import { DemoSessions } from './modules/identity/application/demo-sessions.ts';
 import { ResolvePrincipal } from './modules/identity/application/resolve-principal.ts';
 import { PostgresDemoSessionRepository } from './modules/identity/infrastructure/postgres-demo-session-repository.ts';
 import { PostgresPrincipalRepository } from './modules/identity/infrastructure/postgres-principal-repository.ts';
+import { Tutoring } from './modules/tutoring/application/tutoring.ts';
+import { PostgresTutoringRepository } from './modules/tutoring/infrastructure/persistence/postgres-tutoring-repository.ts';
 
 const config = loadOrExit(() => loadConfig(process.env));
 const migrations = await loadMigrations(MIGRATIONS_DIR);
@@ -33,6 +35,7 @@ const app = buildApp(
     demoRecords: new DemoRecords(new PostgresDemoRecordRepository(pool)),
     demoSessions: new DemoSessions(new PostgresDemoSessionRepository(pool), config.demoMode),
     demoAllowedOrigins: config.demoAllowedOrigins,
+    tutoring: new Tutoring(new PostgresTutoringRepository(pool)),
     content: new ContentAccess(new PostgresLessonReader(pool), glossary),
   },
   { logger: true },
