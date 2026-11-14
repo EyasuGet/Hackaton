@@ -41,7 +41,7 @@ Reopen only a concrete unresolved choice or a demonstrated conflict with the app
 
 | Gate | Current state | Required evidence / treatment |
 |---|---|---|
-| Savanna | Static source inspected at `9e83ac7`; runtime and production contracts unverified | Run pinned supplied pages with protected synthetic sessions; test deployed headers/media permissions. Obtain judging acceptance for separate module/static demo; live SSO needs a separate supplied contract |
+| Savanna | Static source inspected at `9e83ac7` and served locally; organisers want a plug-in script with minimal host changes (team-relayed, 2026-11-14); production contracts unverified ([T3-002 record](static-starter-boundary.md)) | Run pinned supplied pages with protected synthetic sessions; test deployed headers/media permissions. Obtain judging acceptance for the separate module/static demo (the script answer covers integration form only); live SSO needs a separate supplied contract |
 | Organiser feature checklist | Public page references a fuller list | Obtain checklist; map discrepancies to issues; ask before expanding scope or claiming complete conformance |
 | Hosting | No commitment confirmed | Establish HTTPS/public callbacks, database storage, secrets, and relay/network requirements; Compose remains portable |
 | SMS | No provider/sender credentials or destination delivery verified | Obtain approved route; send to consenting Ethiopian test destination; test opt-out; distinguish provider acceptance from receipt |
