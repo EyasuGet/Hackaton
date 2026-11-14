@@ -22,9 +22,14 @@ const BEARER = /^Bearer ([A-Za-z0-9_-]{20,128})$/i;
 
 const DEMO_NOTICE = 'Synthetic demo identity — not real authentication';
 
+/** The well-formed bearer token on a request, if any. */
+export function bearerToken(request: FastifyRequest): string | undefined {
+  return BEARER.exec(request.headers.authorization ?? '')?.[1];
+}
+
 export function authenticate(resolvePrincipal: ResolvePrincipal): preHandlerAsyncHookHandler {
   return async (request: FastifyRequest, reply: FastifyReply) => {
-    const token = BEARER.exec(request.headers.authorization ?? '')?.[1];
+    const token = bearerToken(request);
     const principal = token ? await resolvePrincipal.execute(token) : null;
     if (!principal) return reply.code(401).send({ error: 'unauthenticated' });
     request.principal = principal;

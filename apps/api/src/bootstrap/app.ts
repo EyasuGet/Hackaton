@@ -8,17 +8,22 @@ import Fastify, {
 import type { Readiness } from '../infrastructure/database/migrations.ts';
 import type { DemoRecords } from '../modules/demo-records/demo-records.ts';
 import { registerDemoRecordRoutes } from '../modules/demo-records/http.ts';
+import type { DemoSessions } from '../modules/identity/application/demo-sessions.ts';
 import type { ResolvePrincipal } from '../modules/identity/application/resolve-principal.ts';
 import {
   authenticate,
   registerIdentityRoutes,
 } from '../modules/identity/presentation/http/authentication.ts';
+import { registerDemoSessionRoutes } from '../modules/identity/presentation/http/demo-session-routes.ts';
 
 export interface AppDependencies {
   /** Must not throw: report an unavailable dependency as not ready. */
   readonly checkReadiness: () => Promise<Readiness>;
   readonly resolvePrincipal: ResolvePrincipal;
   readonly demoRecords: DemoRecords;
+  readonly demoSessions: DemoSessions;
+  /** Exact page origins allowed to start a demo session. */
+  readonly demoAllowedOrigins: readonly string[];
 }
 
 export function buildApp(
@@ -50,6 +55,12 @@ export function buildApp(
   });
 
   registerIdentityRoutes(app, dependencies.resolvePrincipal);
+  registerDemoSessionRoutes(
+    app,
+    authenticate(dependencies.resolvePrincipal),
+    dependencies.demoSessions,
+    dependencies.demoAllowedOrigins,
+  );
   registerDemoRecordRoutes(
     app,
     authenticate(dependencies.resolvePrincipal),

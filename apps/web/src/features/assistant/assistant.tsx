@@ -10,6 +10,7 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { LocaleContext, lookup, T, useT, type MessageKey } from '../../shared/i18n/i18n.tsx';
+import { formatAddisDate, type DateLanguage } from '../../shared/i18n/addis-date.ts';
 import type { AskResult, ConversationClient } from './conversation.ts';
 
 interface Entry {
@@ -17,6 +18,7 @@ interface Entry {
   readonly speaker: 'learner' | 'assistant';
   readonly text: string;
   readonly lang?: string;
+  readonly createdAt?: string;
 }
 
 type Problem = 'empty' | 'denied' | 'failed';
@@ -26,6 +28,34 @@ const PROBLEM_TEXT: Record<Problem, MessageKey> = {
   denied: 'assistant.problemDenied',
   failed: 'assistant.problemFailed',
 };
+
+function dateLanguage(lang: string | undefined): DateLanguage {
+  return lang?.toLowerCase().startsWith('am') ? 'am' : 'en';
+}
+
+function MessageDate({
+  instant,
+  language,
+}: {
+  readonly instant: string;
+  readonly language: DateLanguage;
+}) {
+  const date = formatAddisDate(instant, language);
+  // A malformed or unsupported timestamp must not hide the reply itself.
+  if (!date) return null;
+
+  return (
+    <p className="message-date">
+      <time dateTime={instant}>
+        <span lang={language}>{date.ethiopian}</span> (<T k="date.ethiopianCalendar" />)
+        <span aria-hidden="true"> · </span>
+        <span lang={language}>{date.gregorian}</span> (<T k="date.gregorianCalendar" />)
+        <span aria-hidden="true"> · </span>
+        <span>{date.addisAbabaTime}</span> <T k="date.addisAbabaTime" />
+      </time>
+    </p>
+  );
+}
 
 export function Assistant({ client }: { client: ConversationClient }) {
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -82,7 +112,13 @@ export function Assistant({ client }: { client: ConversationClient }) {
     setEntries((current) => [
       ...current,
       { id: `${reply.id}-question`, speaker: 'learner', text: question },
-      { id: reply.id, speaker: 'assistant', text: reply.text, lang: reply.lang },
+      {
+        id: reply.id,
+        speaker: 'assistant',
+        text: reply.text,
+        lang: reply.lang,
+        createdAt: reply.createdAt,
+      },
     ]);
     setDraft('');
     // Announced once, as a whole; focus stays wherever the learner left it.
@@ -132,6 +168,9 @@ export function Assistant({ client }: { client: ConversationClient }) {
               <p className="message-text" dir="auto" lang={entry.lang}>
                 {entry.text}
               </p>
+              {entry.createdAt && (
+                <MessageDate instant={entry.createdAt} language={dateLanguage(entry.lang)} />
+              )}
             </li>
           ))}
         </ol>

@@ -3,6 +3,7 @@
 // reports it in a polite live region.
 import { useEffect, useMemo, useState } from 'react';
 import { Assistant } from '../features/assistant/assistant.tsx';
+import { DemoSession } from '../features/demo-session/demo-session.tsx';
 import {
   createFixtureClient,
   FIXTURE_SCENARIOS,
@@ -49,7 +50,8 @@ async function fetchApiStatus(signal: AbortSignal): Promise<ApiStatus> {
   }
 }
 
-export function App() {
+/** `handoffCode` is the one-time demo sign-in code taken from the URL at startup. */
+export function App({ handoffCode = null }: { handoffCode?: string | null }) {
   const [status, setStatus] = useState<ApiStatus>('checking');
   const [scenario, setScenario] = useState<FixtureScenario>('english');
   const [locale, setLocale] = useState<Locale>('en');
@@ -89,6 +91,7 @@ export function App() {
         <h1>
           <T k="app.title" />
         </h1>
+        <DemoSession handoffCode={handoffCode} />
         <section className="demo-notice" aria-labelledby="demo-heading">
           <h2 id="demo-heading">
             <T k="demo.heading" />

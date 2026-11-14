@@ -3,6 +3,7 @@
 // does not replace, the manual NVDA/TalkBack and co-designer checks.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { FIXTURE_REPLY_CREATED_AT } from '../../src/features/assistant/fixture-client.ts';
 
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
@@ -52,6 +53,29 @@ const STATES = [
   { scenario: 'failed', shows: 'could not be sent', inMessages: false },
   { scenario: 'slow', shows: 'Waiting for a reply…', inMessages: false },
 ];
+
+// Chromium has its own ICU/CLDR data, so this checks the browser rendering,
+// not only the Node environment used by the unit tests.
+const DATE_STATES = [
+  { scenario: 'english', ethiopian: '1 Meskerem 2019', gregorian: '11 September 2026' },
+  { scenario: 'amharic', ethiopian: '1 መስከረም 2019', gregorian: '11 ሴፕቴምበር 2026' },
+] as const;
+
+for (const { scenario, ethiopian, gregorian } of DATE_STATES) {
+  test(`the ${scenario} reply shows the known Ethiopian, Gregorian and Addis Ababa date`, async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await ask(page, scenario, 'Question');
+
+    const time = page.getByRole('list').locator('time');
+    await expect(time).toHaveAttribute('datetime', FIXTURE_REPLY_CREATED_AT);
+    await expect(time).toContainText(ethiopian);
+    await expect(time).toContainText(gregorian);
+    await expect(time).toContainText('15:00');
+    await expect(time).toContainText('Addis Ababa time');
+  });
+}
 
 for (const { scenario, shows, inMessages } of STATES) {
   test(`the ${scenario} state is readable and has no serious accessibility violations`, async ({

@@ -22,6 +22,10 @@ export function isFixtureScenario(value: string): value is FixtureScenario {
 
 const SLOW_REPLY_MS = 3000;
 
+// Known date fixture for T3-006-D: 1 Meskerem 2019 / 11 September 2026, 15:00
+// Addis Ababa time. Keeping it fixed makes the browser and unit checks deterministic.
+export const FIXTURE_REPLY_CREATED_AT = '2026-09-11T12:00:00.000Z';
+
 // Amharic wording needs competent-speaker review with the translations (T3-006-C).
 const REPLY_TEXT: Record<'english' | 'amharic' | 'mixed' | 'markup', [text: string, lang: string]> =
   {
@@ -49,7 +53,15 @@ export function createFixtureClient(scenario: FixtureScenario): ConversationClie
       if (scenario === 'slow') await wait(SLOW_REPLY_MS);
       if (scenario === 'denied' || scenario === 'failed') return { kind: scenario };
       const [text, lang] = REPLY_TEXT[scenario === 'slow' ? 'english' : scenario];
-      return { kind: 'answer', reply: { id: `fixture-${nextReplyId++}`, text, lang } };
+      return {
+        kind: 'answer',
+        reply: {
+          id: `fixture-${nextReplyId++}`,
+          text,
+          lang,
+          createdAt: FIXTURE_REPLY_CREATED_AT,
+        },
+      };
     },
   };
 }

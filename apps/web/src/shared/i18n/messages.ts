@@ -49,6 +49,10 @@ export const en = {
     'You are not signed in, or your session has expired. Your question was not sent and is still in the box.',
   'assistant.problemFailed':
     'Your question could not be sent. Check your connection, then press Send to try again. Your question is still in the box.',
+  // Labels around a displayed date; the date values follow the reply language.
+  'date.ethiopianCalendar': 'Ethiopian calendar',
+  'date.gregorianCalendar': 'Gregorian',
+  'date.addisAbabaTime': 'Addis Ababa time',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -86,4 +90,7 @@ export const am: Partial<Record<MessageKey, string>> = {
   'assistant.problemDenied': 'አልገቡም፣ ወይም ክፍለ ጊዜዎ አብቅቷል። ጥያቄዎ አልተላከም፤ አሁንም በሳጥኑ ውስጥ አለ።',
   'assistant.problemFailed':
     'ጥያቄዎ ሊላክ አልቻለም። ግንኙነትዎን ያረጋግጡ፣ ከዚያ እንደገና ለመሞከር ላክ የሚለውን ይጫኑ። ጥያቄዎ አሁንም በሳጥኑ ውስጥ አለ።',
+  'date.ethiopianCalendar': 'የኢትዮጵያ አቆጣጠር',
+  'date.gregorianCalendar': 'የግሪጎሪያን አቆጣጠር',
+  'date.addisAbabaTime': 'የአዲስ አበባ ሰዓት',
 };

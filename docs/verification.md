@@ -1,6 +1,6 @@
 # Verification plan and evidence procedure
 
-Status: **Early implementation.** Only the T3-001 foundation (web-to-API slice, PostgreSQL migrations and readiness, lint/format/unit/integration/browser checks) and T3-004-A demo identities (principal/grant schema and a fixture-only record table) exist; see the [README runtime section](../README.md#runtime-setup) for actual commands. No learner-feature schema, provider credentials, or device test results exist yet. The contract below is now met by those commands; later issues extend it.
+Status: **Early implementation.** Only the T3-001 foundation (web-to-API slice, PostgreSQL migrations and readiness, lint/format/unit/integration/browser checks), T3-004-A demo identities (principal/grant schema and a fixture-only record table) and T3-005-A lesson import (versioned lesson schema) exist; see the [README runtime section](../README.md#runtime-setup) for actual commands. No learner-feature schema, provider credentials, or device test results exist yet. The contract below is now met by those commands; later issues extend it.
 
 ## Command contract
 
@@ -33,7 +33,7 @@ The PR's test rationale identifies each added/changed test's distinct risk and a
 | HTTP/channel contract | Auth/scopes, schema/errors, replay handling | Cross-user requests rejected, invalid messages safe, repeated events have one logical effect |
 | Browser | Real web/iframe/standalone flows | Keyboard paths, focus, errors, privacy disclosures, offline transitions, safe rendering |
 | Accessibility automation | axe in important rendered states | Zero critical/serious findings, with scope and tool version recorded |
-| Human/device | NVDA, TalkBack, 200% zoom, sound off, co-designer | Main tasks completed unaided; failures documented rather than inferred from automation |
+| Human/device | NVDA, TalkBack, 200% zoom, sound off, co-designer | Main tasks completed unaided, using the [co-designer task script](co-design-task.md); failures documented rather than inferred from automation |
 | Provider/live | Amharic speech, Telegram, Ethiopian SMS destination, relay | Actual output/receipt and language review on specified devices/network |
 | Adoption | Clean machine and supplied Savanna starter | Stranger follows README, installs within judge's one-hour target, runs the journey |
 

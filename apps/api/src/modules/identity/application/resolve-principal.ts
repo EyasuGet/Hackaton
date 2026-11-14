@@ -13,15 +13,21 @@ export function digestToken(token: string): string {
 export class ResolvePrincipal {
   readonly #repository: PrincipalRepository;
   readonly #demoMode: boolean;
+  readonly #now: () => Date;
 
-  constructor(repository: PrincipalRepository, demoMode: boolean) {
+  constructor(
+    repository: PrincipalRepository,
+    demoMode: boolean,
+    now: () => Date = () => new Date(),
+  ) {
     this.#repository = repository;
     this.#demoMode = demoMode;
+    this.#now = now;
   }
 
   /** Returns null for an unknown token, or for any token while demo mode is off. */
   async execute(token: string): Promise<Principal | null> {
     if (!this.#demoMode) return null;
-    return this.#repository.findDemoByTokenDigest(digestToken(token));
+    return this.#repository.findDemoByTokenDigest(digestToken(token), this.#now());
   }
 }
