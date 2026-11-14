@@ -19,6 +19,8 @@ interface ConversationRow {
   course_id: string;
   created_at: Date;
   updated_at: Date;
+  expires_at: Date;
+  purged_at: Date | null;
 }
 
 function toConversation(row: ConversationRow): TutoringConversation {
@@ -28,6 +30,8 @@ function toConversation(row: ConversationRow): TutoringConversation {
     courseId: row.course_id,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
+    expiresAt: row.expires_at.toISOString(),
+    purgedAt: row.purged_at ? row.purged_at.toISOString() : null,
   };
 }
 
@@ -45,6 +49,8 @@ interface RequestRow {
   created_at: Date;
   updated_at: Date;
   completed_at: Date | null;
+  expires_at: Date;
+  purged_at: Date | null;
 }
 
 function toRequest(row: RequestRow): TutoringRequest {
@@ -62,12 +68,15 @@ function toRequest(row: RequestRow): TutoringRequest {
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
     completedAt: row.completed_at ? row.completed_at.toISOString() : null,
+    expiresAt: row.expires_at.toISOString(),
+    purgedAt: row.purged_at ? row.purged_at.toISOString() : null,
   };
 }
 
 const REQUEST_SELECT = `
   SELECT id, conversation_id, owner_id, course_id, request_id, question, state,
-         answer_text, answer_lang, error_reason, created_at, updated_at, completed_at
+         answer_text, answer_lang, error_reason, created_at, updated_at, completed_at,
+         expires_at, purged_at
   FROM tutoring_requests
 `;
 
@@ -87,7 +96,7 @@ export class PostgresTutoringRepository implements TutoringRepository {
     const result = await this.#pool.query<ConversationRow>(
       `INSERT INTO tutoring_conversations (owner_id, course_id)
        VALUES ($1, $2)
-       RETURNING id, owner_id, course_id, created_at, updated_at`,
+       RETURNING id, owner_id, course_id, created_at, updated_at, expires_at, purged_at`,
       [scope.ownerId, courseId],
     );
     const row = result.rows[0];
@@ -99,7 +108,7 @@ export class PostgresTutoringRepository implements TutoringRepository {
     conversationId: string,
   ): Promise<TutoringConversation | null> {
     const result = await this.#pool.query<ConversationRow>(
-      `SELECT id, owner_id, course_id, created_at, updated_at
+      `SELECT id, owner_id, course_id, created_at, updated_at, expires_at, purged_at
        FROM tutoring_conversations
        WHERE id = $3 AND ${IN_SCOPE}`,
       [scope.ownerId, scope.courseIds, conversationId],
@@ -140,7 +149,8 @@ export class PostgresTutoringRepository implements TutoringRepository {
        ) VALUES ($1, $2, $3, $4, $5, 'pending')
        ON CONFLICT (owner_id, request_id) DO NOTHING
        RETURNING id, conversation_id, owner_id, course_id, request_id, question, state,
-                 answer_text, answer_lang, error_reason, created_at, updated_at, completed_at`,
+                 answer_text, answer_lang, error_reason, created_at, updated_at, completed_at,
+                 expires_at, purged_at`,
       [conversationId, scope.ownerId, input.courseId, input.requestId, input.question],
     );
 
@@ -186,17 +196,52 @@ export class PostgresTutoringRepository implements TutoringRepository {
     if (courseId !== undefined) {
       if (!scope.courseIds.includes(courseId)) return [];
       const result = await this.#pool.query<RequestRow>(
-        `${REQUEST_SELECT} WHERE owner_id = $1 AND course_id = $2 ORDER BY created_at DESC`,
+        `${REQUEST_SELECT} WHERE owner_id = $1 AND course_id = $2 AND purged_at IS NULL ORDER BY created_at DESC`,
         [scope.ownerId, courseId],
       );
       return result.rows.map(toRequest);
     }
 
     const result = await this.#pool.query<RequestRow>(
-      `${REQUEST_SELECT} WHERE ${IN_SCOPE} ORDER BY created_at DESC`,
+      `${REQUEST_SELECT} WHERE ${IN_SCOPE} AND purged_at IS NULL ORDER BY created_at DESC`,
       [scope.ownerId, scope.courseIds],
     );
     return result.rows.map(toRequest);
+  }
+
+  async clearHistory(scope: OwnedScope): Promise<void> {
+    // Deleting conversations cascades to tutoring_requests via ON DELETE CASCADE.
+    await this.#pool.query(`DELETE FROM tutoring_conversations WHERE ${IN_SCOPE}`, [
+      scope.ownerId,
+      scope.courseIds,
+    ]);
+  }
+
+  async purgeExpired(now: Date): Promise<number> {
+    // Redact private content from expired requests that have not yet been purged.
+    // Sets question/answer/error to empty/null and stamps purged_at. Idempotent.
+    const requestResult = await this.#pool.query<{ id: string }>(
+      `UPDATE tutoring_requests
+       SET question = '', answer_text = NULL, answer_lang = NULL, error_reason = NULL,
+           purged_at = $1, updated_at = $1
+       WHERE expires_at <= $1 AND purged_at IS NULL
+       RETURNING id`,
+      [now],
+    );
+
+    // Mark owning conversations purged when all their requests are purged.
+    await this.#pool.query(
+      `UPDATE tutoring_conversations c
+       SET purged_at = $1, updated_at = $1
+       WHERE c.expires_at <= $1 AND c.purged_at IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM tutoring_requests r
+           WHERE r.conversation_id = c.id AND r.purged_at IS NULL
+         )`,
+      [now],
+    );
+
+    return requestResult.rowCount ?? 0;
   }
 
   async recordOutcome(
@@ -215,7 +260,8 @@ export class PostgresTutoringRepository implements TutoringRepository {
            updated_at = now()
        WHERE id = $3 AND ${IN_SCOPE}
        RETURNING id, conversation_id, owner_id, course_id, request_id, question, state,
-                 answer_text, answer_lang, error_reason, created_at, updated_at, completed_at`,
+                 answer_text, answer_lang, error_reason, created_at, updated_at, completed_at,
+                 expires_at, purged_at`,
       [
         scope.ownerId,
         scope.courseIds,
