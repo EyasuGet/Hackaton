@@ -1,0 +1,17 @@
+{
+  "id": "job-data-clerk-02",
+  "version": "starter-1.0",
+  "title": "Data Entry and Records Clerk",
+  "organization": "Ethio Tech Solutions",
+  "category": "administrative",
+  "location": "Addis Ababa",
+  "description": "Accurately transcribe bilingual survey forms, verify database records, and compile weekly status summaries. Familiarity with spreadsheet applications and keyboard accessibility tools is an asset.",
+  "sourceUrl": "https://digitalbridge.et/jobs/job-data-clerk-02",
+  "postedAt": "2026-09-01T08:00:00.000Z",
+  "expiresAt": "2026-10-01T17:00:00.000Z",
+  "withdrawn": false,
+  "provenance": {
+    "kind": "demo",
+    "note": "Synthetic demo job vacancy representing a closed/expired position for verifying status queries."
+  }
+}
