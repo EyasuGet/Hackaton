@@ -1,6 +1,6 @@
 # Track 3 — Accessible learning and career assistant
 
-Specification and implementation backlog for the Digital Bridge Accessibility Hackathon, shared in [the team repository](https://github.com/abnsol/Hackathon). **Planning pack only: no application, package commands, or runtime verification exists yet.** The backlog has been migrated to **110 unassigned GitHub issues (26 epics and 84 leaf tasks)**; [the local index](docs/issues.md) links to the authoritative issue bodies. Check GitHub for current ownership and status.
+Specification and implementation backlog for the Digital Bridge Accessibility Hackathon, shared in [the team repository](https://github.com/EyasuGet/Hackaton). **Planning pack only: no application, package commands, or runtime verification exists yet.** The backlog has been migrated to **110 unassigned GitHub issues (26 epics and 84 leaf tasks)**; [the local index](docs/issues.md) links to the authoritative issue bodies. Check GitHub for current ownership and status.
 
 ## Start here
 

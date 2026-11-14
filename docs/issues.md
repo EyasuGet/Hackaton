@@ -1,8 +1,10 @@
 # Track 3 issue index and execution guide
 
-Migrated 2026-11-14: **110 GitHub issues (26 tracking epics, 84 leaf tasks)**, created in dependency order and verified unassigned. [GitHub issue bodies](https://github.com/abnsol/Hackathon/issues?q=is%3Aissue+sort%3Acreated-asc) are now authoritative for task scope, dependencies, acceptance, status and evidence. This file is the stable ID/link index and shared execution guide, not a second copy of issue bodies. No application implementation or completed acceptance is implied.
+Migrated 2026-11-14: **110 GitHub issues (26 tracking epics, 84 leaf tasks)**, created in dependency order and verified unassigned. [GitHub issue bodies](https://github.com/EyasuGet/Hackaton/issues?q=is%3Aissue+sort%3Acreated-asc) are now authoritative for task scope, dependencies, acceptance, status and evidence. This file is the stable ID/link index and shared execution guide, not a second copy of issue bodies. No application implementation or completed acceptance is implied.
 
-The approved pre-migration snapshot remains in [Git history at 1251f85](https://github.com/abnsol/Hackathon/blob/1251f85ab101ea744de97c2da86dc130d56130ba/docs/issues.md), for provenance only. Some forward references in original issue bodies use stable-ID issue searches; use the exact issue links below to disambiguate. This migration uses linked bodies and epic child checklists, not native GitHub blocking/sub-issue relationships.
+The approved pre-migration snapshot remains in [Git history at 1251f85](https://github.com/EyasuGet/Hackaton/blob/1251f85ab101ea744de97c2da86dc130d56130ba/docs/issues.md), for provenance only. Some forward references in original issue bodies use stable-ID issue searches; use the exact issue links below to disambiguate. This migration uses linked bodies and epic child checklists, not native GitHub blocking/sub-issue relationships.
+
+Relocated 2026-11-14 from `abnsol/Hackathon` to this repository because GitHub Actions could not start there. Issues were recreated in the same order, so issue numbers, stable IDs and dependencies are unchanged.
 
 ## How to use this backlog
 
@@ -66,12 +68,12 @@ These can be investigated or started in parallel after checking GitHub for a cla
 
 | Work | GitHub issue |
 |---|---|
-| Smallest running web/API slice | [T3-001-A · #1](https://github.com/abnsol/Hackathon/issues/1) |
-| Static starter and organiser boundaries | [T3-002 · #5](https://github.com/abnsol/Hackathon/issues/5) |
-| AI/retrieval/speech research | [T3-003-B · #6](https://github.com/abnsol/Hackathon/issues/6) |
-| HTTPS and sharing feasibility | [T3-003-C · #7](https://github.com/abnsol/Hackathon/issues/7) |
-| Early co-design task and device plan | [T3-009-A · #26](https://github.com/abnsol/Hackathon/issues/26) |
-| Retention policy precision | [T3-023-A · #49](https://github.com/abnsol/Hackathon/issues/49) |
+| Smallest running web/API slice | [T3-001-A · #1](https://github.com/EyasuGet/Hackaton/issues/1) |
+| Static starter and organiser boundaries | [T3-002 · #5](https://github.com/EyasuGet/Hackaton/issues/5) |
+| AI/retrieval/speech research | [T3-003-B · #6](https://github.com/EyasuGet/Hackaton/issues/6) |
+| HTTPS and sharing feasibility | [T3-003-C · #7](https://github.com/EyasuGet/Hackaton/issues/7) |
+| Early co-design task and device plan | [T3-009-A · #26](https://github.com/EyasuGet/Hackaton/issues/26) |
+| Retention policy precision | [T3-023-A · #49](https://github.com/EyasuGet/Hackaton/issues/49) |
 
 ### Capacity and integration checkpoints
 
@@ -104,113 +106,113 @@ Publication order places explicit prerequisites before dependants. These columns
 
 | Order / GitHub | Stable ID and task | Kind | Phase | Delivery priority | Parent |
 |---|---|---|---|---|---|
-| [#1](https://github.com/abnsol/Hackathon/issues/1) | **T3-001-A** — Run the smallest web-to-API slice | Leaf | 0 | Baseline | [T3-001](https://github.com/abnsol/Hackathon/issues/4) |
-| [#2](https://github.com/abnsol/Hackathon/issues/2) | **T3-001-B** — Start PostgreSQL with repeatable migrations and readiness | Leaf | 0 | Baseline | [T3-001](https://github.com/abnsol/Hackathon/issues/4) |
-| [#3](https://github.com/abnsol/Hackathon/issues/3) | **T3-001-C** — Complete lint, formatting and database/browser checks | Leaf | 0 | Baseline | [T3-001](https://github.com/abnsol/Hackathon/issues/4) |
-| [#4](https://github.com/abnsol/Hackathon/issues/4) | **T3-001** — Boot the reproducible workspace and establish checks | Epic | 0 | Baseline | — |
-| [#5](https://github.com/abnsol/Hackathon/issues/5) | **T3-002** — Record the static starter boundary and integration questions | Leaf | 0 | Baseline | — |
-| [#6](https://github.com/abnsol/Hackathon/issues/6) | **T3-003-B** — Research AI, retrieval and speech choices before integration | Leaf | 0 | Baseline | [T3-003](https://github.com/abnsol/Hackathon/issues/72) |
-| [#7](https://github.com/abnsol/Hackathon/issues/7) | **T3-003-C** — Check HTTPS and cross-network sharing prerequisites | Leaf | 0 | Baseline | [T3-003](https://github.com/abnsol/Hackathon/issues/72) |
-| [#8](https://github.com/abnsol/Hackathon/issues/8) | **T3-004-A** — Resolve demo principals and enforce resource scope | Leaf | 0 | Baseline | [T3-004](https://github.com/abnsol/Hackathon/issues/103) |
-| [#9](https://github.com/abnsol/Hackathon/issues/9) | **T3-004-C** — Establish protected synthetic demo sessions | Leaf | 0 | Baseline | [T3-004](https://github.com/abnsol/Hackathon/issues/103) |
-| [#10](https://github.com/abnsol/Hackathon/issues/10) | **T3-005-A** — Import and update approved lesson sections | Leaf | 1 | Baseline | [T3-005](https://github.com/abnsol/Hackathon/issues/12) |
-| [#11](https://github.com/abnsol/Hackathon/issues/11) | **T3-005-B** — Resolve permitted passages and citations | Leaf | 1 | Baseline | [T3-005](https://github.com/abnsol/Hackathon/issues/12) |
-| [#12](https://github.com/abnsol/Hackathon/issues/12) | **T3-005** — Import approved lessons with resolvable citation targets | Epic | 1 | Baseline | — |
-| [#13](https://github.com/abnsol/Hackathon/issues/13) | **T3-006-A** — Build the accessible standalone conversation shell | Leaf | 1 | Baseline | [T3-006](https://github.com/abnsol/Hackathon/issues/17) |
-| [#14](https://github.com/abnsol/Hackathon/issues/14) | **T3-006-B** — Embed the learner interface with safe lifecycle handling | Leaf | 1 | Baseline | [T3-006](https://github.com/abnsol/Hackathon/issues/17) |
-| [#15](https://github.com/abnsol/Hackathon/issues/15) | **T3-006-C** — Translate the learner shell and establish language selection | Leaf | 1 | Baseline | [T3-006](https://github.com/abnsol/Hackathon/issues/17) |
-| [#16](https://github.com/abnsol/Hackathon/issues/16) | **T3-006-D** — Present verified Ethiopian and Addis Ababa dates | Leaf | 1 | Baseline | [T3-006](https://github.com/abnsol/Hackathon/issues/17) |
-| [#17](https://github.com/abnsol/Hackathon/issues/17) | **T3-006** — Ship the accessible standalone assistant and script-loaded iframe | Epic | 1 | Baseline | — |
-| [#18](https://github.com/abnsol/Hackathon/issues/18) | **T3-007-B** — Evaluate a grounded online answer provider | Leaf | 1 | Baseline | [T3-007](https://github.com/abnsol/Hackathon/issues/22) |
-| [#19](https://github.com/abnsol/Hackathon/issues/19) | **T3-007-D** — Persist owned tutoring requests and history | Leaf | 1 | Baseline | [T3-007](https://github.com/abnsol/Hackathon/issues/22) |
-| [#20](https://github.com/abnsol/Hackathon/issues/20) | **T3-007-A** — Ship a cited FAQ answer through the learner interface | Leaf | 1 | Baseline | [T3-007](https://github.com/abnsol/Hackathon/issues/22) |
-| [#21](https://github.com/abnsol/Hackathon/issues/21) | **T3-007-C** — Add the online answer path with safe fallback | Leaf | 1 | Baseline | [T3-007](https://github.com/abnsol/Hackathon/issues/22) |
-| [#22](https://github.com/abnsol/Hackathon/issues/22) | **T3-007** — Answer course questions with evidence or honest refusal | Epic | 1 | Baseline | — |
-| [#23](https://github.com/abnsol/Hackathon/issues/23) | **T3-008-A** — Reload approved public FAQs offline | Leaf | 1 | Baseline | [T3-008](https://github.com/abnsol/Hackathon/issues/25) |
-| [#24](https://github.com/abnsol/Hackathon/issues/24) | **T3-008-B** — Handle cache refresh and measure the text path on 3G | Leaf | 1 | Baseline | [T3-008](https://github.com/abnsol/Hackathon/issues/25) |
-| [#25](https://github.com/abnsol/Hackathon/issues/25) | **T3-008** — Provide lightweight text access and offline approved FAQs | Epic | 1 | Baseline | — |
-| [#26](https://github.com/abnsol/Hackathon/issues/26) | **T3-009-A** — Agree the co-designer task and baseline observations | Leaf | 1 | Baseline | [T3-009](https://github.com/abnsol/Hackathon/issues/28) |
-| [#27](https://github.com/abnsol/Hackathon/issues/27) | **T3-009-B** — Run the first bilingual accessible tutoring task | Leaf | 1 | Baseline | [T3-009](https://github.com/abnsol/Hackathon/issues/28) |
-| [#28](https://github.com/abnsol/Hackathon/issues/28) | **T3-009** — Validate the Phase 1 accessible bilingual journey | Epic | 1 | Baseline | — |
-| [#29](https://github.com/abnsol/Hackathon/issues/29) | **T3-010-C** — Prove the transcription adapter on actual bilingual samples | Leaf | 2 | Baseline | [T3-010](https://github.com/abnsol/Hackathon/issues/32) |
-| [#30](https://github.com/abnsol/Hackathon/issues/30) | **T3-010-A** — Transcribe bounded audio safely | Leaf | 2 | Baseline | [T3-010](https://github.com/abnsol/Hackathon/issues/32) |
-| [#31](https://github.com/abnsol/Hackathon/issues/31) | **T3-010-B** — Record, edit and explicitly send a transcript | Leaf | 2 | Baseline | [T3-010](https://github.com/abnsol/Hackathon/issues/32) |
-| [#32](https://github.com/abnsol/Hackathon/issues/32) | **T3-010** — Add consented voice input with review before sending | Epic | 2 | Baseline | — |
-| [#33](https://github.com/abnsol/Hackathon/issues/33) | **T3-011** — Read answers aloud without removing text access | Leaf | 2 | Baseline | — |
-| [#34](https://github.com/abnsol/Hackathon/issues/34) | **T3-016-A** — Create and cancel an owned private help request | Leaf | 3 | Baseline | [T3-016](https://github.com/abnsol/Hackathon/issues/36) |
-| [#35](https://github.com/abnsol/Hackathon/issues/35) | **T3-016-B** — Show a persistent learner help inbox | Leaf | 3 | Baseline | [T3-016](https://github.com/abnsol/Hackathon/issues/36) |
-| [#36](https://github.com/abnsol/Hackathon/issues/36) | **T3-016** — Create private asynchronous help requests and a persistent inbox | Epic | 3 | Baseline | — |
-| [#37](https://github.com/abnsol/Hackathon/issues/37) | **T3-017-A** — Claim a request from the protected support queue | Leaf | 3 | Baseline | [T3-017](https://github.com/abnsol/Hackathon/issues/87) |
-| [#38](https://github.com/abnsol/Hackathon/issues/38) | **T3-017-B** — Exchange replies and resolve a support conversation | Leaf | 3 | Baseline | [T3-017](https://github.com/abnsol/Hackathon/issues/87) |
-| [#39](https://github.com/abnsol/Hackathon/issues/39) | **T3-018-A** — Authorise and negotiate a sharing session | Leaf | 3 | Baseline | [T3-018](https://github.com/abnsol/Hackathon/issues/43) |
-| [#40](https://github.com/abnsol/Hackathon/issues/40) | **T3-018-B** — Share and stop a chosen desktop screen | Leaf | 3 | Baseline | [T3-018](https://github.com/abnsol/Hackathon/issues/43) |
-| [#41](https://github.com/abnsol/Hackathon/issues/41) | **T3-018-D** — Configure the approved HTTPS and relay environment | Leaf | 3 | Baseline | [T3-018](https://github.com/abnsol/Hackathon/issues/43) |
-| [#42](https://github.com/abnsol/Hackathon/issues/42) | **T3-018-C** — Verify cross-network sharing and document mobile acceptance | Leaf | 3 | Baseline | [T3-018](https://github.com/abnsol/Hackathon/issues/43) |
-| [#43](https://github.com/abnsol/Hackathon/issues/43) | **T3-018** — Share a supported desktop screen under learner control | Epic | 3 | Baseline | — |
-| [#44](https://github.com/abnsol/Hackathon/issues/44) | **T3-019-A** — Import active jobs with stable provenance | Leaf | 3 | Baseline | [T3-019](https://github.com/abnsol/Hackathon/issues/89) |
-| [#45](https://github.com/abnsol/Hackathon/issues/45) | **T3-019-B** — Answer job questions using approved records | Leaf | 3 | Baseline | [T3-019](https://github.com/abnsol/Hackathon/issues/89) |
-| [#46](https://github.com/abnsol/Hackathon/issues/46) | **T3-022-A** — Preview and submit a private accommodation request | Leaf | 3 | Baseline | [T3-022](https://github.com/abnsol/Hackathon/issues/48) |
-| [#47](https://github.com/abnsol/Hackathon/issues/47) | **T3-022-B** — Handle accommodation status in the coordinator inbox | Leaf | 3 | Baseline | [T3-022](https://github.com/abnsol/Hackathon/issues/48) |
-| [#48](https://github.com/abnsol/Hackathon/issues/48) | **T3-022** — Request interview accommodations through a coordinator | Epic | 3 | Baseline | — |
-| [#49](https://github.com/abnsol/Hackathon/issues/49) | **T3-023-A** — Specify expiry semantics before storing real learner data | Leaf | 3 | Baseline | [T3-023](https://github.com/abnsol/Hackathon/issues/97) |
-| [#50](https://github.com/abnsol/Hackathon/issues/50) | **T3-023-B** — Clear and expire tutoring history | Leaf | 3 | Baseline | [T3-023](https://github.com/abnsol/Hackathon/issues/97) |
-| [#51](https://github.com/abnsol/Hackathon/issues/51) | **T3-023-C** — Audit core web/help/accommodation expiry and deletion | Leaf | 3 | Baseline | [T3-023](https://github.com/abnsol/Hackathon/issues/97) |
-| [#52](https://github.com/abnsol/Hackathon/issues/52) | **T3-024-B** — Audit integrated failure recovery and private-data handling | Leaf | 4 | Baseline | [T3-024](https://github.com/abnsol/Hackathon/issues/55) |
-| [#53](https://github.com/abnsol/Hackathon/issues/53) | **T3-024-C** — Enforce bounded provider admission and rate limits | Leaf | 4 | Baseline | [T3-024](https://github.com/abnsol/Hackathon/issues/55) |
-| [#54](https://github.com/abnsol/Hackathon/issues/54) | **T3-024-A** — Measure 20 active sessions and bounded AI concurrency | Leaf | 4 | Baseline | [T3-024](https://github.com/abnsol/Hackathon/issues/55) |
-| [#55](https://github.com/abnsol/Hackathon/issues/55) | **T3-024** — Measure concurrent-user behaviour and recovery | Epic | 4 | Baseline | — |
-| [#56](https://github.com/abnsol/Hackathon/issues/56) | **T3-025-A** — Pass final automated accessibility and desktop task checks | Leaf | 4 | Baseline | [T3-025](https://github.com/abnsol/Hackathon/issues/99) |
-| [#57](https://github.com/abnsol/Hackathon/issues/57) | **T3-025-B** — Pass the actual Android bilingual and low-bandwidth journey | Leaf | 4 | Baseline | [T3-025](https://github.com/abnsol/Hackathon/issues/99) |
-| [#58](https://github.com/abnsol/Hackathon/issues/58) | **T3-025-C** — Compile the assessed WCAG report and co-design evidence | Leaf | 4 | Baseline | [T3-025](https://github.com/abnsol/Hackathon/issues/99) |
-| [#59](https://github.com/abnsol/Hackathon/issues/59) | **T3-026-A** — Document and check implemented REST/OpenAPI contracts | Leaf | 4 | Baseline | [T3-026](https://github.com/abnsol/Hackathon/issues/63) |
-| [#60](https://github.com/abnsol/Hackathon/issues/60) | **T3-026-B** — Prove early embedding in the official static starter | Leaf | 4 | Baseline | [T3-026](https://github.com/abnsol/Hackathon/issues/63) |
-| [#61](https://github.com/abnsol/Hackathon/issues/61) | **T3-026-D** — Prove the completed core journey in the static starter | Leaf | 4 | Baseline | [T3-026](https://github.com/abnsol/Hackathon/issues/63) |
-| [#62](https://github.com/abnsol/Hackathon/issues/62) | **T3-026-C** — Prove a stranger can install and embed within an hour | Leaf | 4 | Baseline | [T3-026](https://github.com/abnsol/Hackathon/issues/63) |
-| [#63](https://github.com/abnsol/Hackathon/issues/63) | **T3-026** — Prove clean installation, Savanna integration and portable interfaces | Epic | 4 | Baseline | — |
-| [#64](https://github.com/abnsol/Hackathon/issues/64) | **T3-027-B** — Verify the core end-to-end learner story | Leaf | 4 | Baseline | [T3-027](https://github.com/abnsol/Hackathon/issues/101) |
-| [#65](https://github.com/abnsol/Hackathon/issues/65) | **T3-027-D** — Confirm core-demo readiness and record coverage gaps | Leaf | 4 | Baseline | [T3-027](https://github.com/abnsol/Hackathon/issues/101) |
-| [#66](https://github.com/abnsol/Hackathon/issues/66) | **T3-027-A** — Prepare the package, licence and operating-cost evidence | Leaf | 4 | Baseline | [T3-027](https://github.com/abnsol/Hackathon/issues/101) |
-| [#67](https://github.com/abnsol/Hackathon/issues/67) | **T3-027-E** — Publish the final hosted core MVP after readiness | Leaf | 4 | Baseline | [T3-027](https://github.com/abnsol/Hackathon/issues/101) |
-| [#68](https://github.com/abnsol/Hackathon/issues/68) | **T3-027-F** — Prepare the explanatory slides and final submission links | Leaf | 4 | Baseline | [T3-027](https://github.com/abnsol/Hackathon/issues/101) |
-| [#69](https://github.com/abnsol/Hackathon/issues/69) | **T3-003-A** — Confirm an approved Ethiopian SMS route | Leaf | 0 | Time-permitting | [T3-003](https://github.com/abnsol/Hackathon/issues/72) |
-| [#70](https://github.com/abnsol/Hackathon/issues/70) | **T3-003-D** — Check Telegram access and callback strategy | Leaf | 0 | Time-permitting | [T3-003](https://github.com/abnsol/Hackathon/issues/72) |
-| [#71](https://github.com/abnsol/Hackathon/issues/71) | **T3-003-E** — Resolve the phone-ownership verification route | Leaf | 0 | Time-permitting | [T3-003](https://github.com/abnsol/Hackathon/issues/72) |
-| [#72](https://github.com/abnsol/Hackathon/issues/72) | **T3-003** — Prove or explicitly block live integration dependencies | Epic | 0 | Baseline | — |
-| [#73](https://github.com/abnsol/Hackathon/issues/73) | **T3-012-A** — Link and revoke a private Telegram identity | Leaf | 2 | Time-permitting | [T3-012](https://github.com/abnsol/Hackathon/issues/75) |
-| [#74](https://github.com/abnsol/Hackathon/issues/74) | **T3-012-B** — Answer Telegram text questions through the same tutor | Leaf | 2 | Time-permitting | [T3-012](https://github.com/abnsol/Hackathon/issues/75) |
-| [#75](https://github.com/abnsol/Hackathon/issues/75) | **T3-012** — Link Telegram securely and reuse text tutoring | Epic | 2 | Time-permitting | — |
-| [#76](https://github.com/abnsol/Hackathon/issues/76) | **T3-013-A** — Review a Telegram voice transcript before asking | Leaf | 2 | Time-permitting | [T3-013](https://github.com/abnsol/Hackathon/issues/78) |
-| [#77](https://github.com/abnsol/Hackathon/issues/77) | **T3-013-B** — Return optional Telegram speech with cited text | Leaf | 2 | Time-permitting | [T3-013](https://github.com/abnsol/Hackathon/issues/78) |
-| [#78](https://github.com/abnsol/Hackathon/issues/78) | **T3-013** — Support Telegram voice with explicit transcript review | Epic | 2 | Time-permitting | — |
-| [#79](https://github.com/abnsol/Hackathon/issues/79) | **T3-014-A** — Commit a delivery intent atomically with its action | Leaf | 2 | Time-permitting | [T3-014](https://github.com/abnsol/Hackathon/issues/82) |
-| [#80](https://github.com/abnsol/Hackathon/issues/80) | **T3-014-B** — Claim due work and recover abandoned leases | Leaf | 2 | Time-permitting | [T3-014](https://github.com/abnsol/Hackathon/issues/82) |
-| [#81](https://github.com/abnsol/Hackathon/issues/81) | **T3-014-C** — Dispatch safely with bounded retries and unknown outcomes | Leaf | 2 | Time-permitting | [T3-014](https://github.com/abnsol/Hackathon/issues/82) |
-| [#82](https://github.com/abnsol/Hackathon/issues/82) | **T3-014** — Persist delivery work and recover safely from failures | Epic | 2 | Time-permitting | — |
-| [#83](https://github.com/abnsol/Hackathon/issues/83) | **T3-015-A** — Implement the approved SMS adapter contract | Leaf | 2 | Time-permitting | [T3-015](https://github.com/abnsol/Hackathon/issues/85) |
-| [#84](https://github.com/abnsol/Hackathon/issues/84) | **T3-015-B** — Prove real English and Amharic SMS receipt | Leaf | 2 | Time-permitting | [T3-015](https://github.com/abnsol/Hackathon/issues/85) |
-| [#85](https://github.com/abnsol/Hackathon/issues/85) | **T3-015** — Verify real outbound SMS through the approved route | Epic | 2 | Time-permitting | — |
-| [#86](https://github.com/abnsol/Hackathon/issues/86) | **T3-017-C** — Notify opted-in learners of a support reply | Leaf | 3 | Time-permitting | [T3-017](https://github.com/abnsol/Hackathon/issues/87) |
-| [#87](https://github.com/abnsol/Hackathon/issues/87) | **T3-017** — Let support claim, reply and notify asynchronously | Epic | 3 | Baseline | — |
-| [#88](https://github.com/abnsol/Hackathon/issues/88) | **T3-019-C** — Reuse approved job answers in Telegram | Leaf | 3 | Time-permitting | [T3-019](https://github.com/abnsol/Hackathon/issues/89) |
-| [#89](https://github.com/abnsol/Hackathon/issues/89) | **T3-019** — Import approved jobs and answer job questions with citations | Epic | 3 | Baseline | — |
-| [#90](https://github.com/abnsol/Hackathon/issues/90) | **T3-020-A** — Persist job preferences and match new publications | Leaf | 3 | Time-permitting | [T3-020](https://github.com/abnsol/Hackathon/issues/92) |
-| [#91](https://github.com/abnsol/Hackathon/issues/91) | **T3-020-B** — Deliver and unsubscribe Telegram job alerts | Leaf | 3 | Time-permitting | [T3-020](https://github.com/abnsol/Hackathon/issues/92) |
-| [#92](https://github.com/abnsol/Hackathon/issues/92) | **T3-020** — Subscribe to matching jobs and deliver Telegram alerts | Epic | 3 | Time-permitting | — |
-| [#93](https://github.com/abnsol/Hackathon/issues/93) | **T3-021-A** — Verify and manage an SMS job subscription | Leaf | 3 | Time-permitting | [T3-021](https://github.com/abnsol/Hackathon/issues/95) |
-| [#94](https://github.com/abnsol/Hackathon/issues/94) | **T3-021-B** — Deliver a real subscribed SMS job alert | Leaf | 3 | Time-permitting | [T3-021](https://github.com/abnsol/Hackathon/issues/95) |
-| [#95](https://github.com/abnsol/Hackathon/issues/95) | **T3-021** — Deliver subscribed job alerts by real SMS | Epic | 3 | Time-permitting | — |
-| [#96](https://github.com/abnsol/Hackathon/issues/96) | **T3-023-D** — Audit added channel media, delivery references and contacts | Leaf | 3 | Time-permitting | [T3-023](https://github.com/abnsol/Hackathon/issues/97) |
-| [#97](https://github.com/abnsol/Hackathon/issues/97) | **T3-023** — Enforce retention and deletion across private records | Epic | 3 | Baseline | — |
-| [#98](https://github.com/abnsol/Hackathon/issues/98) | **T3-025-D** — Verify added Telegram/SMS accessibility and update the report | Leaf | 4 | Time-permitting | [T3-025](https://github.com/abnsol/Hackathon/issues/99) |
-| [#99](https://github.com/abnsol/Hackathon/issues/99) | **T3-025** — Complete the co-designer accessibility gate and conformance evidence | Epic | 4 | Baseline | — |
-| [#100](https://github.com/abnsol/Hackathon/issues/100) | **T3-027-C** — Close the full written-brief acceptance gate | Leaf | 4 | Full-brief gate | [T3-027](https://github.com/abnsol/Hackathon/issues/101) |
-| [#101](https://github.com/abnsol/Hackathon/issues/101) | **T3-027** — Finish the core demo, package it, and audit full-brief coverage | Epic | 4 | Baseline | — |
-| [#102](https://github.com/abnsol/Hackathon/issues/102) | **T3-004-B** — Later: implement the real Savanna identity handoff | Leaf | 0 | Later integration | [T3-004](https://github.com/abnsol/Hackathon/issues/103) |
-| [#103](https://github.com/abnsol/Hackathon/issues/103) | **T3-004** — Enforce learner identity and per-user/course access | Epic | 0 | Baseline | — |
-| [#104](https://github.com/abnsol/Hackathon/issues/104) | **T3-028-A** — Fetch sourced career research with explicit consent | Leaf | 5 | Stretch | [T3-028](https://github.com/abnsol/Hackathon/issues/106) |
-| [#105](https://github.com/abnsol/Hackathon/issues/105) | **T3-028-B** — Expose the separate disabled-by-default research mode | Leaf | 5 | Stretch | [T3-028](https://github.com/abnsol/Hackathon/issues/106) |
-| [#106](https://github.com/abnsol/Hackathon/issues/106) | **T3-028** — Add explicit supplementary career web research | Epic | 5 | Stretch | — |
-| [#107](https://github.com/abnsol/Hackathon/issues/107) | **T3-029** — Add learner-selected simple-language mode | Leaf | 5 | Stretch | — |
-| [#108](https://github.com/abnsol/Hackathon/issues/108) | **T3-030** — Show anonymous frequently asked topics to authorised teachers | Leaf | 5 | Stretch | — |
-| [#109](https://github.com/abnsol/Hackathon/issues/109) | **T3-031** — Future spec: employer dashboard | Leaf | 5 | Lowest-priority stretch | — |
-| [#110](https://github.com/abnsol/Hackathon/issues/110) | **T3-032** — Future spec: consented employer outreach | Leaf | 5 | Lowest-priority stretch | — |
+| [#1](https://github.com/EyasuGet/Hackaton/issues/1) | **T3-001-A** — Run the smallest web-to-API slice | Leaf | 0 | Baseline | [T3-001](https://github.com/EyasuGet/Hackaton/issues/4) |
+| [#2](https://github.com/EyasuGet/Hackaton/issues/2) | **T3-001-B** — Start PostgreSQL with repeatable migrations and readiness | Leaf | 0 | Baseline | [T3-001](https://github.com/EyasuGet/Hackaton/issues/4) |
+| [#3](https://github.com/EyasuGet/Hackaton/issues/3) | **T3-001-C** — Complete lint, formatting and database/browser checks | Leaf | 0 | Baseline | [T3-001](https://github.com/EyasuGet/Hackaton/issues/4) |
+| [#4](https://github.com/EyasuGet/Hackaton/issues/4) | **T3-001** — Boot the reproducible workspace and establish checks | Epic | 0 | Baseline | — |
+| [#5](https://github.com/EyasuGet/Hackaton/issues/5) | **T3-002** — Record the static starter boundary and integration questions | Leaf | 0 | Baseline | — |
+| [#6](https://github.com/EyasuGet/Hackaton/issues/6) | **T3-003-B** — Research AI, retrieval and speech choices before integration | Leaf | 0 | Baseline | [T3-003](https://github.com/EyasuGet/Hackaton/issues/72) |
+| [#7](https://github.com/EyasuGet/Hackaton/issues/7) | **T3-003-C** — Check HTTPS and cross-network sharing prerequisites | Leaf | 0 | Baseline | [T3-003](https://github.com/EyasuGet/Hackaton/issues/72) |
+| [#8](https://github.com/EyasuGet/Hackaton/issues/8) | **T3-004-A** — Resolve demo principals and enforce resource scope | Leaf | 0 | Baseline | [T3-004](https://github.com/EyasuGet/Hackaton/issues/103) |
+| [#9](https://github.com/EyasuGet/Hackaton/issues/9) | **T3-004-C** — Establish protected synthetic demo sessions | Leaf | 0 | Baseline | [T3-004](https://github.com/EyasuGet/Hackaton/issues/103) |
+| [#10](https://github.com/EyasuGet/Hackaton/issues/10) | **T3-005-A** — Import and update approved lesson sections | Leaf | 1 | Baseline | [T3-005](https://github.com/EyasuGet/Hackaton/issues/12) |
+| [#11](https://github.com/EyasuGet/Hackaton/issues/11) | **T3-005-B** — Resolve permitted passages and citations | Leaf | 1 | Baseline | [T3-005](https://github.com/EyasuGet/Hackaton/issues/12) |
+| [#12](https://github.com/EyasuGet/Hackaton/issues/12) | **T3-005** — Import approved lessons with resolvable citation targets | Epic | 1 | Baseline | — |
+| [#13](https://github.com/EyasuGet/Hackaton/issues/13) | **T3-006-A** — Build the accessible standalone conversation shell | Leaf | 1 | Baseline | [T3-006](https://github.com/EyasuGet/Hackaton/issues/17) |
+| [#14](https://github.com/EyasuGet/Hackaton/issues/14) | **T3-006-B** — Embed the learner interface with safe lifecycle handling | Leaf | 1 | Baseline | [T3-006](https://github.com/EyasuGet/Hackaton/issues/17) |
+| [#15](https://github.com/EyasuGet/Hackaton/issues/15) | **T3-006-C** — Translate the learner shell and establish language selection | Leaf | 1 | Baseline | [T3-006](https://github.com/EyasuGet/Hackaton/issues/17) |
+| [#16](https://github.com/EyasuGet/Hackaton/issues/16) | **T3-006-D** — Present verified Ethiopian and Addis Ababa dates | Leaf | 1 | Baseline | [T3-006](https://github.com/EyasuGet/Hackaton/issues/17) |
+| [#17](https://github.com/EyasuGet/Hackaton/issues/17) | **T3-006** — Ship the accessible standalone assistant and script-loaded iframe | Epic | 1 | Baseline | — |
+| [#18](https://github.com/EyasuGet/Hackaton/issues/18) | **T3-007-B** — Evaluate a grounded online answer provider | Leaf | 1 | Baseline | [T3-007](https://github.com/EyasuGet/Hackaton/issues/22) |
+| [#19](https://github.com/EyasuGet/Hackaton/issues/19) | **T3-007-D** — Persist owned tutoring requests and history | Leaf | 1 | Baseline | [T3-007](https://github.com/EyasuGet/Hackaton/issues/22) |
+| [#20](https://github.com/EyasuGet/Hackaton/issues/20) | **T3-007-A** — Ship a cited FAQ answer through the learner interface | Leaf | 1 | Baseline | [T3-007](https://github.com/EyasuGet/Hackaton/issues/22) |
+| [#21](https://github.com/EyasuGet/Hackaton/issues/21) | **T3-007-C** — Add the online answer path with safe fallback | Leaf | 1 | Baseline | [T3-007](https://github.com/EyasuGet/Hackaton/issues/22) |
+| [#22](https://github.com/EyasuGet/Hackaton/issues/22) | **T3-007** — Answer course questions with evidence or honest refusal | Epic | 1 | Baseline | — |
+| [#23](https://github.com/EyasuGet/Hackaton/issues/23) | **T3-008-A** — Reload approved public FAQs offline | Leaf | 1 | Baseline | [T3-008](https://github.com/EyasuGet/Hackaton/issues/25) |
+| [#24](https://github.com/EyasuGet/Hackaton/issues/24) | **T3-008-B** — Handle cache refresh and measure the text path on 3G | Leaf | 1 | Baseline | [T3-008](https://github.com/EyasuGet/Hackaton/issues/25) |
+| [#25](https://github.com/EyasuGet/Hackaton/issues/25) | **T3-008** — Provide lightweight text access and offline approved FAQs | Epic | 1 | Baseline | — |
+| [#26](https://github.com/EyasuGet/Hackaton/issues/26) | **T3-009-A** — Agree the co-designer task and baseline observations | Leaf | 1 | Baseline | [T3-009](https://github.com/EyasuGet/Hackaton/issues/28) |
+| [#27](https://github.com/EyasuGet/Hackaton/issues/27) | **T3-009-B** — Run the first bilingual accessible tutoring task | Leaf | 1 | Baseline | [T3-009](https://github.com/EyasuGet/Hackaton/issues/28) |
+| [#28](https://github.com/EyasuGet/Hackaton/issues/28) | **T3-009** — Validate the Phase 1 accessible bilingual journey | Epic | 1 | Baseline | — |
+| [#29](https://github.com/EyasuGet/Hackaton/issues/29) | **T3-010-C** — Prove the transcription adapter on actual bilingual samples | Leaf | 2 | Baseline | [T3-010](https://github.com/EyasuGet/Hackaton/issues/32) |
+| [#30](https://github.com/EyasuGet/Hackaton/issues/30) | **T3-010-A** — Transcribe bounded audio safely | Leaf | 2 | Baseline | [T3-010](https://github.com/EyasuGet/Hackaton/issues/32) |
+| [#31](https://github.com/EyasuGet/Hackaton/issues/31) | **T3-010-B** — Record, edit and explicitly send a transcript | Leaf | 2 | Baseline | [T3-010](https://github.com/EyasuGet/Hackaton/issues/32) |
+| [#32](https://github.com/EyasuGet/Hackaton/issues/32) | **T3-010** — Add consented voice input with review before sending | Epic | 2 | Baseline | — |
+| [#33](https://github.com/EyasuGet/Hackaton/issues/33) | **T3-011** — Read answers aloud without removing text access | Leaf | 2 | Baseline | — |
+| [#34](https://github.com/EyasuGet/Hackaton/issues/34) | **T3-016-A** — Create and cancel an owned private help request | Leaf | 3 | Baseline | [T3-016](https://github.com/EyasuGet/Hackaton/issues/36) |
+| [#35](https://github.com/EyasuGet/Hackaton/issues/35) | **T3-016-B** — Show a persistent learner help inbox | Leaf | 3 | Baseline | [T3-016](https://github.com/EyasuGet/Hackaton/issues/36) |
+| [#36](https://github.com/EyasuGet/Hackaton/issues/36) | **T3-016** — Create private asynchronous help requests and a persistent inbox | Epic | 3 | Baseline | — |
+| [#37](https://github.com/EyasuGet/Hackaton/issues/37) | **T3-017-A** — Claim a request from the protected support queue | Leaf | 3 | Baseline | [T3-017](https://github.com/EyasuGet/Hackaton/issues/87) |
+| [#38](https://github.com/EyasuGet/Hackaton/issues/38) | **T3-017-B** — Exchange replies and resolve a support conversation | Leaf | 3 | Baseline | [T3-017](https://github.com/EyasuGet/Hackaton/issues/87) |
+| [#39](https://github.com/EyasuGet/Hackaton/issues/39) | **T3-018-A** — Authorise and negotiate a sharing session | Leaf | 3 | Baseline | [T3-018](https://github.com/EyasuGet/Hackaton/issues/43) |
+| [#40](https://github.com/EyasuGet/Hackaton/issues/40) | **T3-018-B** — Share and stop a chosen desktop screen | Leaf | 3 | Baseline | [T3-018](https://github.com/EyasuGet/Hackaton/issues/43) |
+| [#41](https://github.com/EyasuGet/Hackaton/issues/41) | **T3-018-D** — Configure the approved HTTPS and relay environment | Leaf | 3 | Baseline | [T3-018](https://github.com/EyasuGet/Hackaton/issues/43) |
+| [#42](https://github.com/EyasuGet/Hackaton/issues/42) | **T3-018-C** — Verify cross-network sharing and document mobile acceptance | Leaf | 3 | Baseline | [T3-018](https://github.com/EyasuGet/Hackaton/issues/43) |
+| [#43](https://github.com/EyasuGet/Hackaton/issues/43) | **T3-018** — Share a supported desktop screen under learner control | Epic | 3 | Baseline | — |
+| [#44](https://github.com/EyasuGet/Hackaton/issues/44) | **T3-019-A** — Import active jobs with stable provenance | Leaf | 3 | Baseline | [T3-019](https://github.com/EyasuGet/Hackaton/issues/89) |
+| [#45](https://github.com/EyasuGet/Hackaton/issues/45) | **T3-019-B** — Answer job questions using approved records | Leaf | 3 | Baseline | [T3-019](https://github.com/EyasuGet/Hackaton/issues/89) |
+| [#46](https://github.com/EyasuGet/Hackaton/issues/46) | **T3-022-A** — Preview and submit a private accommodation request | Leaf | 3 | Baseline | [T3-022](https://github.com/EyasuGet/Hackaton/issues/48) |
+| [#47](https://github.com/EyasuGet/Hackaton/issues/47) | **T3-022-B** — Handle accommodation status in the coordinator inbox | Leaf | 3 | Baseline | [T3-022](https://github.com/EyasuGet/Hackaton/issues/48) |
+| [#48](https://github.com/EyasuGet/Hackaton/issues/48) | **T3-022** — Request interview accommodations through a coordinator | Epic | 3 | Baseline | — |
+| [#49](https://github.com/EyasuGet/Hackaton/issues/49) | **T3-023-A** — Specify expiry semantics before storing real learner data | Leaf | 3 | Baseline | [T3-023](https://github.com/EyasuGet/Hackaton/issues/97) |
+| [#50](https://github.com/EyasuGet/Hackaton/issues/50) | **T3-023-B** — Clear and expire tutoring history | Leaf | 3 | Baseline | [T3-023](https://github.com/EyasuGet/Hackaton/issues/97) |
+| [#51](https://github.com/EyasuGet/Hackaton/issues/51) | **T3-023-C** — Audit core web/help/accommodation expiry and deletion | Leaf | 3 | Baseline | [T3-023](https://github.com/EyasuGet/Hackaton/issues/97) |
+| [#52](https://github.com/EyasuGet/Hackaton/issues/52) | **T3-024-B** — Audit integrated failure recovery and private-data handling | Leaf | 4 | Baseline | [T3-024](https://github.com/EyasuGet/Hackaton/issues/55) |
+| [#53](https://github.com/EyasuGet/Hackaton/issues/53) | **T3-024-C** — Enforce bounded provider admission and rate limits | Leaf | 4 | Baseline | [T3-024](https://github.com/EyasuGet/Hackaton/issues/55) |
+| [#54](https://github.com/EyasuGet/Hackaton/issues/54) | **T3-024-A** — Measure 20 active sessions and bounded AI concurrency | Leaf | 4 | Baseline | [T3-024](https://github.com/EyasuGet/Hackaton/issues/55) |
+| [#55](https://github.com/EyasuGet/Hackaton/issues/55) | **T3-024** — Measure concurrent-user behaviour and recovery | Epic | 4 | Baseline | — |
+| [#56](https://github.com/EyasuGet/Hackaton/issues/56) | **T3-025-A** — Pass final automated accessibility and desktop task checks | Leaf | 4 | Baseline | [T3-025](https://github.com/EyasuGet/Hackaton/issues/99) |
+| [#57](https://github.com/EyasuGet/Hackaton/issues/57) | **T3-025-B** — Pass the actual Android bilingual and low-bandwidth journey | Leaf | 4 | Baseline | [T3-025](https://github.com/EyasuGet/Hackaton/issues/99) |
+| [#58](https://github.com/EyasuGet/Hackaton/issues/58) | **T3-025-C** — Compile the assessed WCAG report and co-design evidence | Leaf | 4 | Baseline | [T3-025](https://github.com/EyasuGet/Hackaton/issues/99) |
+| [#59](https://github.com/EyasuGet/Hackaton/issues/59) | **T3-026-A** — Document and check implemented REST/OpenAPI contracts | Leaf | 4 | Baseline | [T3-026](https://github.com/EyasuGet/Hackaton/issues/63) |
+| [#60](https://github.com/EyasuGet/Hackaton/issues/60) | **T3-026-B** — Prove early embedding in the official static starter | Leaf | 4 | Baseline | [T3-026](https://github.com/EyasuGet/Hackaton/issues/63) |
+| [#61](https://github.com/EyasuGet/Hackaton/issues/61) | **T3-026-D** — Prove the completed core journey in the static starter | Leaf | 4 | Baseline | [T3-026](https://github.com/EyasuGet/Hackaton/issues/63) |
+| [#62](https://github.com/EyasuGet/Hackaton/issues/62) | **T3-026-C** — Prove a stranger can install and embed within an hour | Leaf | 4 | Baseline | [T3-026](https://github.com/EyasuGet/Hackaton/issues/63) |
+| [#63](https://github.com/EyasuGet/Hackaton/issues/63) | **T3-026** — Prove clean installation, Savanna integration and portable interfaces | Epic | 4 | Baseline | — |
+| [#64](https://github.com/EyasuGet/Hackaton/issues/64) | **T3-027-B** — Verify the core end-to-end learner story | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
+| [#65](https://github.com/EyasuGet/Hackaton/issues/65) | **T3-027-D** — Confirm core-demo readiness and record coverage gaps | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
+| [#66](https://github.com/EyasuGet/Hackaton/issues/66) | **T3-027-A** — Prepare the package, licence and operating-cost evidence | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
+| [#67](https://github.com/EyasuGet/Hackaton/issues/67) | **T3-027-E** — Publish the final hosted core MVP after readiness | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
+| [#68](https://github.com/EyasuGet/Hackaton/issues/68) | **T3-027-F** — Prepare the explanatory slides and final submission links | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
+| [#69](https://github.com/EyasuGet/Hackaton/issues/69) | **T3-003-A** — Confirm an approved Ethiopian SMS route | Leaf | 0 | Time-permitting | [T3-003](https://github.com/EyasuGet/Hackaton/issues/72) |
+| [#70](https://github.com/EyasuGet/Hackaton/issues/70) | **T3-003-D** — Check Telegram access and callback strategy | Leaf | 0 | Time-permitting | [T3-003](https://github.com/EyasuGet/Hackaton/issues/72) |
+| [#71](https://github.com/EyasuGet/Hackaton/issues/71) | **T3-003-E** — Resolve the phone-ownership verification route | Leaf | 0 | Time-permitting | [T3-003](https://github.com/EyasuGet/Hackaton/issues/72) |
+| [#72](https://github.com/EyasuGet/Hackaton/issues/72) | **T3-003** — Prove or explicitly block live integration dependencies | Epic | 0 | Baseline | — |
+| [#73](https://github.com/EyasuGet/Hackaton/issues/73) | **T3-012-A** — Link and revoke a private Telegram identity | Leaf | 2 | Time-permitting | [T3-012](https://github.com/EyasuGet/Hackaton/issues/75) |
+| [#74](https://github.com/EyasuGet/Hackaton/issues/74) | **T3-012-B** — Answer Telegram text questions through the same tutor | Leaf | 2 | Time-permitting | [T3-012](https://github.com/EyasuGet/Hackaton/issues/75) |
+| [#75](https://github.com/EyasuGet/Hackaton/issues/75) | **T3-012** — Link Telegram securely and reuse text tutoring | Epic | 2 | Time-permitting | — |
+| [#76](https://github.com/EyasuGet/Hackaton/issues/76) | **T3-013-A** — Review a Telegram voice transcript before asking | Leaf | 2 | Time-permitting | [T3-013](https://github.com/EyasuGet/Hackaton/issues/78) |
+| [#77](https://github.com/EyasuGet/Hackaton/issues/77) | **T3-013-B** — Return optional Telegram speech with cited text | Leaf | 2 | Time-permitting | [T3-013](https://github.com/EyasuGet/Hackaton/issues/78) |
+| [#78](https://github.com/EyasuGet/Hackaton/issues/78) | **T3-013** — Support Telegram voice with explicit transcript review | Epic | 2 | Time-permitting | — |
+| [#79](https://github.com/EyasuGet/Hackaton/issues/79) | **T3-014-A** — Commit a delivery intent atomically with its action | Leaf | 2 | Time-permitting | [T3-014](https://github.com/EyasuGet/Hackaton/issues/82) |
+| [#80](https://github.com/EyasuGet/Hackaton/issues/80) | **T3-014-B** — Claim due work and recover abandoned leases | Leaf | 2 | Time-permitting | [T3-014](https://github.com/EyasuGet/Hackaton/issues/82) |
+| [#81](https://github.com/EyasuGet/Hackaton/issues/81) | **T3-014-C** — Dispatch safely with bounded retries and unknown outcomes | Leaf | 2 | Time-permitting | [T3-014](https://github.com/EyasuGet/Hackaton/issues/82) |
+| [#82](https://github.com/EyasuGet/Hackaton/issues/82) | **T3-014** — Persist delivery work and recover safely from failures | Epic | 2 | Time-permitting | — |
+| [#83](https://github.com/EyasuGet/Hackaton/issues/83) | **T3-015-A** — Implement the approved SMS adapter contract | Leaf | 2 | Time-permitting | [T3-015](https://github.com/EyasuGet/Hackaton/issues/85) |
+| [#84](https://github.com/EyasuGet/Hackaton/issues/84) | **T3-015-B** — Prove real English and Amharic SMS receipt | Leaf | 2 | Time-permitting | [T3-015](https://github.com/EyasuGet/Hackaton/issues/85) |
+| [#85](https://github.com/EyasuGet/Hackaton/issues/85) | **T3-015** — Verify real outbound SMS through the approved route | Epic | 2 | Time-permitting | — |
+| [#86](https://github.com/EyasuGet/Hackaton/issues/86) | **T3-017-C** — Notify opted-in learners of a support reply | Leaf | 3 | Time-permitting | [T3-017](https://github.com/EyasuGet/Hackaton/issues/87) |
+| [#87](https://github.com/EyasuGet/Hackaton/issues/87) | **T3-017** — Let support claim, reply and notify asynchronously | Epic | 3 | Baseline | — |
+| [#88](https://github.com/EyasuGet/Hackaton/issues/88) | **T3-019-C** — Reuse approved job answers in Telegram | Leaf | 3 | Time-permitting | [T3-019](https://github.com/EyasuGet/Hackaton/issues/89) |
+| [#89](https://github.com/EyasuGet/Hackaton/issues/89) | **T3-019** — Import approved jobs and answer job questions with citations | Epic | 3 | Baseline | — |
+| [#90](https://github.com/EyasuGet/Hackaton/issues/90) | **T3-020-A** — Persist job preferences and match new publications | Leaf | 3 | Time-permitting | [T3-020](https://github.com/EyasuGet/Hackaton/issues/92) |
+| [#91](https://github.com/EyasuGet/Hackaton/issues/91) | **T3-020-B** — Deliver and unsubscribe Telegram job alerts | Leaf | 3 | Time-permitting | [T3-020](https://github.com/EyasuGet/Hackaton/issues/92) |
+| [#92](https://github.com/EyasuGet/Hackaton/issues/92) | **T3-020** — Subscribe to matching jobs and deliver Telegram alerts | Epic | 3 | Time-permitting | — |
+| [#93](https://github.com/EyasuGet/Hackaton/issues/93) | **T3-021-A** — Verify and manage an SMS job subscription | Leaf | 3 | Time-permitting | [T3-021](https://github.com/EyasuGet/Hackaton/issues/95) |
+| [#94](https://github.com/EyasuGet/Hackaton/issues/94) | **T3-021-B** — Deliver a real subscribed SMS job alert | Leaf | 3 | Time-permitting | [T3-021](https://github.com/EyasuGet/Hackaton/issues/95) |
+| [#95](https://github.com/EyasuGet/Hackaton/issues/95) | **T3-021** — Deliver subscribed job alerts by real SMS | Epic | 3 | Time-permitting | — |
+| [#96](https://github.com/EyasuGet/Hackaton/issues/96) | **T3-023-D** — Audit added channel media, delivery references and contacts | Leaf | 3 | Time-permitting | [T3-023](https://github.com/EyasuGet/Hackaton/issues/97) |
+| [#97](https://github.com/EyasuGet/Hackaton/issues/97) | **T3-023** — Enforce retention and deletion across private records | Epic | 3 | Baseline | — |
+| [#98](https://github.com/EyasuGet/Hackaton/issues/98) | **T3-025-D** — Verify added Telegram/SMS accessibility and update the report | Leaf | 4 | Time-permitting | [T3-025](https://github.com/EyasuGet/Hackaton/issues/99) |
+| [#99](https://github.com/EyasuGet/Hackaton/issues/99) | **T3-025** — Complete the co-designer accessibility gate and conformance evidence | Epic | 4 | Baseline | — |
+| [#100](https://github.com/EyasuGet/Hackaton/issues/100) | **T3-027-C** — Close the full written-brief acceptance gate | Leaf | 4 | Full-brief gate | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
+| [#101](https://github.com/EyasuGet/Hackaton/issues/101) | **T3-027** — Finish the core demo, package it, and audit full-brief coverage | Epic | 4 | Baseline | — |
+| [#102](https://github.com/EyasuGet/Hackaton/issues/102) | **T3-004-B** — Later: implement the real Savanna identity handoff | Leaf | 0 | Later integration | [T3-004](https://github.com/EyasuGet/Hackaton/issues/103) |
+| [#103](https://github.com/EyasuGet/Hackaton/issues/103) | **T3-004** — Enforce learner identity and per-user/course access | Epic | 0 | Baseline | — |
+| [#104](https://github.com/EyasuGet/Hackaton/issues/104) | **T3-028-A** — Fetch sourced career research with explicit consent | Leaf | 5 | Stretch | [T3-028](https://github.com/EyasuGet/Hackaton/issues/106) |
+| [#105](https://github.com/EyasuGet/Hackaton/issues/105) | **T3-028-B** — Expose the separate disabled-by-default research mode | Leaf | 5 | Stretch | [T3-028](https://github.com/EyasuGet/Hackaton/issues/106) |
+| [#106](https://github.com/EyasuGet/Hackaton/issues/106) | **T3-028** — Add explicit supplementary career web research | Epic | 5 | Stretch | — |
+| [#107](https://github.com/EyasuGet/Hackaton/issues/107) | **T3-029** — Add learner-selected simple-language mode | Leaf | 5 | Stretch | — |
+| [#108](https://github.com/EyasuGet/Hackaton/issues/108) | **T3-030** — Show anonymous frequently asked topics to authorised teachers | Leaf | 5 | Stretch | — |
+| [#109](https://github.com/EyasuGet/Hackaton/issues/109) | **T3-031** — Future spec: employer dashboard | Leaf | 5 | Lowest-priority stretch | — |
+| [#110](https://github.com/EyasuGet/Hackaton/issues/110) | **T3-032** — Future spec: consented employer outreach | Leaf | 5 | Lowest-priority stretch | — |
