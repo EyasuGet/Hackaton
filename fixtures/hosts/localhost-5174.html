@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Host A (localhost:5174) — Embed Test</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 1rem;
+        background: #f9f9f9;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      h1 {
+        color: #333;
+      }
+      .notice {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        color: #333;
+      }
+      button {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+        cursor: pointer;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        margin-right: 0.5rem;
+      }
+      button:hover {
+        background: #0052a3;
+      }
+      #mount {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      .log {
+        font-family: monospace;
+        font-size: 0.875rem;
+        background: #f0f0f0;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Learning Assistant Embed Test</h1>
+      <p>Host A — localhost:5174</p>
+      <div class="notice">
+        <strong>Demo mode.</strong> This is a test fixture. Verify the embed script loads the iframe
+        correctly and origin validation works.
+      </div>
+      <div>
+        <button id="open-btn">Open Assistant</button>
+        <button id="close-btn">Close Assistant</button>
+      </div>
+      <div id="mount"></div>
+      <div class="log" id="log"></div>
+    </div>
+
+    <script>
+      const log = document.getElementById('log');
+      const openBtn = document.getElementById('open-btn');
+      const closeBtn = document.getElementById('close-btn');
+
+      function addLog(msg) {
+        const entry = document.createElement('div');
+        entry.textContent = new Date().toISOString().split('T')[1] + ' ' + msg;
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      openBtn.addEventListener('click', () => {
+        addLog('Opening assistant…');
+        // Loader is loaded from the main app origin (localhost:5173)
+        embedAssistant({
+          token: 'demo-token-localhost',
+          origin: 'http://localhost:5173',
+        });
+      });
+
+      closeBtn.addEventListener('click', () => {
+        addLog('Sending close message…');
+        // Find the iframe and send close message
+        const iframe = document.querySelector('iframe[title="Learning assistant"]');
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage({ type: 'close' }, 'http://localhost:5173');
+        }
+      });
+
+      // Log global errors
+      window.addEventListener('error', (e) => {
+        addLog('ERROR: ' + e.message);
+      });
+    </script>
+
+    <!-- Load the embed loader script from the main app origin. -->
+    <script src="http://localhost:5173/loader.js"></script>
+  </body>
+</html>

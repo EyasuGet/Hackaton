@@ -14,6 +14,19 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: { proxy: { '/api': apiTarget } },
+    build: {
+      // Build main app (SPA) and embed loader (library) separately.
+      rollupOptions: {
+        input: {
+          main: './index.html',
+          loader: './src/embed-loader-entry.ts',
+        },
+        output: {
+          entryFileNames: '[name].js',
+          assetFileNames: '[name].[ext]',
+        },
+      },
+    },
     // Browser tests under tests/e2e run with Playwright, not Vitest.
     test: { environment: 'jsdom', exclude: [...configDefaults.exclude, 'tests/e2e/**'] },
   };
