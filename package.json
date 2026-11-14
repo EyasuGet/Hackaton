@@ -13,6 +13,7 @@
     "test": "pnpm --recursive run test",
     "test:integration": "pnpm --filter @track3/api run test:integration",
     "db:migrate": "pnpm --filter @track3/api run db:migrate",
+    "demo:provision": "pnpm --filter @track3/api run demo:provision",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
