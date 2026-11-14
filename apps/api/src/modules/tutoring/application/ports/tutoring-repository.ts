@@ -65,4 +65,13 @@ export interface TutoringRepository {
     requestId: string,
     outcome: RecordOutcomeInput,
   ): Promise<TutoringRequest | null>;
+
+  /** Removes all conversations and requests owned by the given scope. */
+  clearHistory(scope: OwnedScope): Promise<void>;
+
+  /**
+   * Purges private content from rows whose expires_at <= now and sets purged_at.
+   * Idempotent across restarts. Returns the count of purged request rows.
+   */
+  purgeExpired(now: Date): Promise<number>;
 }
