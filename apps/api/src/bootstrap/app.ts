@@ -6,6 +6,8 @@ import Fastify, {
   type FastifyServerOptions,
 } from 'fastify';
 import type { Readiness } from '../infrastructure/database/migrations.ts';
+import type { ContentAccess } from '../modules/content/application/content-access.ts';
+import { registerContentRoutes } from '../modules/content/presentation/http/content-routes.ts';
 import type { DemoRecords } from '../modules/demo-records/demo-records.ts';
 import { registerDemoRecordRoutes } from '../modules/demo-records/http.ts';
 import type { DemoSessions } from '../modules/identity/application/demo-sessions.ts';
@@ -15,6 +17,8 @@ import {
   registerIdentityRoutes,
 } from '../modules/identity/presentation/http/authentication.ts';
 import { registerDemoSessionRoutes } from '../modules/identity/presentation/http/demo-session-routes.ts';
+import type { Tutoring } from '../modules/tutoring/application/tutoring.ts';
+import { registerTutoringRoutes } from '../modules/tutoring/presentation/http/tutoring-routes.ts';
 
 export interface AppDependencies {
   /** Must not throw: report an unavailable dependency as not ready. */
@@ -24,6 +28,8 @@ export interface AppDependencies {
   readonly demoSessions: DemoSessions;
   /** Exact page origins allowed to start a demo session. */
   readonly demoAllowedOrigins: readonly string[];
+  readonly tutoring: Tutoring;
+  readonly content: ContentAccess;
 }
 
 export function buildApp(
@@ -61,11 +67,13 @@ export function buildApp(
     dependencies.demoSessions,
     dependencies.demoAllowedOrigins,
   );
+  registerContentRoutes(app, authenticate(dependencies.resolvePrincipal), dependencies.content);
   registerDemoRecordRoutes(
     app,
     authenticate(dependencies.resolvePrincipal),
     dependencies.demoRecords,
   );
+  registerTutoringRoutes(app, authenticate(dependencies.resolvePrincipal), dependencies.tutoring);
 
   return app;
 }

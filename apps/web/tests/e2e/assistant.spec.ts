@@ -23,7 +23,10 @@ async function ask(page: Page, scenario: string, question: string) {
 test('a keyboard user can ask and hear the reply without losing focus', async ({ page }) => {
   await page.goto('/');
 
-  // Tab order: scenario selector, then the question box.
+  // Tab order: the two language buttons, the scenario selector, then the question box.
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'English' })).toBeFocused();
+  await page.keyboard.press('Tab');
   await page.keyboard.press('Tab');
   await expect(page.getByLabel('Demo reply scenario')).toBeFocused();
   await page.keyboard.press('Tab');
@@ -86,6 +89,23 @@ for (const { scenario, shows, inMessages } of STATES) {
     expect(await seriousAccessibilityViolations(page)).toEqual([]);
   });
 }
+
+test('the Amharic interface is chosen by keyboard and has no serious accessibility violations', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByLabel('Your question').fill('ያልተላከ ጥያቄ');
+
+  await page.getByRole('button', { name: 'አማርኛ' }).focus();
+  await page.keyboard.press('Enter');
+
+  await expect(page.locator('html')).toHaveAttribute('lang', 'am');
+  await expect(page).toHaveTitle('የትምህርት ረዳት');
+  await expect(page.getByLabel('ጥያቄዎ')).toHaveValue('ያልተላከ ጥያቄ');
+  await page.getByLabel('ጥያቄዎ').press('Enter');
+  await expect(page.getByRole('list')).toContainText('ረዳት (ሙከራ)');
+  expect(await seriousAccessibilityViolations(page)).toEqual([]);
+});
 
 test('right-to-left text resolves to RTL in the reply and the question box', async ({ page }) => {
   await page.goto('/');
