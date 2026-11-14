@@ -44,6 +44,10 @@ describe('loadConfig', () => {
     expect(() => loadConfig(env)).toThrow(message);
   });
 
+  it('keeps surrounding spaces in the database password', () => {
+    expect(loadConfig({ ...valid, DATABASE_PASSWORD: ' spaced ' }).database.password).toBe(' spaced ');
+  });
+
   it('does not echo the rejected value', () => {
     const secretLike = 'sk-not-a-port';
     expect(() => loadConfig({ ...valid, DATABASE_PORT: secretLike })).toThrow(

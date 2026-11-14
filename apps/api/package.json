@@ -8,7 +8,7 @@
     "start": "node --env-file-if-exists=../../.env dist/server.js",
     "db:migrate": "node --env-file-if-exists=../../.env src/migrate.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --exclude '**/*.integration.test.ts'",
+    "test": "vitest run --exclude \"**/*.integration.test.ts\"",
     "test:integration": "vitest run integration.test"
   },
   "dependencies": {

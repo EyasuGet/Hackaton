@@ -26,6 +26,12 @@ function required(env: Env, name: string): string {
   return value;
 }
 
+function untrimmed(env: Env, name: string): string {
+  const value = env[name];
+  if (!value?.trim()) throw new ConfigError(`${name} is required`);
+  return value;
+}
+
 function port(env: Env, name: string): number {
   const raw = required(env, name);
   const value = Number(raw);
@@ -42,7 +48,8 @@ export function loadDatabaseConfig(env: Env): DatabaseConfig {
     port: port(env, 'DATABASE_PORT'),
     database: required(env, 'DATABASE_NAME'),
     user: required(env, 'DATABASE_USER'),
-    password: required(env, 'DATABASE_PASSWORD'),
+    // Not trimmed: Compose passes the password verbatim, so both sides must match exactly.
+    password: untrimmed(env, 'DATABASE_PASSWORD'),
   };
 }
 

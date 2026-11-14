@@ -105,6 +105,34 @@ describe('migrate', () => {
 });
 
 describe('checkReadiness', () => {
+  it('recovers on the same pool after its database connections are dropped', async () => {
+    const migrations = await writeMigrations(FIXTURES);
+    await migrate(pool, migrations);
+    let dropped = 0;
+    let expectedDrops = Infinity;
+    let allDropped = () => {};
+    const observedDrops = new Promise<void>((resolve) => (allDropped = resolve));
+    const restartPool = createPool({ ...config, database: testDatabase }, () => {
+      if (++dropped === expectedDrops) allDropped();
+    });
+    try {
+      expect(await checkReadiness(restartPool, migrations)).toEqual({ ready: true });
+      expectedDrops = restartPool.idleCount;
+
+      // Simulates a database restart: the server terminates every session the pool holds.
+      // Waiting for the pool to observe each drop mirrors a real outage, where the
+      // database is down long enough for idle connections to be discarded first.
+      await admin.query('SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1', [
+        testDatabase,
+      ]);
+      await observedDrops;
+
+      expect(await checkReadiness(restartPool, migrations)).toEqual({ ready: true });
+    } finally {
+      await restartPool.end();
+    }
+  });
+
   it('reports the database as unavailable when it cannot be reached', async () => {
     // Port 1 is reserved and closed, so the connection is refused immediately.
     const unreachable = createPool({ ...config, port: 1 }, () => {});
