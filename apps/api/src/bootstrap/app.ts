@@ -15,6 +15,8 @@ import {
   registerIdentityRoutes,
 } from '../modules/identity/presentation/http/authentication.ts';
 import { registerDemoSessionRoutes } from '../modules/identity/presentation/http/demo-session-routes.ts';
+import type { Tutoring } from '../modules/tutoring/application/tutoring.ts';
+import { registerTutoringRoutes } from '../modules/tutoring/presentation/http/tutoring-routes.ts';
 
 export interface AppDependencies {
   /** Must not throw: report an unavailable dependency as not ready. */
@@ -24,6 +26,7 @@ export interface AppDependencies {
   readonly demoSessions: DemoSessions;
   /** Exact page origins allowed to start a demo session. */
   readonly demoAllowedOrigins: readonly string[];
+  readonly tutoring: Tutoring;
 }
 
 export function buildApp(
@@ -66,6 +69,7 @@ export function buildApp(
     authenticate(dependencies.resolvePrincipal),
     dependencies.demoRecords,
   );
+  registerTutoringRoutes(app, authenticate(dependencies.resolvePrincipal), dependencies.tutoring);
 
   return app;
 }

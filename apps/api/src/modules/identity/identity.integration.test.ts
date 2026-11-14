@@ -26,6 +26,8 @@ import {
   type DemoCredential,
   type DemoPrincipalKey,
 } from './infrastructure/postgres-principal-repository.ts';
+import { Tutoring } from '../tutoring/application/tutoring.ts';
+import { PostgresTutoringRepository } from '../tutoring/infrastructure/persistence/postgres-tutoring-repository.ts';
 
 const config = loadDatabaseConfig(process.env);
 const testDatabase = `track3_test_${randomUUID().replaceAll('-', '')}`;
@@ -69,6 +71,7 @@ function appWithDemoMode(demoMode: boolean) {
     demoRecords: new DemoRecords(new PostgresDemoRecordRepository(pool)),
     demoSessions: demoSessions(demoMode),
     demoAllowedOrigins: [PAGE_ORIGIN, OTHER_PAGE_ORIGIN],
+    tutoring: new Tutoring(new PostgresTutoringRepository(pool)),
   });
 }
 
