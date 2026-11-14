@@ -6,11 +6,17 @@ import { am, en, type Locale, type MessageKey } from './messages.ts';
 
 export type { Locale, MessageKey };
 
-const DICTIONARIES: Record<Locale, Partial<Record<MessageKey, string>>> = { en, am };
+type Dictionaries = Record<Locale, Partial<Record<MessageKey, string>>>;
+
+const DICTIONARIES: Dictionaries = { en, am };
 
 /** The text for `key` in `locale`, and the language that text is actually in. */
-export function lookup(locale: Locale, key: MessageKey): { text: string; lang: Locale } {
-  const text = DICTIONARIES[locale][key];
+export function lookup(
+  locale: Locale,
+  key: MessageKey,
+  dictionaries: Dictionaries = DICTIONARIES,
+): { text: string; lang: Locale } {
+  const text = dictionaries[locale][key];
   return text === undefined ? { text: en[key], lang: 'en' } : { text, lang: locale };
 }
 
