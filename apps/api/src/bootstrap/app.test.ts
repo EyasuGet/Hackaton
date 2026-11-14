@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Readiness } from '../infrastructure/database/migrations.ts';
 import { DemoRecords } from '../modules/demo-records/demo-records.ts';
+import { DemoSessions } from '../modules/identity/application/demo-sessions.ts';
 import type { PrincipalRepository } from '../modules/identity/application/principal-repository.ts';
 import { ResolvePrincipal } from '../modules/identity/application/resolve-principal.ts';
 import { buildApp } from './app.ts';
@@ -19,6 +20,16 @@ function appWith(
     checkReadiness: () => Promise.resolve(readiness),
     resolvePrincipal: new ResolvePrincipal(principals, true),
     demoRecords: noRecords,
+    demoSessions: new DemoSessions(
+      {
+        createHandoff: () => Promise.resolve(false),
+        consumeHandoff: () => Promise.resolve(null),
+        createSession: () => Promise.resolve(),
+        revokeSession: () => Promise.resolve(false),
+      },
+      true,
+    ),
+    demoAllowedOrigins: [],
   });
 }
 

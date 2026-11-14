@@ -33,6 +33,16 @@ footer {
   outline-offset: 2px;
 }
 
+.demo-session {
+  border-inline-start: 4px solid var(--accent);
+  padding-inline-start: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.demo-session h2 {
+  margin-top: 0;
+}
+
 .demo-notice {
   border: 2px dashed var(--muted);
   border-radius: 0.5rem;
