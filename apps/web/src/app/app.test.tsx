@@ -17,7 +17,9 @@ describe('App API status', () => {
     render(<App />);
 
     expect(await screen.findByText('API available')).toBeTruthy();
-    expect(screen.getByRole('status').textContent).toBe('API available');
+    expect(screen.getByRole('status', { name: 'Service status' }).textContent).toBe(
+      'API available',
+    );
   });
 
   it.each([
@@ -47,10 +49,14 @@ describe('App API status', () => {
       ),
     );
     render(<App />);
-    expect(screen.getByRole('status').textContent).toBe('Checking the API…');
+    expect(screen.getByRole('status', { name: 'Service status' }).textContent).toBe(
+      'Checking the API…',
+    );
 
     await act(() => vi.advanceTimersByTimeAsync(HEALTH_TIMEOUT_MS));
 
-    expect(screen.getByRole('status').textContent).toBe('API unavailable');
+    expect(screen.getByRole('status', { name: 'Service status' }).textContent).toBe(
+      'API unavailable',
+    );
   });
 });

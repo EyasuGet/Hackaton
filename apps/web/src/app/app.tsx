@@ -1,6 +1,13 @@
-// Minimal page proving the web-to-API path: it checks API health once and
-// reports the result in a polite live region so screen readers hear the change.
-import { useEffect, useState } from 'react';
+// Learner page: the conversation shell driven by labelled demo fixtures, plus a
+// footer that checks API health once and reports it in a polite live region.
+import { useEffect, useMemo, useState } from 'react';
+import { Assistant } from '../features/assistant/assistant.tsx';
+import {
+  createFixtureClient,
+  FIXTURE_SCENARIOS,
+  isFixtureScenario,
+  type FixtureScenario,
+} from '../features/assistant/fixture-client.ts';
 
 type ApiStatus = 'checking' | 'available' | 'unavailable';
 
@@ -36,6 +43,8 @@ async function fetchApiStatus(signal: AbortSignal): Promise<ApiStatus> {
 
 export function App() {
   const [status, setStatus] = useState<ApiStatus>('checking');
+  const [scenario, setScenario] = useState<FixtureScenario>('english');
+  const client = useMemo(() => createFixtureClient(scenario), [scenario]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -45,9 +54,36 @@ export function App() {
   }, []);
 
   return (
-    <main>
-      <h1>Learning assistant</h1>
-      <p role="status">{STATUS_TEXT[status]}</p>
-    </main>
+    <>
+      <main>
+        <h1>Learning assistant</h1>
+        <section className="demo-notice" aria-labelledby="demo-heading">
+          <h2 id="demo-heading">Demo mode</h2>
+          <p>
+            Replies come from labelled test fixtures. This is not a tutor, and no answer is real.
+          </p>
+          <label htmlFor="demo-scenario">Demo reply scenario</label>
+          <select
+            id="demo-scenario"
+            value={scenario}
+            onChange={(event) => {
+              if (isFixtureScenario(event.target.value)) setScenario(event.target.value);
+            }}
+          >
+            {Object.entries(FIXTURE_SCENARIOS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </section>
+        <Assistant client={client} />
+      </main>
+      <footer>
+        <p role="status" aria-label="Service status">
+          {STATUS_TEXT[status]}
+        </p>
+      </footer>
+    </>
   );
 }

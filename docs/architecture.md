@@ -97,7 +97,7 @@ flowchart LR
 
 ## Target folder structure
 
-This is a **target layout**, not a claim that the application files exist. Only the T3-001 foundation exists so far: root package and lint/format configuration, `compose.yaml`, CI, the API bootstrap under `apps/api/src/bootstrap`, the migration runner under `apps/api/src/infrastructure/database`, the web page under `apps/web/src/app` and its browser tests under `apps/web/tests/e2e`. Further `apps` content, `packages`, and `fixtures` are created by their owning implementation issues as needed. Compact entries such as `grilling/SKILL.md` mean a file inside that directory; no brace-expanded placeholder paths are used.
+This is a **target layout**, not a claim that the application files exist. Only the T3-001 foundation exists so far: root package and lint/format configuration, `compose.yaml`, CI, the API bootstrap under `apps/api/src/bootstrap`, the migration runner under `apps/api/src/infrastructure/database`, the web page under `apps/web/src/app`, the fixture-driven conversation shell under `apps/web/src/features/assistant` (T3-006-A) and browser tests under `apps/web/tests/e2e`. Further `apps` content, `packages`, and `fixtures` are created by their owning implementation issues as needed. Compact entries such as `grilling/SKILL.md` mean a file inside that directory; no brace-expanded placeholder paths are used.
 
 ```text
 Hackaton/

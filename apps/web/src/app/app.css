@@ -1,0 +1,160 @@
+/* Base learner styles: readable type with Ethiopic-capable fallbacks, visible
+   focus, and a single column that reflows at narrow widths and 200% zoom. */
+
+:root {
+  --text: #1b1b1f;
+  --muted: #4a4a55;
+  --surface: #ffffff;
+  --panel: #f2f4f7;
+  --accent: #1d4ed8;
+  --danger: #a3141a;
+  /* Local fonts only; each browser falls back per character to a font with Ethiopic glyphs. */
+  font-family:
+    system-ui, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans Ethiopic', 'Abyssinica SIL', Nyala,
+    sans-serif;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--surface);
+}
+
+body {
+  margin: 0;
+}
+
+main,
+footer {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.demo-notice {
+  border: 2px dashed var(--muted);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.demo-notice h2 {
+  margin-top: 0;
+}
+
+.demo-notice label {
+  display: block;
+  font-weight: 600;
+}
+
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+/* A select sizes itself to its longest option; never let it outgrow narrow screens. */
+select {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.messages {
+  list-style: none;
+  padding: 0;
+}
+
+.message {
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: var(--panel);
+}
+
+.message-learner {
+  border-inline-start: 4px solid var(--accent);
+}
+
+.message-assistant {
+  border-inline-start: 4px solid var(--muted);
+}
+
+.speaker {
+  margin: 0;
+  font-weight: 600;
+}
+
+.message-text {
+  margin: 0.25rem 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.empty,
+.hint,
+.pending {
+  color: var(--muted);
+}
+
+.ask label {
+  display: block;
+  font-weight: 600;
+}
+
+.hint {
+  margin: 0 0 0.25rem;
+}
+
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.5rem;
+  border: 2px solid var(--muted);
+  border-radius: 0.25rem;
+}
+
+textarea[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.problem {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+button {
+  padding: 0.5rem 1.25rem;
+  border: 2px solid var(--accent);
+  border-radius: 0.25rem;
+  background: var(--accent);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+button[aria-disabled='true'] {
+  background: var(--panel);
+  color: var(--muted);
+  border-color: var(--muted);
+  cursor: progress;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
