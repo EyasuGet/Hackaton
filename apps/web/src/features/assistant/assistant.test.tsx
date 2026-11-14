@@ -113,6 +113,24 @@ describe('Assistant', () => {
     expect(ask).not.toHaveBeenCalled();
     expect(screen.getByRole('alert').textContent).toBe('Type a question before sending.');
     expect(questionBox().getAttribute('aria-invalid')).toBe('true');
+
+    type('Now a real question');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(questionBox().getAttribute('aria-invalid')).toBeNull();
+  });
+
+  it('recovers when the client rejects instead of reporting a failure', async () => {
+    const ask = vi.fn(() => Promise.reject(new Error('unexpected')));
+    render(<Assistant client={{ ask }} />);
+    type('Question');
+
+    fireEvent.keyDown(questionBox(), { key: 'Enter' });
+
+    expect((await screen.findByRole('alert')).textContent).toContain('could not be sent');
+    expect(questionBox()).toHaveProperty('readOnly', false);
+    expect(screen.getByRole('button', { name: 'Send' }).getAttribute('aria-disabled')).toBe(
+      'false',
+    );
   });
 
   it('renders markup in replies as inert text with its language and direction', async () => {
@@ -125,8 +143,12 @@ describe('Assistant', () => {
     await respond({ kind: 'answer', reply: { id: 'r2', text: markup, lang: 'am' } });
 
     expect(container.querySelector('img, script')).toBeNull();
-    const reply = screen.getByText(markup);
-    expect(reply.getAttribute('lang')).toBe('am');
-    expect(reply.getAttribute('dir')).toBe('auto');
+    expect(screen.getAllByText(markup).length).toBeGreaterThan(0);
+    const replyText = screen.getAllByRole('listitem')[1]?.querySelector('[dir]');
+    expect(replyText?.getAttribute('lang')).toBe('am');
+    expect(replyText?.getAttribute('dir')).toBe('auto');
+    // The English prefix is outside the Amharic-tagged span in the announcement.
+    expect(updates().querySelector('span')?.getAttribute('lang')).toBe('am');
+    expect(updates().getAttribute('lang')).toBeNull();
   });
 });

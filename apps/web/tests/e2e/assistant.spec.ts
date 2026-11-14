@@ -45,7 +45,6 @@ test('a keyboard user can ask and hear the reply without losing focus', async ({
 const STATES = [
   { scenario: 'amharic', shows: 'ይህ የሙከራ መልስ ነው።', inMessages: true },
   { scenario: 'mixed', shows: 'مرحبا بكم', inMessages: true },
-  { scenario: 'markup', shows: '<script>alert(2)</script>', inMessages: true },
   { scenario: 'denied', shows: 'session has expired', inMessages: false },
   { scenario: 'failed', shows: 'could not be sent', inMessages: false },
   { scenario: 'slow', shows: 'Waiting for a reply…', inMessages: false },
@@ -63,6 +62,19 @@ for (const { scenario, shows, inMessages } of STATES) {
     expect(await seriousAccessibilityViolations(page)).toEqual([]);
   });
 }
+
+test('right-to-left text resolves to RTL in the reply and the question box', async ({ page }) => {
+  await page.goto('/');
+  await ask(page, 'mixed', 'Question');
+
+  const reply = page.getByRole('list').getByText('مرحبا بكم', { exact: false });
+  await expect(reply).toBeVisible();
+  expect(await reply.evaluate((element) => element.matches(':dir(rtl)'))).toBe(true);
+
+  const question = page.getByLabel('Your question');
+  await question.fill('ما هو التمثيل الضوئي؟');
+  expect(await question.evaluate((element) => element.matches(':dir(rtl)'))).toBe(true);
+});
 
 test('reply markup is shown as text and never executed', async ({ page }) => {
   const dialogs: string[] = [];

@@ -1,7 +1,7 @@
 // Accessible conversation shell: a labelled question box, a message history and
 // readable pending/error states. All text is rendered as React text, never HTML.
 import { useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import type { ConversationClient, Reply } from './conversation.ts';
+import type { AskResult, ConversationClient } from './conversation.ts';
 
 interface Entry {
   readonly id: string;
@@ -25,7 +25,9 @@ export function Assistant({ client }: { client: ConversationClient }) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
-  const [announcement, setAnnouncement] = useState<{ text: string; lang?: string }>({ text: '' });
+  const [announcement, setAnnouncement] = useState<{ prefix: string; text: string; lang?: string }>(
+    { prefix: '', text: '' },
+  );
   // State updates are asynchronous, so a ref blocks a second send in the same tick.
   const inFlight = useRef(false);
   const ids = { question: useId(), hint: useId(), problem: useId(), heading: useId() };
@@ -40,19 +42,25 @@ export function Assistant({ client }: { client: ConversationClient }) {
     inFlight.current = true;
     setSending(true);
     setProblem(null);
-    setAnnouncement({ text: 'Sending your question…' });
+    setAnnouncement({ prefix: '', text: 'Sending your question…' });
 
-    const result = await client.ask(question);
-
-    inFlight.current = false;
-    setSending(false);
+    let result: AskResult;
+    try {
+      result = await client.ask(question);
+    } catch {
+      // The contract says ask() must not reject; if one does, never leave the form stuck.
+      result = { kind: 'failed' };
+    } finally {
+      inFlight.current = false;
+      setSending(false);
+    }
     if (result.kind !== 'answer') {
       // Keep the draft so the learner can retry deliberately; the alert explains why.
       setProblem(result.kind);
-      setAnnouncement({ text: '' });
+      setAnnouncement({ prefix: '', text: '' });
       return;
     }
-    const reply: Reply = result.reply;
+    const { reply } = result;
     setEntries((current) => [
       ...current,
       { id: `${reply.id}-question`, speaker: 'learner', text: question },
@@ -60,7 +68,7 @@ export function Assistant({ client }: { client: ConversationClient }) {
     ]);
     setDraft('');
     // Announced once, as a whole; focus stays wherever the learner left it.
-    setAnnouncement({ text: `Assistant: ${reply.text}`, lang: reply.lang });
+    setAnnouncement({ prefix: 'Assistant: ', text: reply.text, lang: reply.lang });
   }
 
   function onSubmit(event: FormEvent) {
@@ -103,7 +111,10 @@ export function Assistant({ client }: { client: ConversationClient }) {
         <textarea
           id={ids.question}
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            if (problem === 'empty') setProblem(null);
+          }}
           onKeyDown={onKeyDown}
           readOnly={sending}
           rows={3}
@@ -129,13 +140,10 @@ export function Assistant({ client }: { client: ConversationClient }) {
         </div>
       </form>
 
-      <p
-        className="visually-hidden"
-        role="status"
-        aria-label="Conversation updates"
-        lang={announcement.lang}
-      >
-        {announcement.text}
+      {/* The English prefix and the reply carry their own language tags. */}
+      <p className="visually-hidden" role="status" aria-label="Conversation updates">
+        {announcement.prefix}
+        <span lang={announcement.lang}>{announcement.text}</span>
       </p>
     </section>
   );
