@@ -17,9 +17,6 @@ import { DemoSessions } from './modules/identity/application/demo-sessions.ts';
 import { ResolvePrincipal } from './modules/identity/application/resolve-principal.ts';
 import { PostgresDemoSessionRepository } from './modules/identity/infrastructure/postgres-demo-session-repository.ts';
 import { PostgresPrincipalRepository } from './modules/identity/infrastructure/postgres-principal-repository.ts';
-import { Accommodation } from './modules/accommodation/application/accommodation.ts';
-import { PostgresAccommodationRepository } from './modules/accommodation/infrastructure/persistence/postgres-accommodation-repository.ts';
-import { PostgresJobRepository } from './modules/careers/infrastructure/postgres-job-repository.ts';
 import { Help } from './modules/help/application/help.ts';
 import { StaffHelp } from './modules/help/application/staff-help.ts';
 import { PostgresHelpRepository } from './modules/help/infrastructure/persistence/postgres-help-repository.ts';
@@ -50,8 +47,6 @@ const app = buildApp(
     content,
     help: new Help(helpRepository),
     staffHelp: new StaffHelp(helpRepository),
-    accommodation: new Accommodation(new PostgresAccommodationRepository(pool)),
-    jobRepository: new PostgresJobRepository(pool),
   },
   { logger: true },
 );
