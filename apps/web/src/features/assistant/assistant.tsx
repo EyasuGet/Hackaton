@@ -1,6 +1,14 @@
 // Accessible conversation shell: a labelled question box, a message history and
 // readable pending/error states. All text is rendered as React text, never HTML.
-import { useContext, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import {
+  useContext,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react';
 import { LocaleContext, lookup, T, useT, type MessageKey } from '../../shared/i18n/i18n.tsx';
 import type { AskResult, ConversationClient } from './conversation.ts';
 
@@ -36,6 +44,11 @@ export function Assistant({ client }: { client: ConversationClient }) {
   const ids = { question: useId(), hint: useId(), problem: useId(), heading: useId() };
   const t = useT();
   const locale = useContext(LocaleContext);
+  // A reply can arrive after a language switch; announce it in the language shown then.
+  const localeRef = useRef(locale);
+  useEffect(() => {
+    localeRef.current = locale;
+  }, [locale]);
 
   async function send() {
     if (inFlight.current) return;
@@ -74,7 +87,7 @@ export function Assistant({ client }: { client: ConversationClient }) {
     setDraft('');
     // Announced once, as a whole; focus stays wherever the learner left it.
     setAnnouncement({
-      prefix: lookup(locale, 'assistant.announcePrefix'),
+      prefix: lookup(localeRef.current, 'assistant.announcePrefix'),
       text: reply.text,
       lang: reply.lang,
     });

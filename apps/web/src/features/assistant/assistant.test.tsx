@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { LocaleContext } from '../../shared/i18n/i18n.tsx';
 import { Assistant } from './assistant.tsx';
 import type { AskResult, ConversationClient } from './conversation.ts';
 
@@ -153,5 +154,26 @@ describe('Assistant', () => {
       ['Assistant: ', 'en'],
       [markup, 'am'],
     ]);
+  });
+
+  it('announces a reply that arrives after a language switch in the new language', async () => {
+    const { client, respond } = controllableClient();
+    const { rerender } = render(
+      <LocaleContext value="en">
+        <Assistant client={client} />
+      </LocaleContext>,
+    );
+    type('Question');
+    fireEvent.keyDown(questionBox(), { key: 'Enter' });
+
+    rerender(
+      <LocaleContext value="am">
+        <Assistant client={client} />
+      </LocaleContext>,
+    );
+    await respond(englishAnswer);
+
+    const prefix = screen.getByRole('status', { name: 'የውይይት ማሳወቂያዎች' }).querySelector('span');
+    expect([prefix?.textContent, prefix?.getAttribute('lang')]).toEqual(['ረዳት፦ ', 'am']);
   });
 });
