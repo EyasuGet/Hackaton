@@ -1,0 +1,63 @@
+# Caddy reverse proxy and automatic HTTPS configuration for Track 3.
+# Terminate TLS via public ACME (Let's Encrypt / ZeroSSL) using {$DOMAIN} and {$CADDY_EMAIL}.
+# When DOMAIN is localhost or omitted, Caddy uses internal self-signed TLS for local validation.
+
+{$DOMAIN:localhost} {
+    # Automatic TLS: uses ACME if DOMAIN is a public FQDN and CADDY_EMAIL is provided;
+    # falls back to internal self-signed certificates for local testing.
+    tls {$CADDY_EMAIL:internal}
+
+    # Serve built static web assets from @track3/web (dist).
+    root * /srv/web
+
+    # Security headers for HTTPS deployment:
+    header {
+        # Enforce HTTPS across all subdomains.
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        # Prevent MIME-type sniffing.
+        X-Content-Type-Options "nosniff"
+        # Restrict referrer leakage.
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Allow screen capture and microphone access only to the application origin.
+        Permissions-Policy "display-capture=(self), microphone=(self)"
+        # Allow embedding by the static host (frame-ancestors *) while restricting resource loading to self.
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors *;"
+    }
+
+    # Static asset caching: immutable for hashed bundle files, no-cache for index/HTML.
+    @hashedAssets path /assets/*
+    header @hashedAssets Cache-Control "public, max-age=31536000, immutable"
+
+    @htmlFiles path *.html /
+    header @htmlFiles Cache-Control "no-cache, must-revalidate"
+
+    # API reverse proxy: forward /api/* requests to the Fastify backend.
+    # Mutually exclusive handle block ensures /api/* is never rewritten to /index.html.
+    handle /api/* {
+        reverse_proxy {$API_UPSTREAM:http://api:3000} {
+            # Transparent proxying with standard forwarding headers.
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Single-page application client-side routing fallback.
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+
+    # Sanitised access logs: exclude sensitive authorization headers and tokens.
+    log {
+        output stdout
+        format filter {
+            wrap json
+            fields {
+                request>headers>Authorization delete
+                request>headers>Cookie delete
+            }
+        }
+    }
+}

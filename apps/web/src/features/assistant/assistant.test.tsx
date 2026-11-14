@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { LocaleContext } from '../../shared/i18n/i18n.tsx';
 import { Assistant } from './assistant.tsx';
 import type { AskResult, ConversationClient } from './conversation.ts';
 
@@ -192,8 +193,32 @@ describe('Assistant', () => {
     expect(replyText?.getAttribute('lang')).toBe('am');
     expect(replyText?.getAttribute('dir')).toBe('auto');
     expect(screen.getByText('1 መስከረም 2019').getAttribute('lang')).toBe('am');
-    // The English prefix is outside the Amharic-tagged span in the announcement.
-    expect(updates().querySelector('span')?.getAttribute('lang')).toBe('am');
-    expect(updates().getAttribute('lang')).toBeNull();
+    // The interface-language prefix and the Amharic reply are tagged separately.
+    const spans = [...updates().querySelectorAll('span')];
+    expect(spans.map((span) => [span.textContent, span.getAttribute('lang')])).toEqual([
+      ['Assistant: ', 'en'],
+      [markup, 'am'],
+    ]);
+  });
+
+  it('announces a reply that arrives after a language switch in the new language', async () => {
+    const { client, respond } = controllableClient();
+    const { rerender } = render(
+      <LocaleContext value="en">
+        <Assistant client={client} />
+      </LocaleContext>,
+    );
+    type('Question');
+    fireEvent.keyDown(questionBox(), { key: 'Enter' });
+
+    rerender(
+      <LocaleContext value="am">
+        <Assistant client={client} />
+      </LocaleContext>,
+    );
+    await respond(englishAnswer);
+
+    const prefix = screen.getByRole('status', { name: 'የውይይት ማሳወቂያዎች' }).querySelector('span');
+    expect([prefix?.textContent, prefix?.getAttribute('lang')]).toEqual(['ረዳት፦ ', 'am']);
   });
 });
