@@ -18,6 +18,7 @@ import {
 } from '../modules/identity/presentation/http/authentication.ts';
 import { registerDemoSessionRoutes } from '../modules/identity/presentation/http/demo-session-routes.ts';
 import type { Help } from '../modules/help/application/help.ts';
+import type { StaffHelp } from '../modules/help/application/staff-help.ts';
 import { registerHelpRoutes } from '../modules/help/presentation/http/help-routes.ts';
 import type { Tutoring } from '../modules/tutoring/application/tutoring.ts';
 import { registerTutoringRoutes } from '../modules/tutoring/presentation/http/tutoring-routes.ts';
@@ -34,6 +35,7 @@ export interface AppDependencies {
   readonly content: ContentAccess;
   /** Optional; when omitted the help routes are not registered (for tests that do not exercise them). */
   readonly help?: Help;
+  readonly staffHelp?: StaffHelp;
 }
 
 export function buildApp(
@@ -78,9 +80,13 @@ export function buildApp(
     dependencies.demoRecords,
   );
   registerTutoringRoutes(app, authenticate(dependencies.resolvePrincipal), dependencies.tutoring);
-  if (dependencies.help) {
-    registerHelpRoutes(app, authenticate(dependencies.resolvePrincipal), dependencies.help);
+  if (dependencies.help && dependencies.staffHelp) {
+    registerHelpRoutes(
+      app,
+      authenticate(dependencies.resolvePrincipal),
+      dependencies.help,
+      dependencies.staffHelp,
+    );
   }
-
   return app;
 }

@@ -2,7 +2,7 @@
 // A request captures the context the learner explicitly chose to share after
 // seeing the disclosure, and tracks its lifecycle from waiting to cancelled.
 
-export type HelpRequestState = 'waiting' | 'cancelled';
+export type HelpRequestState = 'waiting' | 'cancelled' | 'claimed';
 
 export interface HelpRequest {
   readonly id: string;
@@ -19,4 +19,7 @@ export interface HelpRequest {
   readonly expiresAt: string;
   readonly updatedAt: string;
   readonly cancelledAt: string | null;
+  /** Set when a support staff member claims the request (T3-017-A). */
+  readonly claimedBy: string | null;
+  readonly claimedAt: string | null;
 }
