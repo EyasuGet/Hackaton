@@ -7,11 +7,13 @@ export interface HelpRequest {
   readonly clientRequestId: string;
   readonly contextSnapshot: string;
   readonly consentGiven: boolean;
-  readonly state: 'waiting' | 'cancelled';
+  readonly state: 'waiting' | 'cancelled' | 'claimed';
   readonly createdAt: string;
   readonly expiresAt: string;
   readonly updatedAt: string;
   readonly cancelledAt: string | null;
+  readonly claimedBy: string | null;
+  readonly claimedAt: string | null;
 }
 
 export type SubmitResult =
@@ -35,7 +37,7 @@ function parseRequest(raw: unknown): HelpRequest | null {
     typeof r.clientRequestId !== 'string' ||
     typeof r.contextSnapshot !== 'string' ||
     typeof r.consentGiven !== 'boolean' ||
-    (r.state !== 'waiting' && r.state !== 'cancelled') ||
+    (r.state !== 'waiting' && r.state !== 'cancelled' && r.state !== 'claimed') ||
     typeof r.createdAt !== 'string' ||
     typeof r.expiresAt !== 'string' ||
     typeof r.updatedAt !== 'string'
@@ -53,6 +55,8 @@ function parseRequest(raw: unknown): HelpRequest | null {
     expiresAt: r.expiresAt,
     updatedAt: r.updatedAt,
     cancelledAt: typeof r.cancelledAt === 'string' ? r.cancelledAt : null,
+    claimedBy: typeof r.claimedBy === 'string' ? r.claimedBy : null,
+    claimedAt: typeof r.claimedAt === 'string' ? r.claimedAt : null,
   };
 }
 
@@ -99,6 +103,29 @@ export async function cancelHelpRequest(token: string, id: string): Promise<Canc
     const request = parseRequest(body.request);
     if (!request) return { kind: 'failed' };
     return { kind: 'cancelled', request };
+  } catch {
+    return { kind: 'failed' };
+  }
+}
+
+export type ListResult =
+  | { readonly kind: 'ok'; readonly requests: readonly HelpRequest[] }
+  | { readonly kind: 'denied' | 'failed' };
+
+/** Lists the learner's own non-expired help requests. Owner-scoped by the API. */
+export async function listHelpRequests(token: string): Promise<ListResult> {
+  try {
+    const response = await fetch('/api/help/requests', {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (response.status === 401 || response.status === 403) return { kind: 'denied' };
+    if (!response.ok) return { kind: 'failed' };
+    const body: unknown = await response.json();
+    if (!isRecord(body) || !Array.isArray(body.requests)) return { kind: 'failed' };
+    const requests = (body.requests as unknown[])
+      .map(parseRequest)
+      .filter((r): r is HelpRequest => r !== null);
+    return { kind: 'ok', requests };
   } catch {
     return { kind: 'failed' };
   }

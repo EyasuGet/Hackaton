@@ -23,6 +23,8 @@ const FAKE_REQUEST: HelpRequest = {
   expiresAt: new Date(Date.now() + 7 * 86400 * 1000).toISOString(),
   updatedAt: new Date().toISOString(),
   cancelledAt: null,
+  claimedBy: null,
+  claimedAt: null,
 };
 
 afterEach(cleanup);

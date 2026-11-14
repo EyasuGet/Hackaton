@@ -121,6 +121,16 @@ export const en = {
   'accommodation.errorJobNotFound': 'That job is no longer available. Please choose another.',
   'accommodation.errorFailed':
     'Your request could not be sent. Check your connection and try again.',
+  'inbox.heading': 'Your help requests',
+  'inbox.loading': 'Loading your requests…',
+  'inbox.noRequests': 'You have no help requests yet.',
+  'inbox.state.waiting': 'Waiting for staff',
+  'inbox.state.claimed': 'Being handled by staff',
+  'inbox.state.cancelled': 'Cancelled',
+  'inbox.requestedAt': 'Requested:',
+  'inbox.unread': 'New reply',
+  'inbox.noReplies': 'No replies yet. Staff will reply when available.',
+  'inbox.loadError': 'Could not load your requests. Check your connection.',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -218,4 +228,14 @@ export const am: Partial<Record<MessageKey, string>> = {
   'accommodation.errorDenied': 'አልገቡም፤ ወይም ክፍለ ጊዜዎ አብቅቷል። ጥያቄዎ አልተላከም።',
   'accommodation.errorJobNotFound': 'ያ ሥራ አሁን አይገኝም። ሌላ ይምረጡ።',
   'accommodation.errorFailed': 'ጥያቄዎ ሊላክ አልቻለም። ግንኙነትዎን ያረጋግጡ እና እንደገና ይሞክሩ።',
+  'inbox.heading': 'የእርዳታ ጥያቄዎችዎ',
+  'inbox.loading': 'ጥያቄዎችዎ እየተጫኑ ናቸው…',
+  'inbox.noRequests': 'እስካሁን የእርዳታ ጥያቄ አላቀረቡም።',
+  'inbox.state.waiting': 'ሰራተኛ እየጠበቀ ነው',
+  'inbox.state.claimed': 'ሰራተኛ እየተሰጣቸው ነው',
+  'inbox.state.cancelled': 'ተሰርዟል',
+  'inbox.requestedAt': 'የተጠየቀበት ጊዜ፦',
+  'inbox.unread': 'አዲስ ምላሽ',
+  'inbox.noReplies': 'ምላሽ እስካሁን የለም። ሰራተኞች ሲኖሩ ምላሽ ይሰጣሉ።',
+  'inbox.loadError': 'ጥያቄዎችዎ ሊጫኑ አልቻሉም። ግንኙነትዎን ያረጋግጡ።',
 };
