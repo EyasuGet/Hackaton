@@ -2,6 +2,7 @@
 // footer that checks API health once and reports it in a polite live region.
 import { useEffect, useMemo, useState } from 'react';
 import { Assistant } from '../features/assistant/assistant.tsx';
+import { CourseContent } from '../features/course-content/course-content.tsx';
 import { DemoSession } from '../features/demo-session/demo-session.tsx';
 import {
   createFixtureClient,
@@ -46,6 +47,8 @@ async function fetchApiStatus(signal: AbortSignal): Promise<ApiStatus> {
 export function App({ handoffCode = null }: { handoffCode?: string | null }) {
   const [status, setStatus] = useState<ApiStatus>('checking');
   const [scenario, setScenario] = useState<FixtureScenario>('english');
+  // The demo session token lives only in memory and is shared with features that call the API.
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const client = useMemo(() => createFixtureClient(scenario), [scenario]);
 
   useEffect(() => {
@@ -59,7 +62,8 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
     <>
       <main>
         <h1>Learning assistant</h1>
-        <DemoSession handoffCode={handoffCode} />
+        <DemoSession handoffCode={handoffCode} onSession={setSessionToken} />
+        <CourseContent token={sessionToken} />
         <section className="demo-notice" aria-labelledby="demo-heading">
           <h2 id="demo-heading">Demo mode</h2>
           <p>

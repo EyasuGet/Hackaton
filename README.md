@@ -138,6 +138,18 @@ Inspect what is stored:
 ```sh
 docker compose exec db sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB" -c "SELECT v.source_id, v.version, v.is_demo, s.current_version_id = v.id AS current, v.imported_at FROM lesson_source_versions v JOIN lesson_sources s ON s.id = v.source_id ORDER BY v.source_id, v.imported_at"'
 ```
+
+### Course search and citations
+
+Signed-in learners can search their granted courses and open a cited section in place (the page's *Your course material* panel). Search uses PostgreSQL full-text search plus the reviewed Amharic↔English glossary in [`fixtures/retrieval/bilingual-glossary.json`](fixtures/retrieval/bilingual-glossary.json); the method and its evaluation are recorded in [decisions](docs/decisions.md#retrieval-method--t3-005-b-2026-11-14). Run `pnpm content:import` first.
+
+| Request (learner session token) | Result |
+|---|---|
+| `GET /api/content/search?q=…` (1–500 characters) | `{"passages": [{sourceId, sectionId, sourceTitle, heading, excerpt, language, courseId}]}`, up to 5, best first, from current non-withdrawn versions in granted courses only |
+| `GET /api/content/sources/:sourceId/sections/:sectionId` | The section with `text`, `language`, `version`, `anchor` and `provenance` (`demo`, or `organiser` with repository, commit and path). `404 not_found` for a missing source **or** a course you are not granted (indistinguishable); `410 {"error":"unavailable","reason":"withdrawn"\|"removed"}` for a granted source that was withdrawn or no longer has that section; `403` for support staff |
+
+Tutoring code uses `ContentAccess` (`apps/api/src/modules/content/application/content-access.ts`) rather than these routes or the tables.
+
 ### Demo sign-in for the browser
 
 The assistant page signs in with a **single-use sign-in link** minted by whoever runs the demo; nothing the browser sends chooses a role or course.

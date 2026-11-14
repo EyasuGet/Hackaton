@@ -14,7 +14,14 @@ const EXCHANGE_ERRORS = {
   failed: 'Sign-in could not be completed. Check your connection, then ask for a new link.',
 } as const;
 
-export function DemoSession({ handoffCode }: { handoffCode: string | null }) {
+export function DemoSession({
+  handoffCode,
+  onSession = () => {},
+}: {
+  handoffCode: string | null;
+  /** Receives the in-memory session token on sign-in and null on sign-out. */
+  onSession?: (token: string | null) => void;
+}) {
   const [state, setState] = useState<State>({ kind: handoffCode ? 'signing-in' : 'none' });
   const [signOutFailed, setSignOutFailed] = useState(false);
   // A code works once, so the exchange must not repeat when StrictMode re-runs effects.
@@ -24,14 +31,15 @@ export function DemoSession({ handoffCode }: { handoffCode: string | null }) {
   useEffect(() => {
     if (!handoffCode || started.current) return;
     started.current = true;
-    void exchangeHandoff(handoffCode).then((result) =>
-      setState(
-        result.kind === 'session'
-          ? { kind: 'signed-in', token: result.token, identity: result.identity }
-          : { kind: 'error', message: EXCHANGE_ERRORS[result.kind] },
-      ),
-    );
-  }, [handoffCode]);
+    void exchangeHandoff(handoffCode).then((result) => {
+      if (result.kind === 'session') {
+        setState({ kind: 'signed-in', token: result.token, identity: result.identity });
+        onSession(result.token);
+      } else {
+        setState({ kind: 'error', message: EXCHANGE_ERRORS[result.kind] });
+      }
+    });
+  }, [handoffCode, onSession]);
 
   async function onSignOut(token: string) {
     if (!(await signOut(token))) {
@@ -40,6 +48,7 @@ export function DemoSession({ handoffCode }: { handoffCode: string | null }) {
     }
     setSignOutFailed(false);
     setState({ kind: 'signed-out' });
+    onSession(null);
     // The Sign out button disappears, so move focus to the message that replaces it.
     statusRef.current?.focus();
   }
