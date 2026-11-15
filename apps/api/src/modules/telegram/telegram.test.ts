@@ -10,9 +10,19 @@ import { ContentAccess } from '../content/application/content-access.ts';
 import type { CitationResult, CitedSection } from '../content/domain/retrieval.ts';
 import { Tutoring } from '../tutoring/application/tutoring.ts';
 import { FaqProvider } from '../tutoring/application/faq-provider.ts';
+import { Help } from '../help/application/help.ts';
+import type {
+  HelpRepository,
+  SubmitHelpInput,
+  SubmitResult,
+  QueueItem,
+  AddReplyResult,
+  ClaimResult as HelpClaimResult,
+} from '../help/application/ports/help-repository.ts';
+import type { HelpRequest, HelpReply } from '../help/domain/help-request.ts';
 import type {
   ClaimRequestInput,
-  ClaimResult,
+  ClaimResult as TutorClaimResult,
   RecordOutcomeInput,
   TutoringRepository,
 } from '../tutoring/application/ports/tutoring-repository.ts';
@@ -1110,7 +1120,10 @@ class TestTutoringRepository implements TutoringRepository {
     return Promise.resolve(conv);
   }
 
-  async claimRequest(scope: OwnedScope, input: ClaimRequestInput): Promise<ClaimResult | null> {
+  async claimRequest(
+    scope: OwnedScope,
+    input: ClaimRequestInput,
+  ): Promise<TutorClaimResult | null> {
     if (!scope.courseIds.includes(input.courseId)) return null;
 
     const existing = this.requests.find(
@@ -2655,5 +2668,430 @@ describe('Telegram Speech Output Flow (T3-013-B)', () => {
     expect(mockClient.sentMessages).toHaveLength(1);
     // Voice synthesis was aborted due to size bound
     expect(mockClient.sentVoices).toHaveLength(0);
+  });
+});
+
+describe('Telegram One-Tap Human Help (T3-041)', () => {
+  class MockHelpTelegramClient implements TelegramClient {
+    readonly sentMessages: TelegramSendMessageParams[] = [];
+    readonly sentVoices: TelegramSendVoiceParams[] = [];
+    readonly callbackAnswers: TelegramAnswerCallbackParams[] = [];
+
+    sendMessage(params: TelegramSendMessageParams): Promise<TelegramSendResult> {
+      this.sentMessages.push(params);
+      return Promise.resolve({ ok: true, messageId: this.sentMessages.length });
+    }
+
+    sendVoice(params: TelegramSendVoiceParams): Promise<TelegramSendResult> {
+      this.sentVoices.push(params);
+      return Promise.resolve({ ok: true, messageId: 888 });
+    }
+
+    answerCallbackQuery(params: TelegramAnswerCallbackParams): Promise<boolean> {
+      this.callbackAnswers.push(params);
+      return Promise.resolve(true);
+    }
+  }
+
+  let linkRepo: InMemoryTelegramLinkRepository;
+  let mockClient: MockHelpTelegramClient;
+  let tutoringRepo: TestTutoringRepository;
+  let content: ContentAccess;
+  let faq: FaqProvider;
+  let tutoring: Tutoring;
+  let helpRepo: InMemoryHelpRepository;
+  let help: Help;
+  let service: TelegramLinkService;
+  let clock: Date;
+  const webhookSecret = 'help-webhook-secret';
+
+  class InMemoryHelpRepository implements HelpRepository {
+    readonly requests = new Map<string, HelpRequest>();
+    readonly preferences = new Map<string, boolean>();
+    #counter = 1;
+
+    submit(scope: OwnedScope, input: SubmitHelpInput): Promise<SubmitResult> {
+      const now = new Date().toISOString();
+      const req: HelpRequest = {
+        id: `help-req-${this.#counter++}`,
+        ownerId: scope.ownerId,
+        clientRequestId: input.clientRequestId,
+        contextSnapshot: input.contextSnapshot,
+        consentGiven: true,
+        state: 'waiting',
+        createdAt: now,
+        expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+        updatedAt: now,
+        cancelledAt: null,
+        claimedBy: null,
+        claimedAt: null,
+        resolvedAt: null,
+        resolvedBy: null,
+      };
+      this.requests.set(req.id, req);
+      return Promise.resolve({ kind: 'submitted', request: req });
+    }
+
+    cancel(): Promise<HelpRequest | null> {
+      return Promise.resolve(null);
+    }
+
+    findById(): Promise<HelpRequest | null> {
+      return Promise.resolve(null);
+    }
+
+    findByIdAsStaff(): Promise<HelpRequest | null> {
+      return Promise.resolve(null);
+    }
+
+    listOwned(): Promise<readonly HelpRequest[]> {
+      return Promise.resolve([]);
+    }
+
+    listQueue(): Promise<readonly QueueItem[]> {
+      return Promise.resolve([]);
+    }
+
+    claimRequest(): Promise<HelpClaimResult | null> {
+      return Promise.resolve(null);
+    }
+
+    resolveRequest(): Promise<HelpRequest | null> {
+      return Promise.resolve(null);
+    }
+
+    addReply(): Promise<AddReplyResult | null> {
+      return Promise.resolve(null);
+    }
+
+    listReplies(): Promise<readonly HelpReply[]> {
+      return Promise.resolve([]);
+    }
+
+    markRepliesRead(): Promise<void> {
+      return Promise.resolve();
+    }
+
+    cancelPendingIntentsForHelpRequest(): Promise<number> {
+      return Promise.resolve(0);
+    }
+
+    cancelPendingIntentsForLearner(): Promise<number> {
+      return Promise.resolve(0);
+    }
+
+    getNotificationPreference(scope: OwnedScope, channel: string): Promise<boolean> {
+      return Promise.resolve(this.preferences.get(`${scope.ownerId}:${channel}`) ?? false);
+    }
+
+    setNotificationPreference(
+      scope: OwnedScope,
+      channel: string,
+      optedIn: boolean,
+    ): Promise<boolean> {
+      this.preferences.set(`${scope.ownerId}:${channel}`, optedIn);
+      return Promise.resolve(true);
+    }
+
+    optIn(scope: OwnedScope, channel: string): Promise<void> {
+      this.preferences.set(`${scope.ownerId}:${channel}`, true);
+      return Promise.resolve();
+    }
+
+    optOut(scope: OwnedScope, channel: string): Promise<void> {
+      this.preferences.set(`${scope.ownerId}:${channel}`, false);
+      return Promise.resolve();
+    }
+  }
+
+  beforeEach(async () => {
+    clock = new Date('2026-11-15T10:00:00Z');
+    linkRepo = new InMemoryTelegramLinkRepository();
+    mockClient = new MockHelpTelegramClient();
+    tutoringRepo = new TestTutoringRepository();
+    content = createTestContentAccess();
+    faq = new FaqProvider(content);
+    tutoring = new Tutoring(tutoringRepo, faq, undefined, content);
+    helpRepo = new InMemoryHelpRepository();
+    help = new Help(helpRepo);
+
+    service = new TelegramLinkService(linkRepo, {
+      webhookSecret,
+      botToken: '123456:help-bot-token',
+      now: () => clock,
+      telegramClient: mockClient,
+      tutoring,
+      content,
+      help,
+    });
+
+    // Link learnerA to Telegram user 98765432
+    const { code } = await service.issueLinkCode(learnerA);
+    await service.linkAccount({
+      code,
+      telegramUserId: '98765432',
+      telegramChatId: '98765432',
+      chatType: 'private',
+    });
+  });
+
+  it('displays 👤 Talk to a person inline button under tutor answers', async () => {
+    const questionUpdate: TelegramUpdate = {
+      updateId: 701,
+      message: {
+        messageId: 401,
+        chat: { id: '98765432', type: 'private' },
+        from: { id: '98765432', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: 'What is a virtual assistant?',
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(questionUpdate, webhookSecret);
+    expect(result.status).toBe('answered');
+
+    expect(mockClient.sentMessages).toHaveLength(1);
+    const keyboard = mockClient.sentMessages[0]?.replyMarkup?.inline_keyboard;
+    expect(keyboard).toBeDefined();
+
+    // Check human help button is present
+    const helpBtn = keyboard?.flat().find((b) => b.text.includes('Talk to a person'));
+    expect(helpBtn).toBeDefined();
+    expect(helpBtn?.callback_data).toMatch(/^hlp:ask:[0-9a-f-]+$/);
+  });
+
+  it('displays Amharic 👤 ሰው ያነጋግሩ button under Amharic answers', async () => {
+    const questionUpdate: TelegramUpdate = {
+      updateId: 702,
+      message: {
+        messageId: 402,
+        chat: { id: '98765432', type: 'private' },
+        from: { id: '98765432', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: 'ቨርቹዋል ረዳት ምንድን ነው?',
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(questionUpdate, webhookSecret);
+    expect(result.status).toBe('answered');
+
+    const keyboard = mockClient.sentMessages[0]?.replyMarkup?.inline_keyboard;
+    const amharicHelpBtn = keyboard?.flat().find((b) => b.text.includes('ሰው ያነጋግሩ'));
+    expect(amharicHelpBtn).toBeDefined();
+    expect(amharicHelpBtn?.callback_data).toMatch(/^hlp:ask:[0-9a-f-]+$/);
+  });
+
+  it('tapping 👤 Talk to a person displays disclosure preview with course/question context', async () => {
+    // 1. Ask a question to generate a help context
+    const questionUpdate: TelegramUpdate = {
+      updateId: 703,
+      message: {
+        messageId: 403,
+        chat: { id: '98765432', type: 'private' },
+        from: { id: '98765432', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: 'How do I invoice clients?',
+      },
+    };
+    await service.handleWebhookUpdate(questionUpdate, webhookSecret);
+
+    const helpBtn = mockClient.sentMessages[0]?.replyMarkup?.inline_keyboard
+      ?.flat()
+      .find((b) => b.text.includes('Talk to a person'));
+    const callbackData = helpBtn!.callback_data!;
+
+    // 2. Click the help button
+    const askCbUpdate: TelegramUpdate = {
+      updateId: 704,
+      callbackQuery: {
+        id: 'cb-help-ask-1',
+        from: { id: '98765432', isBot: false },
+        data: callbackData,
+        message: {
+          messageId: 404,
+          chat: { id: '98765432', type: 'private' },
+          date: Math.floor(clock.getTime() / 1000),
+        },
+      },
+    };
+
+    const previewResult = await service.handleWebhookUpdate(askCbUpdate, webhookSecret);
+    expect(previewResult.status).toBe('help_preview');
+
+    // Message 2 should be the disclosure preview
+    const previewMsg = mockClient.sentMessages[1];
+    expect(previewMsg).toBeDefined();
+    expect(previewMsg?.text).toContain('Human Help Request Preview');
+    expect(previewMsg?.text).toContain('Course: course-1');
+    expect(previewMsg?.text).toContain('How do I invoice clients?');
+    expect(previewMsg?.text).toContain(
+      'Only you and an authorized support coordinator will see this request',
+    );
+
+    // Check Confirm & Cancel buttons are attached
+    const previewButtons = previewMsg?.replyMarkup?.inline_keyboard?.flat();
+    expect(previewButtons?.some((b) => b.text.includes('Confirm & Send'))).toBe(true);
+    expect(previewButtons?.some((b) => b.text.includes('Cancel'))).toBe(true);
+  });
+
+  it('confirming help request creates owned Help request in queue and opts in to Telegram replies', async () => {
+    // 1. Ask question
+    await service.handleWebhookUpdate(
+      {
+        updateId: 705,
+        message: {
+          messageId: 405,
+          chat: { id: '98765432', type: 'private' },
+          from: { id: '98765432', isBot: false },
+          date: Math.floor(clock.getTime() / 1000),
+          text: 'Need help with tax forms',
+        },
+      },
+      webhookSecret,
+    );
+
+    const helpBtn = mockClient.sentMessages[0]?.replyMarkup?.inline_keyboard
+      ?.flat()
+      .find((b) => b.text.includes('Talk to a person'));
+    const contextId = helpBtn!.callback_data!.replace('hlp:ask:', '');
+
+    // 2. Send confirm callback (hlp:send:<contextId>)
+    const confirmUpdate: TelegramUpdate = {
+      updateId: 706,
+      callbackQuery: {
+        id: 'cb-help-confirm-1',
+        from: { id: '98765432', isBot: false },
+        data: `hlp:send:${contextId}`,
+        message: {
+          messageId: 406,
+          chat: { id: '98765432', type: 'private' },
+          date: Math.floor(clock.getTime() / 1000),
+        },
+      },
+    };
+
+    const submitResult = await service.handleWebhookUpdate(confirmUpdate, webhookSecret);
+    expect(submitResult.status).toBe('help_submitted');
+
+    // Help request was submitted under learnerA scope
+    expect(helpRepo.requests.size).toBe(1);
+    const createdReq = Array.from(helpRepo.requests.values())[0]!;
+    expect(createdReq.ownerId).toBe(learnerA.id);
+    expect(createdReq.state).toBe('waiting');
+    expect(createdReq.contextSnapshot).toContain('Need help with tax forms');
+
+    // Learner was opted in to Telegram support reply notifications
+    expect(helpRepo.preferences.get(`${learnerA.id}:telegram`)).toBe(true);
+
+    // Confirmation message delivered to Telegram chat
+    const confirmMsg = mockClient.sentMessages[1];
+    expect(confirmMsg?.text).toContain('Your help request has been submitted to the support queue');
+    expect(confirmMsg?.text).toContain(
+      'A support coordinator will reply to you here in Telegram chat',
+    );
+  });
+
+  it('cancelling help request sends cancellation acknowledgment and creates zero requests', async () => {
+    await service.handleWebhookUpdate(
+      {
+        updateId: 707,
+        message: {
+          messageId: 407,
+          chat: { id: '98765432', type: 'private' },
+          from: { id: '98765432', isBot: false },
+          date: Math.floor(clock.getTime() / 1000),
+          text: 'False alarm question',
+        },
+      },
+      webhookSecret,
+    );
+
+    const helpBtn = mockClient.sentMessages[0]?.replyMarkup?.inline_keyboard
+      ?.flat()
+      .find((b) => b.text.includes('Talk to a person'));
+    const contextId = helpBtn!.callback_data!.replace('hlp:ask:', '');
+
+    // Click cancel
+    const cancelUpdate: TelegramUpdate = {
+      updateId: 708,
+      callbackQuery: {
+        id: 'cb-help-cancel-1',
+        from: { id: '98765432', isBot: false },
+        data: `hlp:cancel:${contextId}`,
+        message: {
+          messageId: 408,
+          chat: { id: '98765432', type: 'private' },
+          date: Math.floor(clock.getTime() / 1000),
+        },
+      },
+    };
+
+    const cancelResult = await service.handleWebhookUpdate(cancelUpdate, webhookSecret);
+    expect(cancelResult.status).toBe('help_cancelled');
+
+    // No help request created
+    expect(helpRepo.requests.size).toBe(0);
+
+    // Cancel acknowledgment sent
+    const cancelMsg = mockClient.sentMessages[1];
+    expect(cancelMsg?.text).toContain('Help request cancelled. No information was shared');
+  });
+
+  it('/help command presents guidance and inline escalation button', async () => {
+    const helpCmdUpdate: TelegramUpdate = {
+      updateId: 709,
+      message: {
+        messageId: 409,
+        chat: { id: '98765432', type: 'private' },
+        from: { id: '98765432', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: '/help',
+      },
+    };
+
+    const res = await service.handleWebhookUpdate(helpCmdUpdate, webhookSecret);
+    expect(res.status).toBe('help_instructions');
+
+    expect(mockClient.sentMessages).toHaveLength(1);
+    expect(mockClient.sentMessages[0]?.text).toContain('Need help from a person?');
+    const helpBtn = mockClient.sentMessages[0]?.replyMarkup?.inline_keyboard
+      ?.flat()
+      .find((b) => b.text.includes('Talk to a person'));
+    expect(helpBtn).toBeDefined();
+  });
+
+  it('unlinked Telegram user cannot preview or submit help requests', async () => {
+    const unlinkedCb: TelegramUpdate = {
+      updateId: 710,
+      callbackQuery: {
+        id: 'cb-unlinked-help',
+        from: { id: '99999999', isBot: false }, // not linked
+        data: 'hlp:ask:some-context-id',
+      },
+    };
+
+    const res = await service.handleWebhookUpdate(unlinkedCb, webhookSecret);
+    expect(res.status).toBe('unauthenticated');
+    expect(
+      mockClient.callbackAnswers.some((a) => a.text?.includes('No active linked account')),
+    ).toBe(true);
+  });
+
+  it('revoked Telegram user cannot submit help requests after unlinking', async () => {
+    // Unlink account
+    await service.unlinkByTelegram({ telegramUserId: '98765432', chatType: 'private' });
+
+    const revokedCb: TelegramUpdate = {
+      updateId: 711,
+      callbackQuery: {
+        id: 'cb-revoked-help',
+        from: { id: '98765432', isBot: false },
+        data: 'hlp:send:some-context-id',
+      },
+    };
+
+    const res = await service.handleWebhookUpdate(revokedCb, webhookSecret);
+    expect(res.status).toBe('unauthenticated');
+    expect(helpRepo.requests.size).toBe(0);
   });
 });

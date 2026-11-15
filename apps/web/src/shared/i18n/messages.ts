@@ -1,4 +1,5 @@
-// Shared Amharic/English dictionary for learner-facing interface text.
+// Shared interface dictionaries: English (source), Amharic, and draft Afaan Oromo,
+// Tigrinya, Somali and Arabic for learner-facing interface text.
 //
 // Conventions for every feature that adds strings:
 // - English is the source and must define every key. Keys are flat, dotted and
@@ -13,7 +14,21 @@
 // - Each feature's strings need review by a competent Amharic speaker before that
 //   feature is complete.
 
-export type Locale = 'en' | 'am';
+export const LOCALES = ['en', 'am', 'om', 'ti', 'so', 'ar'] as const;
+export type Locale = (typeof LOCALES)[number];
+
+/**
+ * Who has checked each dictionary. `draft` was written without a competent speaker
+ * and must be signed off by a native speaker before it counts as shipped.
+ */
+export const LOCALE_REVIEW: Record<Locale, 'source' | 'translated' | 'draft'> = {
+  en: 'source',
+  am: 'translated',
+  om: 'draft',
+  ti: 'draft',
+  so: 'draft',
+  ar: 'draft',
+};
 
 export const en = {
   'app.title': 'Learning assistant',
@@ -22,6 +37,8 @@ export const en = {
   'app.updateAvailable': 'A new version of the app is available.',
   'app.refresh': 'Refresh',
   'app.updated': 'App updated to the latest version.',
+  'app.translationDraft':
+    'This translation is a draft awaiting review by a native speaker. Untranslated text is shown in English.',
   'draft.savedOnDevice': 'Draft saved on this device only. Anyone who uses this device can see it.',
   'draft.clear': 'Clear draft',
   'demo.heading': 'Demo mode',
@@ -61,6 +78,8 @@ export const en = {
   'assistant.researchModeNotice':
     'Operating in career web research mode. Queries are minimised and sent to external search providers with your explicit consent.',
   'assistant.empty': 'No messages yet. Ask a question about your course below.',
+  'assistant.replyLanguageNote':
+    'Answers are not yet available in your language, so this answer is in English or Amharic.',
   'assistant.speakerLearner': 'You',
   'assistant.speakerAssistant': 'Assistant (demo)',
   'assistant.speakerFaq': 'Assistant (course FAQ)',
@@ -303,6 +322,7 @@ export const am: Partial<Record<MessageKey, string>> = {
   'app.updateAvailable': 'አዲስ የመተግበሪያ ስሪት ይገኛል።',
   'app.refresh': 'አድስ',
   'app.updated': 'መተግበሪያው ወደ አዲሱ ስሪት ተዘምኗል።',
+  'app.translationDraft': 'ይህ ትርጉም በአፍ መፍቻ ተናጋሪ ገና ያልተገመገመ ረቂቅ ነው። ያልተተረጎመ ጽሑፍ በእንግሊዝኛ ይታያል።',
   'draft.savedOnDevice': 'ረቂቁ በዚህ መሣሪያ ላይ ብቻ ተቀምጧል። ይህን መሣሪያ የሚጠቀም ማንኛውም ሰው ሊያየው ይችላል።',
   'draft.clear': 'ረቂቁን አጽዳ',
   'demo.heading': 'የሙከራ ሁኔታ',
@@ -341,6 +361,7 @@ export const am: Partial<Record<MessageKey, string>> = {
   'assistant.researchModeNotice':
     'በሙያ ድር ጥናት ሁነታ ላይ ይሰራል። ጥያቄዎች ተቀንሰው በእርስዎ ግልጽ ፈቃድ ወደ ውጭ የፍለጋ አቅራቢዎች ይላካሉ።',
   'assistant.empty': 'እስካሁን ምንም መልእክት የለም። ስለ ትምህርትዎ ጥያቄ ከታች ይጠይቁ።',
+  'assistant.replyLanguageNote': 'መልሶች በቋንቋዎ ገና አይገኙም፤ ስለዚህ ይህ መልስ በእንግሊዝኛ ወይም በአማርኛ ነው።',
   'assistant.speakerLearner': 'እርስዎ',
   'assistant.speakerAssistant': 'ረዳት (ሙከራ)',
   'assistant.speakerFaq': 'ረዳት (የትምህርት FAQ)',
@@ -549,4 +570,90 @@ export const am: Partial<Record<MessageKey, string>> = {
   'teacher.loading': 'ርዕሶችን በመጫን ላይ…',
   'teacher.error': 'የትምህርቱን ርዕሶች መጫን አልተቻለም። ግንኙነትዎን ፈትሸው እንደገና ይሞክሩ።',
   'teacher.forbidden': 'ይህን የትምህርት ርዕሶች የማየት ፈቃድ የለዎትም።',
+};
+
+// Draft dictionaries (T3-046): the learner shell's main controls only, written without a
+// native speaker. Every other key falls back to English, tagged lang="en".
+
+export const om: Partial<Record<MessageKey, string>> = {
+  'app.title': 'Gargaaraa Barumsaa',
+  'app.languageLabel': 'Afaan',
+  'app.offline': "Interneetii irraa addaan cittaniittu. Qabiyyee kuufame qofatu mul'ata.",
+  'app.refresh': 'Haaromsi',
+  'app.translationDraft':
+    "Hiikni kun barreeffama jalqabaa kan dubbataa afaanichaatiin hin sakatta'amneedha. Barreeffamni hin hiikamne Afaan Ingiliziitiin mul'ata.",
+  'status.label': 'Haala tajaajilaa',
+  'status.checking': "Tajaajila sakatta'aa jira…",
+  'status.available': 'Tajaajilli ni argama',
+  'status.unavailable': 'Tajaajilli hin argamu',
+  'assistant.heading': 'Haasawa',
+  'assistant.empty':
+    "Ammaaf ergaan hin jiru. Waa'ee koorsii keessanii gaaffii armaan gaditti gaafadhaa.",
+  'assistant.replyLanguageNote':
+    'Deebiin afaan keessaniin ammaaf hin jiru, kanaaf deebiin kun Afaan Ingiliziitiin ykn Afaan Amaaraatiin.',
+  'assistant.speakerLearner': 'Isin',
+  'assistant.questionLabel': 'Gaaffii keessan',
+  'assistant.send': 'Ergi',
+  'assistant.waiting': 'Deebii eegaa jira…',
+};
+
+export const ti: Partial<Record<MessageKey, string>> = {
+  'app.title': 'ሓጋዚ ትምህርቲ',
+  'app.languageLabel': 'ቋንቋ',
+  'app.offline': 'ምስ ኢንተርነት ኣይተራኸብኩምን። ዝተዓቀበ ትሕዝቶ ጥራይ ይርአ ኣሎ።',
+  'app.refresh': 'ኣሕድስ',
+  'app.translationDraft': 'እዚ ትርጉም ብተዛራቢ ቋንቋ ኣደ ገና ዘይተገምገመ ንድፊ እዩ። ዘይተተርጐመ ጽሑፍ ብእንግሊዝኛ ይርአ።',
+  'status.label': 'ኩነታት ኣገልግሎት',
+  'status.checking': 'ኣገልግሎት ይፍተሽ ኣሎ…',
+  'status.available': 'ኣገልግሎት ይርከብ',
+  'status.unavailable': 'ኣገልግሎት ኣይርከብን',
+  'assistant.heading': 'ዝርርብ',
+  'assistant.empty': 'ክሳብ ሕጂ መልእኽቲ የለን። ብዛዕባ ትምህርትኹም ኣብ ታሕቲ ሕቶ ሕተቱ።',
+  'assistant.replyLanguageNote': 'መልስታት ብቋንቋኹም ገና ኣይቀረቡን፣ ስለዚ እዚ መልሲ ብእንግሊዝኛ ወይ ብኣምሓርኛ እዩ።',
+  'assistant.speakerLearner': 'ንስኹም',
+  'assistant.questionLabel': 'ሕቶኹም',
+  'assistant.send': 'ስደድ',
+  'assistant.waiting': 'መልሲ ይጽበ ኣሎ…',
+};
+
+export const so: Partial<Record<MessageKey, string>> = {
+  'app.title': 'Kaaliyaha Waxbarashada',
+  'app.languageLabel': 'Luqadda',
+  'app.offline': 'Kuma xidhnid internetka. Kaliya waxa la tusayaa nuxurka la kaydiyay.',
+  'app.refresh': 'Cusboonaysii',
+  'app.translationDraft':
+    'Turjumaaddan waa qabyo aan weli dib u eegin qof afka hooyo ku hadla. Qoraalka aan la turjumin waxa lagu muujinayaa Ingiriisi.',
+  'status.label': 'Xaaladda adeegga',
+  'status.checking': 'Adeegga waa la hubinayaa…',
+  'status.available': 'Adeeggu waa diyaar',
+  'status.unavailable': 'Adeegga lama heli karo',
+  'assistant.heading': 'Wada-hadal',
+  'assistant.empty': "Weli fariin ma jirto. Hoos ka weydii su'aal ku saabsan koorsadaada.",
+  'assistant.replyLanguageNote':
+    'Jawaabaha weli lagama heli karo luqaddaada, sidaa darteed jawaabtani waa Ingiriisi ama Amxaari.',
+  'assistant.speakerLearner': 'Adiga',
+  'assistant.questionLabel': "Su'aashaada",
+  'assistant.send': 'Dir',
+  'assistant.waiting': 'Jawaab ayaa la sugayaa…',
+};
+
+export const ar: Partial<Record<MessageKey, string>> = {
+  'app.title': 'المساعد التعليمي',
+  'app.languageLabel': 'اللغة',
+  'app.offline': 'أنت غير متصل بالإنترنت. يُعرض المحتوى المحفوظ فقط.',
+  'app.refresh': 'تحديث',
+  'app.translationDraft':
+    'هذه الترجمة مسودة بانتظار مراجعة متحدث أصلي. يظهر النص غير المترجم باللغة الإنجليزية.',
+  'status.label': 'حالة الخدمة',
+  'status.checking': 'جارٍ التحقق من الخدمة…',
+  'status.available': 'الخدمة متاحة',
+  'status.unavailable': 'الخدمة غير متاحة',
+  'assistant.heading': 'المحادثة',
+  'assistant.empty': 'لا توجد رسائل بعد. اطرح سؤالًا عن دورتك أدناه.',
+  'assistant.replyLanguageNote':
+    'الإجابات غير متاحة بلغتك بعد، لذا هذه الإجابة بالإنجليزية أو الأمهرية.',
+  'assistant.speakerLearner': 'أنت',
+  'assistant.questionLabel': 'سؤالك',
+  'assistant.send': 'إرسال',
+  'assistant.waiting': 'في انتظار الرد…',
 };

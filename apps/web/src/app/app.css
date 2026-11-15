@@ -380,7 +380,7 @@ button[aria-disabled='true'] {
   background: #f1f5f9;
   padding: 0.5rem 0.75rem;
   border-radius: 0.25rem;
-  border-left: 3px solid #64748b;
+  border-inline-start: 3px solid #64748b;
 }
 
 .sharing-status {
@@ -569,7 +569,7 @@ button[aria-disabled='true'] {
 
 .privacy-banner {
   background-color: #e8f4fd;
-  border-left: 4px solid #0288d1;
+  border-inline-start: 4px solid #0288d1;
   padding: 0.75rem 1rem;
   margin-top: 0.5rem;
   border-radius: 4px;
@@ -653,7 +653,7 @@ button[aria-disabled='true'] {
 
 .notice-banner {
   background-color: #fef3c7;
-  border-left: 4px solid #f59e0b;
+  border-inline-start: 4px solid #f59e0b;
   padding: 0.5rem;
   margin-bottom: 0.75rem;
   font-size: 0.85rem;
