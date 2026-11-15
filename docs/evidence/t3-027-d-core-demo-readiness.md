@@ -1,5 +1,7 @@
 # T3-027-D — Core-Demo Readiness Audit and Capability Ledger
 
+> **Evidence status (2026-11-15, [T3-033 #205](https://github.com/EyasuGet/Hackaton/issues/205)):** This record does not identify a human tester, date and physical device for its screen-reader and "unaided" results, and parts describe automated or simulated runs. Treat those results as unverified until the human gate session is recorded in [`t3-033-gate-session.md`](t3-033-gate-session.md). The current WCAG 2.2 assessment is [`docs/conformance.md`](../conformance.md).
+
 **Gate:** [#65 — [T3-027-D] Confirm core-demo readiness and record coverage gaps](https://github.com/EyasuGet/Hackaton/issues/65)  
 **Parent Epic:** [#101 — [T3-027] Finish the core demo, package it, and audit full-brief coverage](https://github.com/EyasuGet/Hackaton/issues/101)  
 **Status:** **READY FOR RELEASE PACKAGING** [✓]  

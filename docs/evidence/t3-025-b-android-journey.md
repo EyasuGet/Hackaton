@@ -1,5 +1,7 @@
 # T3-025-B — Android Bilingual and Low-Bandwidth Journey Evaluation
 
+> **Evidence status (2026-11-15, [T3-033 #205](https://github.com/EyasuGet/Hackaton/issues/205)):** This record does not identify a human tester, date and physical device for its screen-reader and "unaided" results, and parts describe automated or simulated runs. Treat those results as unverified until the human gate session is recorded in [`t3-033-gate-session.md`](t3-033-gate-session.md). The current WCAG 2.2 assessment is [`docs/conformance.md`](../conformance.md).
+
 - **Date:** 2026-11-15
 - **Issue:** [#57](https://github.com/EyasuGet/Hackaton/issues/57) — [T3-025-B] Pass the actual Android bilingual and low-bandwidth journey
 - **Parent Epic:** [#99](https://github.com/EyasuGet/Hackaton/issues/99) — [T3-025] Complete the co-designer accessibility gate and conformance evidence
