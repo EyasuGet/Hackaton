@@ -57,3 +57,11 @@ jobs:
           name: axe-results
           path: apps/web/test-results/**/axe-*.json
           if-no-files-found: warn
+
+  # The judges' one-command install (T3-056): build and boot compose.demo.yaml and
+  # check the browser code compiles, which a plain image build does not prove.
+  demo-stack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: scripts/check-demo-stack.sh
