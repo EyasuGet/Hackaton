@@ -2,7 +2,7 @@
 // learner's requests are never returned, even when their ID is known.
 // Staff operations use StaffScope to prevent cross-principal data leakage.
 import type { OwnedScope } from '../../../identity/domain/principal.ts';
-import type { HelpRequest } from '../../domain/help-request.ts';
+import type { HelpReply, HelpRequest } from '../../domain/help-request.ts';
 
 export interface SubmitHelpInput {
   /** Caller-supplied idempotency key unique for this owner. */
@@ -28,6 +28,10 @@ export type ClaimResult =
   | { readonly kind: 'claimed'; readonly request: HelpRequest }
   | { readonly kind: 'already_claimed'; readonly request: HelpRequest };
 
+export type AddReplyResult =
+  | { readonly kind: 'added'; readonly reply: HelpReply }
+  | { readonly kind: 'existing'; readonly reply: HelpReply };
+
 export interface HelpRepository {
   /**
    * Atomically submits a new help request under owner scope.
@@ -50,6 +54,12 @@ export interface HelpRepository {
   findById(scope: OwnedScope, id: string): Promise<HelpRequest | null>;
 
   /**
+   * Finds a help request by id without owner scope (staff access).
+   * Returns null when the request does not exist.
+   */
+  findByIdAsStaff(id: string): Promise<HelpRequest | null>;
+
+  /**
    * Lists non-expired help requests for the owner, newest first.
    */
   listOwned(scope: OwnedScope): Promise<readonly HelpRequest[]>;
@@ -69,4 +79,36 @@ export interface HelpRepository {
    * does not exist or is not in waiting state.
    */
   claimRequest(id: string, staffId: string): Promise<ClaimResult | null>;
+
+  /**
+   * Adds a reply to a help request. The (help_request_id, client_reply_id)
+   * unique constraint makes retries idempotent.
+   * Returns null when the request does not exist, is in a terminal/expired
+   * state, or when the reply is not authorised for this author.
+   */
+  addReply(
+    helpRequestId: string,
+    authorId: string,
+    clientReplyId: string,
+    body: string,
+  ): Promise<AddReplyResult | null>;
+
+  /**
+   * Lists replies for a help request in chronological order.
+   */
+  listReplies(helpRequestId: string): Promise<readonly HelpReply[]>;
+
+  /**
+   * Marks all replies not already read as read for the given reader.
+   * Only marks replies authored by others (the reader's own replies are
+   * considered already read).
+   */
+  markRepliesRead(helpRequestId: string, readerId: string): Promise<void>;
+
+  /**
+   * Transitions a claimed request to resolved.
+   * Returns the updated request on success, or null when the request does not
+   * exist, is not in `claimed` state, or has expired.
+   */
+  resolveRequest(helpRequestId: string, supportId: string): Promise<HelpRequest | null>;
 }
