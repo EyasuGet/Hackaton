@@ -1,5 +1,6 @@
 // Accessible conversation shell: a labelled question box, a message history,
-// source citations, and readable pending/error states. All text is rendered as React text, never HTML.
+// source citations, readable pending/error states, and optional accessible speech playback (T3-011).
+// All text is rendered as React text, never HTML.
 import {
   useContext,
   useEffect,
@@ -12,6 +13,13 @@ import {
 import { LocaleContext, lookup, T, useT, type MessageKey } from '../../shared/i18n/i18n.tsx';
 import { formatAddisDate, type DateLanguage } from '../../shared/i18n/addis-date.ts';
 import type { AskResult, Citation, ConversationClient } from './conversation.ts';
+import {
+  BrowserSpeechSynthesizer,
+  CloudSpeechSynthesizer,
+  type SpeechPlayback,
+  type SpeechState,
+  type SpeechSynthesizer,
+} from './speech-adapter.ts';
 
 interface Entry {
   readonly id: string;
@@ -28,6 +36,14 @@ const PROBLEM_TEXT: Record<Problem, MessageKey> = {
   empty: 'assistant.problemEmpty',
   denied: 'assistant.problemDenied',
   failed: 'assistant.problemFailed',
+};
+
+type SpeechProblemKind = 'failed' | 'unsupported' | 'consentRequired';
+
+const SPEECH_PROBLEM_TEXT: Record<SpeechProblemKind, MessageKey> = {
+  failed: 'assistant.speechErrorFailed',
+  unsupported: 'assistant.speechErrorUnsupported',
+  consentRequired: 'assistant.speechErrorConsentRequired',
 };
 
 function dateLanguage(lang: string | undefined): DateLanguage {
@@ -58,17 +74,41 @@ function MessageDate({
   );
 }
 
+export interface AssistantProps {
+  readonly client: ConversationClient;
+  readonly mode?: 'demo' | 'faq';
+  readonly speechSynthesizer?: SpeechSynthesizer;
+  readonly cloudSynthesizer?: SpeechSynthesizer;
+  readonly defaultSpeechEngine?: 'client' | 'cloud';
+  readonly defaultCloudConsent?: boolean;
+  readonly onCloudConsentChange?: (consented: boolean) => void;
+}
+
 export function Assistant({
   client,
   mode = 'demo',
-}: {
-  readonly client: ConversationClient;
-  readonly mode?: 'demo' | 'faq';
-}) {
+  speechSynthesizer,
+  cloudSynthesizer,
+  defaultSpeechEngine = 'client',
+  defaultCloudConsent = false,
+  onCloudConsentChange,
+}: AssistantProps) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
+
+  // Speech playback and consented cloud synthesis state (T3-011)
+  const [speechEngine, setSpeechEngine] = useState<'client' | 'cloud'>(defaultSpeechEngine);
+  const [cloudConsent, setCloudConsent] = useState(defaultCloudConsent);
+  const [playbackState, setPlaybackState] = useState<SpeechState>('idle');
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
+  const [speechProblem, setSpeechProblem] = useState<{
+    messageId: string;
+    kind: SpeechProblemKind;
+  } | null>(null);
+  const activePlaybackRef = useRef<SpeechPlayback | null>(null);
+
   // Captured as text when announced: a later language switch must not rewrite the
   // live region, or screen readers would read the reply again.
   const [announcement, setAnnouncement] = useState<{
@@ -78,7 +118,13 @@ export function Assistant({
   }>({ text: '' });
   // State updates are asynchronous, so a ref blocks a second send in the same tick.
   const inFlight = useRef(false);
-  const ids = { question: useId(), hint: useId(), problem: useId(), heading: useId() };
+  const ids = {
+    question: useId(),
+    hint: useId(),
+    problem: useId(),
+    heading: useId(),
+    speechEngine: useId(),
+  };
   const t = useT();
   const locale = useContext(LocaleContext);
   // A reply can arrive after a language switch; announce it in the language shown then.
@@ -86,6 +132,143 @@ export function Assistant({
   useEffect(() => {
     localeRef.current = locale;
   }, [locale]);
+
+  const stopPlayback = () => {
+    if (activePlaybackRef.current) {
+      activePlaybackRef.current.stop();
+      activePlaybackRef.current = null;
+    }
+    setPlaybackState('idle');
+    setPlayingMessageId(null);
+  };
+
+  // Stops speech playback on navigation (T3-011)
+  useEffect(() => {
+    const onNavigation = () => {
+      stopPlayback();
+    };
+    window.addEventListener('popstate', onNavigation);
+    window.addEventListener('beforeunload', onNavigation);
+    window.addEventListener('pagehide', onNavigation);
+
+    return () => {
+      stopPlayback();
+      window.removeEventListener('popstate', onNavigation);
+      window.removeEventListener('beforeunload', onNavigation);
+      window.removeEventListener('pagehide', onNavigation);
+    };
+  }, []);
+
+  async function startSpeaking(entry: Entry) {
+    stopPlayback();
+    setSpeechProblem(null);
+
+    const lang = entry.lang || 'en';
+
+    if (speechEngine === 'cloud') {
+      if (!cloudConsent) {
+        setSpeechProblem({ messageId: entry.id, kind: 'consentRequired' });
+        return;
+      }
+      const synth = cloudSynthesizer ?? new CloudSpeechSynthesizer(() => cloudConsent);
+      const isSupp = await synth.isSupported(lang);
+      if (!isSupp) {
+        setSpeechProblem({ messageId: entry.id, kind: 'unsupported' });
+        return;
+      }
+
+      setPlayingMessageId(entry.id);
+      setPlaybackState('playing');
+
+      const playback = await synth.speak(
+        entry.text,
+        { lang },
+        {
+          onStart: () => {
+            setPlaybackState('playing');
+            setPlayingMessageId(entry.id);
+          },
+          onPause: () => {
+            setPlaybackState('paused');
+          },
+          onResume: () => {
+            setPlaybackState('playing');
+          },
+          onEnd: () => {
+            setPlaybackState('idle');
+            setPlayingMessageId(null);
+            activePlaybackRef.current = null;
+          },
+          onError: (err) => {
+            setPlaybackState('idle');
+            setPlayingMessageId(null);
+            activePlaybackRef.current = null;
+            const kind = err.message.includes('ConsentRequired')
+              ? 'consentRequired'
+              : err.message.includes('not supported')
+                ? 'unsupported'
+                : 'failed';
+            setSpeechProblem({ messageId: entry.id, kind });
+          },
+        },
+      );
+      activePlaybackRef.current = playback;
+    } else {
+      const synth = speechSynthesizer ?? new BrowserSpeechSynthesizer();
+      const isSupp = await synth.isSupported(lang);
+      if (!isSupp) {
+        setSpeechProblem({ messageId: entry.id, kind: 'unsupported' });
+        return;
+      }
+
+      setPlayingMessageId(entry.id);
+      setPlaybackState('playing');
+
+      const playback = await synth.speak(
+        entry.text,
+        { lang },
+        {
+          onStart: () => {
+            setPlaybackState('playing');
+            setPlayingMessageId(entry.id);
+          },
+          onPause: () => {
+            setPlaybackState('paused');
+          },
+          onResume: () => {
+            setPlaybackState('playing');
+          },
+          onEnd: () => {
+            setPlaybackState('idle');
+            setPlayingMessageId(null);
+            activePlaybackRef.current = null;
+          },
+          onError: (err) => {
+            setPlaybackState('idle');
+            setPlayingMessageId(null);
+            activePlaybackRef.current = null;
+            const kind = err.message.includes('not supported') ? 'unsupported' : 'failed';
+            setSpeechProblem({ messageId: entry.id, kind });
+          },
+        },
+      );
+      activePlaybackRef.current = playback;
+    }
+  }
+
+  function pauseSpeaking() {
+    activePlaybackRef.current?.pause();
+    setPlaybackState('paused');
+  }
+
+  function resumeSpeaking() {
+    activePlaybackRef.current?.resume();
+    setPlaybackState('playing');
+  }
+
+  function stopSpeaking() {
+    stopPlayback();
+  }
 
   async function send() {
     if (inFlight.current) return;
@@ -115,6 +298,10 @@ export function Assistant({
       setAnnouncement({ text: '' });
       return;
     }
+
+    // Stop ongoing speech when a new answer arrives so speech does not obscure new-message announcements (T3-011)
+    stopPlayback();
+
     const { reply } = result;
     setEntries((current) => [
       ...current,
@@ -162,49 +349,184 @@ export function Assistant({
         </p>
       )}
 
+      {/* Speech preferences and cloud consent (T3-011) */}
+      <div
+        className="speech-settings"
+        role="region"
+        aria-label={t('assistant.speechControlsLabel')}
+      >
+        <label htmlFor={ids.speechEngine}>
+          <T k="assistant.speechEngineLabel" />
+        </label>
+        <select
+          id={ids.speechEngine}
+          value={speechEngine}
+          onChange={(event) => {
+            stopPlayback();
+            setSpeechEngine(event.target.value as 'client' | 'cloud');
+          }}
+        >
+          <option value="client">{t('assistant.speechEngineClient')}</option>
+          <option value="cloud">{t('assistant.speechEngineCloud')}</option>
+        </select>
+
+        {speechEngine === 'cloud' && !cloudConsent && (
+          <div
+            className="cloud-consent-banner"
+            role="region"
+            aria-label={t('assistant.cloudConsentHeading')}
+          >
+            <p>
+              <T k="assistant.cloudConsentBody" />
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setCloudConsent(true);
+                onCloudConsentChange?.(true);
+              }}
+            >
+              <T k="assistant.cloudConsentAccept" />
+            </button>
+          </div>
+        )}
+
+        {speechEngine === 'cloud' && cloudConsent && (
+          <div className="cloud-consent-active">
+            <span className="consent-badge">
+              <T k="assistant.cloudConsentGranted" />
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                stopPlayback();
+                setCloudConsent(false);
+                onCloudConsentChange?.(false);
+              }}
+            >
+              <T k="assistant.cloudConsentRevoke" />
+            </button>
+          </div>
+        )}
+      </div>
+
       {entries.length === 0 ? (
         <p className="empty">
           <T k="assistant.empty" />
         </p>
       ) : (
         <ol className="messages">
-          {entries.map((entry) => (
-            <li key={entry.id} className={`message message-${entry.speaker}`}>
-              <p className="speaker">
-                <T
-                  k={
-                    entry.speaker === 'learner'
-                      ? 'assistant.speakerLearner'
-                      : mode === 'faq'
-                        ? 'assistant.speakerFaq'
-                        : 'assistant.speakerAssistant'
-                  }
-                />
-              </p>
-              <p className="message-text" dir="auto" lang={entry.lang}>
-                {entry.text}
-              </p>
-              {entry.citations && entry.citations.length > 0 && (
-                <div className="citations" aria-label={t('assistant.citationsLabel')}>
-                  <span className="citations-label">
-                    <T k="assistant.citationsLabel" />
-                  </span>
-                  <ul>
-                    {entry.citations.map((c) => (
-                      <li key={`${c.sourceId}-${c.sectionId}`} className="citation-item">
-                        <cite>
-                          {c.sourceTitle} — {c.heading}
-                        </cite>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {entry.createdAt && (
-                <MessageDate instant={entry.createdAt} language={dateLanguage(entry.lang)} />
-              )}
-            </li>
-          ))}
+          {entries.map((entry) => {
+            const isCurrentMessage = playingMessageId === entry.id;
+            return (
+              <li key={entry.id} className={`message message-${entry.speaker}`}>
+                <p className="speaker">
+                  <T
+                    k={
+                      entry.speaker === 'learner'
+                        ? 'assistant.speakerLearner'
+                        : mode === 'faq'
+                          ? 'assistant.speakerFaq'
+                          : 'assistant.speakerAssistant'
+                    }
+                  />
+                </p>
+                <p className="message-text" dir="auto" lang={entry.lang}>
+                  {entry.text}
+                </p>
+                {entry.citations && entry.citations.length > 0 && (
+                  <div className="citations" aria-label={t('assistant.citationsLabel')}>
+                    <span className="citations-label">
+                      <T k="assistant.citationsLabel" />
+                    </span>
+                    <ul>
+                      {entry.citations.map((c) => (
+                        <li key={`${c.sourceId}-${c.sectionId}`} className="citation-item">
+                          <cite>
+                            {c.sourceTitle} — {c.heading}
+                          </cite>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {entry.createdAt && (
+                  <MessageDate instant={entry.createdAt} language={dateLanguage(entry.lang)} />
+                )}
+
+                {/* Keyboard-operable playback controls for assistant replies (T3-011) */}
+                {entry.speaker === 'assistant' && (
+                  <div
+                    className="speech-controls"
+                    role="group"
+                    aria-label={t('assistant.speechControlsLabel')}
+                  >
+                    {(!isCurrentMessage || playbackState === 'idle') && (
+                      <button
+                        type="button"
+                        className="speech-button speech-play"
+                        onClick={() => void startSpeaking(entry)}
+                        aria-label={`${t('assistant.speechPlay')}: ${entry.text.slice(0, 30)}`}
+                      >
+                        <T k="assistant.speechPlay" />
+                      </button>
+                    )}
+                    {isCurrentMessage && playbackState === 'playing' && (
+                      <>
+                        <button
+                          type="button"
+                          className="speech-button speech-pause"
+                          onClick={pauseSpeaking}
+                          aria-label={t('assistant.speechPause')}
+                        >
+                          <T k="assistant.speechPause" />
+                        </button>
+                        <button
+                          type="button"
+                          className="speech-button speech-stop"
+                          onClick={stopSpeaking}
+                          aria-label={t('assistant.speechStop')}
+                        >
+                          <T k="assistant.speechStop" />
+                        </button>
+                        <span className="speech-status">
+                          <T k="assistant.speechPlaying" />
+                        </span>
+                      </>
+                    )}
+                    {isCurrentMessage && playbackState === 'paused' && (
+                      <>
+                        <button
+                          type="button"
+                          className="speech-button speech-resume"
+                          onClick={resumeSpeaking}
+                          aria-label={t('assistant.speechResume')}
+                        >
+                          <T k="assistant.speechResume" />
+                        </button>
+                        <button
+                          type="button"
+                          className="speech-button speech-stop"
+                          onClick={stopSpeaking}
+                          aria-label={t('assistant.speechStop')}
+                        >
+                          <T k="assistant.speechStop" />
+                        </button>
+                        <span className="speech-status">
+                          <T k="assistant.speechPaused" />
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+                {speechProblem && speechProblem.messageId === entry.id && (
+                  <p className="speech-problem" role="alert">
+                    <T k={SPEECH_PROBLEM_TEXT[speechProblem.kind]} />
+                  </p>
+                )}
+              </li>
+            );
+          })}
         </ol>
       )}
 
