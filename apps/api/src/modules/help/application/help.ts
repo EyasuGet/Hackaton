@@ -104,4 +104,45 @@ export class Help {
     await this.#repository.markRepliesRead(helpRequestId, principal.id);
     return true;
   }
+
+  /**
+   * Checks whether the learner has explicitly opted in to reply notifications for a channel.
+   * Non-learner principals return false.
+   */
+  async getNotificationPreference(
+    principal: Principal,
+    channel: string = 'telegram',
+  ): Promise<boolean> {
+    const scope = ownedScope(principal);
+    if (!scope) return false;
+    return this.#repository.getNotificationPreference(scope, channel);
+  }
+
+  /**
+   * Explicitly updates the learner's notification preference for a channel.
+   * Non-learner principals return false.
+   */
+  async setNotificationPreference(
+    principal: Principal,
+    channel: string,
+    optedIn: boolean,
+  ): Promise<boolean> {
+    const scope = ownedScope(principal);
+    if (!scope) return false;
+    return this.#repository.setNotificationPreference(scope, channel, optedIn);
+  }
+
+  /**
+   * Explicit channel opt-in for support notifications.
+   */
+  async optIn(principal: Principal, channel: string = 'telegram'): Promise<boolean> {
+    return this.setNotificationPreference(principal, channel, true);
+  }
+
+  /**
+   * Explicit channel opt-out for support notifications (suppresses pending notices).
+   */
+  async optOut(principal: Principal, channel: string = 'telegram'): Promise<boolean> {
+    return this.setNotificationPreference(principal, channel, false);
+  }
 }

@@ -136,21 +136,60 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
   }
 
   async unlinkByLearnerId(learnerId: string, now: Date): Promise<boolean> {
-    const result = await this.#pool.query(
-      `UPDATE telegram_identities SET revoked_at = $2
-       WHERE learner_id = $1 AND revoked_at IS NULL`,
-      [learnerId, now],
-    );
-    return (result.rowCount ?? 0) > 0;
+    const client = await this.#pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await client.query(
+        `UPDATE telegram_identities SET revoked_at = $2
+         WHERE learner_id = $1 AND revoked_at IS NULL`,
+        [learnerId, now],
+      );
+      if ((result.rowCount ?? 0) > 0) {
+        await client.query(
+          `UPDATE delivery_intents
+              SET status = 'cancelled',
+                  content_ref = NULL
+            WHERE recipient_id = $1 AND channel = 'telegram' AND status = 'pending'`,
+          [learnerId],
+        );
+      }
+      await client.query('COMMIT');
+      return (result.rowCount ?? 0) > 0;
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async unlinkByTelegramUserId(telegramUserId: string, now: Date): Promise<boolean> {
-    const result = await this.#pool.query(
-      `UPDATE telegram_identities SET revoked_at = $2
-       WHERE telegram_user_id = $1 AND revoked_at IS NULL`,
-      [telegramUserId, now],
-    );
-    return (result.rowCount ?? 0) > 0;
+    const client = await this.#pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await client.query<{ learner_id: string }>(
+        `UPDATE telegram_identities SET revoked_at = $2
+         WHERE telegram_user_id = $1 AND revoked_at IS NULL
+         RETURNING learner_id`,
+        [telegramUserId, now],
+      );
+      if ((result.rowCount ?? 0) > 0 && result.rows[0]) {
+        await client.query(
+          `UPDATE delivery_intents
+              SET status = 'cancelled',
+                  content_ref = NULL
+            WHERE recipient_id = $1 AND channel = 'telegram' AND status = 'pending'`,
+          [result.rows[0].learner_id],
+        );
+      }
+      await client.query('COMMIT');
+      return (result.rowCount ?? 0) > 0;
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async findIdentityByTelegramUserId(telegramUserId: string): Promise<TelegramIdentity | null> {
