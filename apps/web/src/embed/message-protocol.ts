@@ -6,7 +6,8 @@ export interface EmbedConfig {
   readonly origin: string;
   readonly course?: string | undefined;
   readonly lang?: string | undefined;
-  readonly position?: 'bottom-right' | 'bottom-left' | undefined;
+  readonly position?: 'bottom-right' | 'bottom-left' | 'inline' | undefined;
+  readonly container?: string | HTMLElement | undefined;
   readonly allow?: string | undefined;
   readonly sandbox?: string | undefined;
 }
@@ -15,7 +16,8 @@ export type EmbedMessage =
   | { readonly type: 'init'; readonly token: string }
   | { readonly type: 'open' }
   | { readonly type: 'close' }
-  | { readonly type: 'status'; readonly status: 'ready' | 'closed' };
+  | { readonly type: 'minimize' }
+  | { readonly type: 'status'; readonly status: 'ready' | 'closed' | 'minimized' };
 
 export function isValidOrigin(actual: string, expected: string): boolean {
   // Never accept null, file://, or mismatched origins.
@@ -34,9 +36,13 @@ export function validateMessage(data: unknown): data is EmbedMessage {
       return 'token' in msg && typeof msg.token === 'string';
     case 'open':
     case 'close':
+    case 'minimize':
       return true;
     case 'status':
-      return 'status' in msg && (msg.status === 'ready' || msg.status === 'closed');
+      return (
+        'status' in msg &&
+        (msg.status === 'ready' || msg.status === 'closed' || msg.status === 'minimized')
+      );
     default:
       return false;
   }
