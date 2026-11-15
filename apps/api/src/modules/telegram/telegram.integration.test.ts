@@ -106,8 +106,10 @@ beforeAll(async () => {
 
   const importJobs = new ImportJobs(jobRepo);
   const FIXTURES = new URL('../../../../../fixtures/jobs/', import.meta.url);
-  const vaJob = JSON.parse(await readFile(new URL('demo-va-specialist.json', FIXTURES), 'utf8'));
-  const clerkJob = JSON.parse(
+  const vaJob: unknown = JSON.parse(
+    await readFile(new URL('demo-va-specialist.json', FIXTURES), 'utf8'),
+  );
+  const clerkJob: unknown = JSON.parse(
     await readFile(new URL('demo-expired-data-clerk.json', FIXTURES), 'utf8'),
   );
   await importJobs.execute(vaJob);

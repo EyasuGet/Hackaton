@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import type { JobRepository } from '../careers/application/import-jobs.ts';
 import { JobAnswers } from '../careers/application/job-answers.ts';
 import type { JobRecord } from '../careers/domain/job.ts';
@@ -587,6 +587,9 @@ describe('TelegramLinkService Unit Tests (T3-012-A)', () => {
   describe('Reusing approved job answers in Telegram (T3-019-C)', () => {
     let mockJobRepo: JobRepository;
     let jobAnswers: JobAnswers;
+    let mockSendMessage: Mock<
+      (params: { chatId: string | number; text: string }) => Promise<boolean>
+    >;
     let mockSender: TelegramSender;
     let activeJob: JobRecord;
     let expiredJob: JobRecord;
@@ -607,6 +610,7 @@ describe('TelegramLinkService Unit Tests (T3-012-A)', () => {
         publicationId: 'pub-data-01',
         withdrawn: false,
         isDemo: true,
+        provenance: { kind: 'demo', note: 'test' },
         importedAt: currentTime,
       };
 
@@ -625,6 +629,7 @@ describe('TelegramLinkService Unit Tests (T3-012-A)', () => {
         publicationId: 'pub-va-02',
         withdrawn: false,
         isDemo: true,
+        provenance: { kind: 'demo', note: 'test' },
         importedAt: currentTime,
       };
 
@@ -640,8 +645,9 @@ describe('TelegramLinkService Unit Tests (T3-012-A)', () => {
       };
 
       jobAnswers = new JobAnswers(mockJobRepo);
+      mockSendMessage = vi.fn(() => Promise.resolve(true));
       mockSender = {
-        sendMessage: vi.fn().mockResolvedValue(true),
+        sendMessage: (params) => mockSendMessage(params),
       };
 
       service = new TelegramLinkService(repository, {
@@ -688,10 +694,10 @@ describe('TelegramLinkService Unit Tests (T3-012-A)', () => {
       }
 
       // Outbound delivery via sender
-      expect(mockSender.sendMessage).toHaveBeenCalledWith({
-        chatId: '987654321',
-        text: expect.stringContaining('Ethio Tech Solutions'),
-      });
+      expect(mockSendMessage).toHaveBeenCalledTimes(1);
+      const sentParams = mockSendMessage.mock.calls[0]?.[0];
+      expect(sentParams?.chatId).toBe('987654321');
+      expect(sentParams?.text).toContain('Ethio Tech Solutions');
     });
 
     it('answers expired job questions by explicitly stating the position is closed', async () => {

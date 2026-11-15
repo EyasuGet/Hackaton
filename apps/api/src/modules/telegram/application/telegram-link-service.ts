@@ -355,7 +355,7 @@ export class TelegramLinkService {
           updateId: update.updateId,
           telegramUserId: String(message.from.id),
           responseStatus: 'unauthenticated',
-          responsePayload: outcome as unknown as Record<string, unknown>,
+          responsePayload: outcome,
           now: this.#now(),
         });
       }
@@ -393,7 +393,7 @@ export class TelegramLinkService {
           updateId: update.updateId,
           telegramUserId: String(message.from.id),
           responseStatus: 'answered',
-          responsePayload: outcome as unknown as Record<string, unknown>,
+          responsePayload: outcome,
           now: this.#now(),
         });
       }
