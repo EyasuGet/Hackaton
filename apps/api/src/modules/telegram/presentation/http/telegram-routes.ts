@@ -264,9 +264,13 @@ export function registerTelegramRoutes(
           ok: true,
           status: 'answered',
           answer: result.answer,
+          rawAnswer: result.rawAnswer,
           citations: result.citations,
           kind: result.kind,
-          answerLang: result.answerLang,
+          lang: result.lang ?? result.answerLang,
+          answerLang: result.answerLang ?? result.lang,
+          provider: result.provider,
+          requestId: result.requestId,
           matchedJobId: result.matchedJobId,
           replayed: result.replayed ?? false,
           method: 'sendMessage',
@@ -275,7 +279,66 @@ export function registerTelegramRoutes(
         });
       }
 
+      if (result.status === 'citation') {
+        return reply.code(200).send({
+          ok: true,
+          status: 'citation',
+          sourceId: result.sourceId,
+          sectionId: result.sectionId,
+          text: result.text,
+          heading: result.heading,
+          sourceTitle: result.sourceTitle,
+        });
+      }
+
+      if (result.status === 'preference_updated') {
+        return reply.code(200).send({
+          ok: true,
+          status: 'preference_updated',
+          externalConsent: result.externalConsent,
+          activeCourseId: result.activeCourseId,
+        });
+      }
+
+      if (result.status === 'error') {
+        return reply.code(200).send({
+          ok: false,
+          status: 'error',
+          error: result.error,
+          message: result.message,
+        });
+      }
+
       return reply.code(200).send({ ok: true, status: result.status });
     },
   );
+
+  // 6. Authenticated learner updates preferences (external consent, active course)
+  app.patch<{
+    Body: {
+      readonly externalConsent?: boolean;
+      readonly activeCourseId?: string;
+    };
+  }>('/api/telegram/preferences', { preHandler: learnerOnly }, async (request, reply) => {
+    const principal = principalOf(request);
+    const { externalConsent, activeCourseId } = request.body ?? {};
+
+    if (activeCourseId !== undefined && !principal.courseIds.includes(activeCourseId)) {
+      return reply.code(400).send({ error: 'course_not_granted' });
+    }
+
+    const updated = await telegramService.setPreferences(principal, {
+      ...(externalConsent !== undefined ? { externalConsent } : {}),
+      ...(activeCourseId !== undefined ? { activeCourseId } : {}),
+    });
+
+    if (!updated) {
+      return reply.code(404).send({ error: 'not_linked' });
+    }
+
+    return reply.code(200).send({
+      externalConsent: updated.externalConsent,
+      activeCourseId: updated.activeCourseId,
+    });
+  });
 }
