@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EmployerDashboard } from './employer-dashboard.tsx';
 import type { ConsentedApplication, EmployerVacancy } from './employer-api.ts';
@@ -157,7 +157,8 @@ describe('EmployerDashboard', () => {
     const { container } = render(<EmployerDashboard sessionToken="learner-token" />);
 
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/me', expect.anything()));
-    await Promise.resolve();
+    // Let the role response and its state update settle before asserting nothing rendered.
+    await act(async () => {});
     expect(container.innerHTML).toBe('');
     expect(fetch).not.toHaveBeenCalledWith('/api/employer/vacancies', expect.anything());
   });

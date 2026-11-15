@@ -22,6 +22,7 @@ function useIsEmployer(sessionToken: string): boolean {
     })
       .then((res) => (res.ok ? (res.json() as Promise<{ role?: unknown }>) : null))
       .then((me) => setIsEmployer(me?.role === 'employer'))
+      // Fail closed: an aborted or failed lookup leaves the portal hidden.
       .catch(() => {});
     return () => controller.abort();
   }, [sessionToken]);
@@ -226,11 +227,18 @@ function EmployerPortal({ sessionToken }: EmployerDashboardProps) {
                     void handleSelectVacancy(v);
                   }}
                 >
-                  <h4>{v.title}</h4>
+                  {/* Employer-typed text is in any language; the status is an English API value. */}
+                  <h4 dir="auto">{v.title}</h4>
                   <div className="vacancy-meta">
-                    <span className="badge">{v.category}</span>
-                    <span className="location">{v.location}</span>
-                    <span className="status">{v.status}</span>
+                    <span className="badge" dir="auto">
+                      {v.category}
+                    </span>
+                    <span className="location" dir="auto">
+                      {v.location}
+                    </span>
+                    <span className="status" lang="en">
+                      {v.status}
+                    </span>
                   </div>
                   <button
                     type="button"
@@ -257,7 +265,12 @@ function EmployerPortal({ sessionToken }: EmployerDashboardProps) {
               <p className="selected-meta">
                 <T k="employer.showingFor" /> <strong>{selectedVacancy.title}</strong>
               </p>
-              {privacyNotice && <div className="notice-banner">{privacyNotice}</div>}
+              {/* The API supplies this notice in English only. */}
+              {privacyNotice && (
+                <div className="notice-banner" lang="en">
+                  {privacyNotice}
+                </div>
+              )}
               {applications.length === 0 ? (
                 <p>
                   <T k="employer.noApplicants" />
