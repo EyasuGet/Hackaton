@@ -100,7 +100,9 @@ export function DemoSession({
   }
 
   return (
-    <section className="demo-session" aria-labelledby="demo-session-heading">
+    // Operator-facing demo text is English only, so it is tagged English for correct
+    // screen-reader pronunciation in other interface languages (WCAG 3.1.2, T3-050).
+    <section className="demo-session" aria-labelledby="demo-session-heading" lang="en">
       <h2 id="demo-session-heading">Demo sign-in</h2>
       <p ref={statusRef} tabIndex={-1} role="status" aria-label="Sign-in status">
         {state.kind === 'none' &&

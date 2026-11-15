@@ -53,6 +53,8 @@ async function signIn(page: Page, principal: string, width = 1280) {
 async function useAmharic(page: Page) {
   await page.getByRole('button', { name: 'አማርኛ' }).click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'am');
+  // The English-only demo sign-in panel stays tagged English (WCAG 3.1.2).
+  await expect(page.locator('section.demo-session')).toHaveAttribute('lang', 'en');
 }
 
 /** Exchanges a demo sign-in code for a bearer token, as the page does. */
@@ -65,18 +67,18 @@ async function apiToken(request: APIRequestContext, principal: string): Promise<
   return ((await response.json()) as { token: string }).token;
 }
 
-// Headings that prove each role's panels have rendered before scanning. The employer
-// portal is rendered for every signed-in role (#233), so it is waited for too.
+// Headings that prove each role's panels have rendered before scanning. Only the
+// employer sees the recruitment portal (T3-050).
 const PANELS = {
   'learner-a': [
     'Your course material',
     'Request human help',
     'Your help requests',
     'Request interview accommodation',
-    'Employer Recruitment Portal',
   ],
-  support: ['Your help requests', 'Accommodation Coordinator Inbox', 'Employer Recruitment Portal'],
-  teacher: ['Frequently asked topics', 'Employer Recruitment Portal'],
+  support: ['Your help requests', 'Accommodation Coordinator Inbox'],
+  teacher: ['Frequently asked topics'],
+  employer: ['Employer Recruitment Portal'],
 };
 
 for (const [principal, headings] of Object.entries(PANELS)) {
@@ -89,6 +91,8 @@ for (const [principal, headings] of Object.entries(PANELS)) {
         for (const name of headings) {
           await expect(page.getByRole('heading', { name })).toBeVisible();
         }
+        const portal = page.getByRole('heading', { name: 'Employer Recruitment Portal' });
+        if (principal !== 'employer') await expect(portal).toHaveCount(0);
         if (locale === 'am') await useAmharic(page);
         await expectNoSeriousViolations(page, testInfo, `${principal}-${locale}-${width}`);
       });
@@ -204,17 +208,21 @@ test('reply threads, screen sharing and the coordinator inbox have no serious vi
   await expectNoSeriousViolations(page, testInfo, 'coordinator-request-am-320');
 });
 
-// No demo principal has the employer role, so publishing is refused (403) and the
-// portal shows its error; that is the state every demo user can reach (#233).
-test('employer portal after a refused publish has no serious violations', async ({
+test('employer portal with a published vacancy has no serious violations', async ({
   page,
 }, testInfo) => {
-  await signIn(page, 'learner-a');
+  await signIn(page, 'employer');
   await page.getByLabel(/role title \*/i).fill('Synthetic data clerk');
   await page.getByLabel(/description \*/i).fill('Synthetic vacancy for accessibility checks.');
   await page.getByRole('button', { name: /publish vacancy/i }).click();
-  await expect(page.locator('.alert-error[role="alert"]')).toBeVisible();
-  await expectNoSeriousViolations(page, testInfo, 'employer-publish-refused');
+  const viewApplicants = page.getByRole('button', { name: /view consented applicants/i }).first();
+  await viewApplicants.click();
+  await expect(page.getByText('Candidates for the selected vacancy:')).toBeVisible();
+  await expectNoSeriousViolations(page, testInfo, 'employer-vacancy-en-1280');
+  // In Amharic the portal is translated, not English read with Amharic pronunciation.
+  await useAmharic(page);
+  await expect(page.getByRole('heading', { name: 'የአሠሪ የቅጥር መግቢያ' })).toBeVisible();
+  await expectNoSeriousViolations(page, testInfo, 'employer-vacancy-am-1280');
 });
 
 test('assistant embedded in the Savanna host has no serious violations', async ({
