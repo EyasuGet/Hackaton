@@ -1,6 +1,6 @@
-// Automated verification probe for T3-018-D deployment and relay configuration.
+// Automated verification probe for T3-018-D and T3-027-E deployment and relay configuration.
 // Audits Caddy HTTPS reverse proxy headers, Coturn SSRF/relay guards, Compose network isolation,
-// and ensures unauthenticated requests never expose learner data.
+// unprivileged execution, static asset caching, and public unauthenticated privacy boundaries.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import { ContentAccess } from '../../modules/content/application/content-access.
 import { DemoRecords } from '../../modules/demo-records/demo-records.ts';
 import { DemoSessions } from '../../modules/identity/application/demo-sessions.ts';
 import { ResolvePrincipal } from '../../modules/identity/application/resolve-principal.ts';
+import { DEMO_PRINCIPALS } from '../../modules/identity/infrastructure/postgres-principal-repository.ts';
 import { Tutoring } from '../../modules/tutoring/application/tutoring.ts';
 
 const REPO_ROOT = resolve(__dirname, '../../../../..');
@@ -16,6 +17,10 @@ const REPO_ROOT = resolve(__dirname, '../../../../..');
 describe('Caddyfile HTTPS reverse-proxy configuration', () => {
   const caddyfilePath = resolve(REPO_ROOT, 'deploy/caddy/Caddyfile');
   const caddyfile = readFileSync(caddyfilePath, 'utf-8');
+
+  it('enforces automatic TLS termination via ACME or internal CA fallback', () => {
+    expect(caddyfile).toContain('tls {$CADDY_EMAIL:internal}');
+  });
 
   it('enforces HTTP Strict Transport Security (HSTS)', () => {
     expect(caddyfile).toMatch(/Strict-Transport-Security\s+"max-age=\d+;\s*includeSubDomains/i);
@@ -33,6 +38,15 @@ describe('Caddyfile HTTPS reverse-proxy configuration', () => {
   it('allows iframe embedding from static hosts while isolating script/connect sources', () => {
     expect(caddyfile).toMatch(/frame-ancestors\s+\*/);
     expect(caddyfile).toContain("default-src 'self'");
+  });
+
+  it('configures distinct caching headers for hashed static assets vs HTML pages', () => {
+    expect(caddyfile).toMatch(/@hashedAssets path \/assets\/\*/);
+    expect(caddyfile).toContain(
+      'header @hashedAssets Cache-Control "public, max-age=31536000, immutable"',
+    );
+    expect(caddyfile).toMatch(/@htmlFiles path \*\.html \//);
+    expect(caddyfile).toContain('header @htmlFiles Cache-Control "no-cache, must-revalidate"');
   });
 
   it('sanitises access logs to prevent token and cookie leakage', () => {
@@ -99,6 +113,12 @@ describe('Compose deployment configuration', () => {
     expect(compose).toMatch(/DATABASE_PASSWORD:\s+\$\{DATABASE_PASSWORD:\?Set DATABASE_PASSWORD/);
   });
 
+  it('runs the API service as unprivileged node user with read-only root mount and static web mount in Caddy', () => {
+    expect(compose).toContain('user: node');
+    expect(compose).toContain('- ./:/app:ro');
+    expect(compose).toContain('- ./apps/web/dist:/srv/web:ro');
+  });
+
   it('includes service healthchecks for database and API', () => {
     expect(compose).toContain('pg_isready');
     expect(compose).toContain('/api/health');
@@ -162,5 +182,35 @@ describe('Public unauthenticated request privacy boundary', () => {
 
     const records = await app.inject({ method: 'GET', url: '/api/demo/records' });
     expect(records.statusCode).toBe(401);
+  });
+
+  it('strictly rejects unauthenticated tutoring claim request with 401', async () => {
+    const claim = await app.inject({
+      method: 'POST',
+      url: '/api/tutoring/requests',
+      payload: { courseId: 'course-1', requestId: 'req-1', question: 'test' },
+    });
+    expect(claim.statusCode).toBe(401);
+  });
+});
+
+describe('Synthetic demo principal boundaries', () => {
+  it('ensures seeded DEMO_PRINCIPALS isolate course grants and adhere to valid roles', () => {
+    expect(DEMO_PRINCIPALS.length).toBeGreaterThanOrEqual(3);
+    const learnerA = DEMO_PRINCIPALS.find((p) => p.key === 'learner-a');
+    const learnerB = DEMO_PRINCIPALS.find((p) => p.key === 'learner-b');
+    const support = DEMO_PRINCIPALS.find((p) => p.key === 'support');
+
+    expect(learnerA).toBeDefined();
+    expect(learnerA?.role).toBe('learner');
+    expect(learnerA?.courseIds).toEqual(['course-1']);
+
+    expect(learnerB).toBeDefined();
+    expect(learnerB?.role).toBe('learner');
+    expect(learnerB?.courseIds).toEqual(['course-1', 'course-2']);
+
+    expect(support).toBeDefined();
+    expect(support?.role).toBe('support');
+    expect(support?.courseIds).toEqual([]);
   });
 });
