@@ -11,6 +11,8 @@ COPY apps/web/package.json ./apps/web/
 
 RUN pnpm install --frozen-lockfile
 
+# The API tsconfig extends the shared base config.
+COPY tsconfig.base.json ./
 COPY apps/api ./apps/api
 COPY fixtures ./fixtures
 COPY docs ./docs
