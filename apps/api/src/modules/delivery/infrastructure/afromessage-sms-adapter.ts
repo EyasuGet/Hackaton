@@ -23,6 +23,7 @@ export const AFROMESSAGE_OPT_OUT_KEYWORDS = Object.freeze([
   'QUIT',
   'አቁም',
   'ተው',
+  'ማቆም',
 ] as const);
 
 export type SmsOptOutKeyword = (typeof AFROMESSAGE_OPT_OUT_KEYWORDS)[number];
