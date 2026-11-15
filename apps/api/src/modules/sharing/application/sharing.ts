@@ -1,12 +1,14 @@
-// Sharing use cases: session lifecycle for screen-sharing signalling (T3-018-A).
-// This leaf proves signalling permissions only — not remote screen delivery or capture.
+// Sharing use cases: session lifecycle for screen-sharing signalling (T3-018-A)
+// and media negotiation with accessible stop control (T3-018-B).
 // A session may only be initiated by the support person who claimed the related help
 // request; only the two authorised participants (learner and support) may join, get,
-// or revoke it.
+// send signals, or revoke it.
 import type { Principal } from '../../identity/domain/principal.ts';
-import type { SharingSession } from '../domain/sharing-session.ts';
+import type { SharingSession, SharingSignal, SignalType } from '../domain/sharing-session.ts';
 import type { HelpRequestLookup } from './ports/help-request-lookup.ts';
 import type { SharingRepository } from './ports/sharing-repository.ts';
+import type { SignalChannel } from './ports/signal-channel.ts';
+import { MemorySignalChannel } from '../infrastructure/memory-signal-channel.ts';
 
 /** Returned when the principal lacks permission for the requested operation. */
 export type SharingError =
@@ -28,10 +30,16 @@ function fail<T>(error: SharingError): SharingResult<T> {
 export class Sharing {
   readonly #sessions: SharingRepository;
   readonly #helpLookup: HelpRequestLookup;
+  readonly #signalChannel: SignalChannel;
 
-  constructor(sessions: SharingRepository, helpLookup: HelpRequestLookup) {
+  constructor(
+    sessions: SharingRepository,
+    helpLookup: HelpRequestLookup,
+    signalChannel: SignalChannel = new MemorySignalChannel(),
+  ) {
     this.#sessions = sessions;
     this.#helpLookup = helpLookup;
+    this.#signalChannel = signalChannel;
   }
 
   /**
@@ -88,6 +96,7 @@ export class Sharing {
 
   /**
    * Revokes a session. Either participant may revoke.
+   * Cancels active signalling and purges ephemeral signals.
    */
   async revokeSession(
     principal: Principal,
@@ -101,10 +110,12 @@ export class Sharing {
       return fail({ kind: 'invalid_state', state: session.state });
     }
     if (session.state === 'revoked') {
+      await this.#signalChannel.clearSignals(sessionId);
       return ok(session);
     }
 
     await this.#sessions.revokeSession(sessionId);
+    await this.#signalChannel.clearSignals(sessionId);
     const updated = await this.#sessions.findById(sessionId);
     return updated ? ok(updated) : fail({ kind: 'not_found' });
   }
@@ -121,6 +132,61 @@ export class Sharing {
     if (!session) return fail({ kind: 'not_found' });
     if (!isParticipant(principal, session)) return fail({ kind: 'not_found' });
     return ok(session);
+  }
+
+  /**
+   * Returns the most recent session for a help request for an authorised participant.
+   * Returns not_found for non-participants to prevent probing.
+   */
+  async getSessionByHelpRequestId(
+    principal: Principal,
+    helpRequestId: string,
+  ): Promise<SharingResult<SharingSession>> {
+    const session = await this.#sessions.findByHelpRequestId(helpRequestId);
+    if (!session) return fail({ kind: 'not_found' });
+    if (!isParticipant(principal, session)) return fail({ kind: 'not_found' });
+    return ok(session);
+  }
+
+  /**
+   * Posts an ephemeral signalling message (offer, answer, candidate) to an active session.
+   */
+  async sendSignal(
+    principal: Principal,
+    sessionId: string,
+    type: SignalType,
+    payload: unknown,
+  ): Promise<SharingResult<SharingSignal>> {
+    const session = await this.#sessions.findById(sessionId);
+    if (!session) return fail({ kind: 'not_found' });
+    if (!isParticipant(principal, session)) return fail({ kind: 'not_found' });
+
+    if (session.state === 'revoked' || session.state === 'expired') {
+      return fail({ kind: 'invalid_state', state: session.state });
+    }
+
+    const signal = await this.#signalChannel.sendSignal(sessionId, principal.id, type, payload);
+    return ok(signal);
+  }
+
+  /**
+   * Retrieves signals sent by the other peer for an active or pending session.
+   */
+  async getSignals(
+    principal: Principal,
+    sessionId: string,
+    afterId?: number,
+  ): Promise<SharingResult<readonly SharingSignal[]>> {
+    const session = await this.#sessions.findById(sessionId);
+    if (!session) return fail({ kind: 'not_found' });
+    if (!isParticipant(principal, session)) return fail({ kind: 'not_found' });
+
+    if (session.state === 'revoked' || session.state === 'expired') {
+      return fail({ kind: 'invalid_state', state: session.state });
+    }
+
+    const signals = await this.#signalChannel.getSignals(sessionId, principal.id, afterId);
+    return ok(signals);
   }
 }
 

@@ -4,6 +4,7 @@
 // shown as read-only.
 import { useEffect, useId, useRef, useState } from 'react';
 import { T } from '../../shared/i18n/i18n.tsx';
+import { ScreenShare } from '../sharing/screen-share.tsx';
 import {
   addReply,
   listHelpRequests,
@@ -206,6 +207,11 @@ function RequestItem({ req, token }: { readonly req: HelpRequest; readonly token
         <p className="help-inbox-meeting-note" role="note">
           <T k="inbox.meetingNote" />
         </p>
+      )}
+
+      {/* Screen sharing for claimed requests (T3-018-B) */}
+      {req.state === 'claimed' && (
+        <ScreenShare token={token} helpRequestId={req.id} role="learner" />
       )}
 
       {/* Reply compose for active requests */}

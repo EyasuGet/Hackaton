@@ -366,4 +366,156 @@ describe('Sharing Session Integration (T3-018-A)', () => {
       await app.close();
     }
   });
+
+  it('retrieves session by help request id for authorised participant only', async () => {
+    const app = makeApp();
+    try {
+      const helpRequestId = await submitAndClaim(app, 'sharing-by-request-1');
+
+      const initRes = await app.inject({
+        method: 'POST',
+        url: '/api/sharing/sessions',
+        headers: { authorization: `Bearer ${tokens.support}` },
+        payload: { helpRequestId },
+      });
+      expect(initRes.statusCode).toBe(201);
+      const sessionId: string = initRes.json<SessionResponse>().session.id;
+
+      // Learner-a (owner) can find the session
+      const learnerRes = await app.inject({
+        method: 'GET',
+        url: `/api/sharing/sessions/by-request/${helpRequestId}`,
+        headers: { authorization: `Bearer ${tokens['learner-a']}` },
+      });
+      expect(learnerRes.statusCode).toBe(200);
+      expect(learnerRes.json<SessionResponse>().session.id).toBe(sessionId);
+
+      // Support (claimer) can find the session
+      const supportRes = await app.inject({
+        method: 'GET',
+        url: `/api/sharing/sessions/by-request/${helpRequestId}`,
+        headers: { authorization: `Bearer ${tokens.support}` },
+      });
+      expect(supportRes.statusCode).toBe(200);
+      expect(supportRes.json<SessionResponse>().session.id).toBe(sessionId);
+
+      // Learner-b (unrelated) receives 404 (not found) to prevent probing
+      const strangerRes = await app.inject({
+        method: 'GET',
+        url: `/api/sharing/sessions/by-request/${helpRequestId}`,
+        headers: { authorization: `Bearer ${tokens['learner-b']}` },
+      });
+      expect(strangerRes.statusCode).toBe(404);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('exchanges signalling messages between learner and support and rejects third-party access', async () => {
+    const app = makeApp();
+    try {
+      const helpRequestId = await submitAndClaim(app, 'sharing-signals-1');
+
+      const initRes = await app.inject({
+        method: 'POST',
+        url: '/api/sharing/sessions',
+        headers: { authorization: `Bearer ${tokens.support}` },
+        payload: { helpRequestId },
+      });
+      expect(initRes.statusCode).toBe(201);
+      const sessionId: string = initRes.json<SessionResponse>().session.id;
+
+      // Learner sends WebRTC SDP offer
+      const offerPayload = { sdp: 'v=0\r\no=- 12345 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\n' };
+      const sendOfferRes = await app.inject({
+        method: 'POST',
+        url: `/api/sharing/sessions/${sessionId}/signals`,
+        headers: { authorization: `Bearer ${tokens['learner-a']}` },
+        payload: { type: 'offer', payload: offerPayload },
+      });
+      expect(sendOfferRes.statusCode).toBe(201);
+      const offerSignal = sendOfferRes.json<{ signal: { id: number; type: string } }>().signal;
+      expect(offerSignal.type).toBe('offer');
+
+      // Third party (learner-b) cannot send signal (404 not found)
+      const strangerSendRes = await app.inject({
+        method: 'POST',
+        url: `/api/sharing/sessions/${sessionId}/signals`,
+        headers: { authorization: `Bearer ${tokens['learner-b']}` },
+        payload: { type: 'candidate', payload: { candidate: 'candidate:1' } },
+      });
+      expect(strangerSendRes.statusCode).toBe(404);
+
+      // Third party cannot read signals
+      const strangerReadRes = await app.inject({
+        method: 'GET',
+        url: `/api/sharing/sessions/${sessionId}/signals`,
+        headers: { authorization: `Bearer ${tokens['learner-b']}` },
+      });
+      expect(strangerReadRes.statusCode).toBe(404);
+
+      // Learner reading signals sees nothing (messages from self are filtered out)
+      const learnerReadRes = await app.inject({
+        method: 'GET',
+        url: `/api/sharing/sessions/${sessionId}/signals`,
+        headers: { authorization: `Bearer ${tokens['learner-a']}` },
+      });
+      expect(learnerReadRes.statusCode).toBe(200);
+      expect(learnerReadRes.json<{ signals: unknown[] }>().signals).toHaveLength(0);
+
+      // Support reading signals receives learner's offer
+      const supportReadRes = await app.inject({
+        method: 'GET',
+        url: `/api/sharing/sessions/${sessionId}/signals`,
+        headers: { authorization: `Bearer ${tokens.support}` },
+      });
+      expect(supportReadRes.statusCode).toBe(200);
+      const signals = supportReadRes.json<{
+        signals: { id: number; type: string; payload: unknown }[];
+      }>().signals;
+      expect(signals).toHaveLength(1);
+      expect(signals[0]?.type).toBe('offer');
+      expect(signals[0]?.payload).toEqual(offerPayload);
+
+      // Support sends SDP answer
+      const answerPayload = { sdp: 'v=0\r\no=- 67890 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\n' };
+      const sendAnswerRes = await app.inject({
+        method: 'POST',
+        url: `/api/sharing/sessions/${sessionId}/signals`,
+        headers: { authorization: `Bearer ${tokens.support}` },
+        payload: { type: 'answer', payload: answerPayload },
+      });
+      expect(sendAnswerRes.statusCode).toBe(201);
+
+      // Learner reading signals now receives support's answer
+      const learnerAnswerRes = await app.inject({
+        method: 'GET',
+        url: `/api/sharing/sessions/${sessionId}/signals`,
+        headers: { authorization: `Bearer ${tokens['learner-a']}` },
+      });
+      expect(learnerAnswerRes.statusCode).toBe(200);
+      const learnerSignals = learnerAnswerRes.json<{ signals: { id: number; type: string }[] }>()
+        .signals;
+      expect(learnerSignals).toHaveLength(1);
+      expect(learnerSignals[0]?.type).toBe('answer');
+
+      // Revoking session terminates signalling
+      await app.inject({
+        method: 'DELETE',
+        url: `/api/sharing/sessions/${sessionId}`,
+        headers: { authorization: `Bearer ${tokens['learner-a']}` },
+      });
+
+      // Post-revocation signal send returns 409
+      const postRevokeSend = await app.inject({
+        method: 'POST',
+        url: `/api/sharing/sessions/${sessionId}/signals`,
+        headers: { authorization: `Bearer ${tokens.support}` },
+        payload: { type: 'candidate', payload: { candidate: 'candidate:2' } },
+      });
+      expect(postRevokeSend.statusCode).toBe(409);
+    } finally {
+      await app.close();
+    }
+  });
 });

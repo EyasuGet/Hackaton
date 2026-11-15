@@ -296,4 +296,19 @@ describe('HelpInbox (T3-016-B & T3-017-B)', () => {
       expect(screen.getByText(/your reply could not be sent/i)).toBeTruthy();
     });
   });
+
+  it('renders screen sharing panel for a claimed help request', async () => {
+    vi.spyOn(helpApi, 'listHelpRequests').mockResolvedValue({
+      kind: 'ok',
+      requests: [{ ...FAKE_REQUEST, state: 'claimed', claimedBy: 'staff-1' }],
+    });
+    vi.spyOn(helpApi, 'listReplies').mockResolvedValue({ kind: 'ok', replies: [] });
+
+    wrap(<HelpInbox token="tok" />);
+
+    await waitFor(() => {
+      // Screen sharing heading or status is rendered for claimed request
+      expect(screen.getByRole('heading', { name: /screen sharing/i })).toBeTruthy();
+    });
+  });
 });
