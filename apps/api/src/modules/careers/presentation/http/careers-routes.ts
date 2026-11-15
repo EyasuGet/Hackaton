@@ -1,5 +1,9 @@
 import type { FastifyInstance, preHandlerAsyncHookHandler } from 'fastify';
 import { principalOf, requireRole } from '../../../identity/presentation/http/authentication.ts';
+import {
+  CareerResearchError,
+  type CareerResearchService,
+} from '../../application/career-research.ts';
 import type { JobAnswers } from '../../application/job-answers.ts';
 import type { JobPreferences } from '../../application/job-preferences.ts';
 import type { JobRepository } from '../../application/import-jobs.ts';
@@ -10,6 +14,7 @@ export function registerCareersRoutes(
   jobRepository: JobRepository,
   jobPreferences?: JobPreferences,
   jobAnswers?: JobAnswers,
+  careerResearch?: CareerResearchService,
 ) {
   const learnerOnly = { preHandler: [authenticated, requireRole('learner')] };
 
@@ -95,6 +100,62 @@ export function registerCareersRoutes(
       const principal = principalOf(request);
       const result = await jobAnswers.answer(principal, question.trim());
       return reply.code(200).send(result);
+    });
+  }
+
+  if (careerResearch) {
+    // Supplementary external career web research with explicit consent (T3-028-A).
+    app.post<{
+      Body: {
+        query?: string;
+        consent?: boolean;
+        language?: 'en' | 'am';
+        limit?: number;
+      };
+    }>('/api/careers/research', learnerOnly, async (request, reply) => {
+      const { query, consent, language, limit } = request.body ?? {};
+      if (typeof query !== 'string' || query.trim() === '') {
+        return reply.code(400).send({ error: 'invalid_query', message: 'Query is required.' });
+      }
+      if (consent !== true) {
+        return reply
+          .code(400)
+          .send({ error: 'consent_required', message: 'Explicit consent is required.' });
+      }
+
+      try {
+        const principal = principalOf(request);
+        const result = await careerResearch.research(principal, {
+          query: query.trim(),
+          consent: true,
+          language,
+          limit,
+        });
+        return reply.code(200).send(result);
+      } catch (error) {
+        if (error instanceof CareerResearchError) {
+          if (error.code === 'consent_required' || error.code === 'invalid_query') {
+            return reply.code(400).send({ error: error.code, message: error.message });
+          }
+          if (error.code === 'unauthorized') {
+            return reply.code(403).send({ error: 'forbidden', message: error.message });
+          }
+          if (error.code === 'rate_limited') {
+            if (error.retryAfterSeconds) {
+              reply.header('Retry-After', error.retryAfterSeconds);
+            }
+            return reply.code(429).send({
+              error: 'rate_limited',
+              message: error.message,
+              retryAfterSeconds: error.retryAfterSeconds,
+            });
+          }
+          if (error.code === 'provider_unavailable') {
+            return reply.code(503).send({ error: 'provider_unavailable', message: error.message });
+          }
+        }
+        throw error;
+      }
     });
   }
 }

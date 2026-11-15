@@ -22,6 +22,7 @@ import { registerAccommodationRoutes } from '../modules/accommodation/presentati
 import type { JobAnswers } from '../modules/careers/application/job-answers.ts';
 import type { JobRepository } from '../modules/careers/application/import-jobs.ts';
 import type { JobPreferences } from '../modules/careers/application/job-preferences.ts';
+import type { CareerResearchService } from '../modules/careers/application/career-research.ts';
 import { registerCareersRoutes } from '../modules/careers/presentation/http/careers-routes.ts';
 import type { Help } from '../modules/help/application/help.ts';
 import type { StaffHelp } from '../modules/help/application/staff-help.ts';
@@ -61,6 +62,8 @@ export interface AppDependencies {
   readonly jobRepository?: JobRepository;
   readonly jobPreferences?: JobPreferences;
   readonly jobAnswers?: JobAnswers;
+  /** Optional; when omitted career research routes are not registered (T3-028-A). */
+  readonly careerResearch?: CareerResearchService;
   /** Optional; when omitted Telegram channel routes are not registered. */
   readonly telegramService?: TelegramLinkService;
   /** Optional; when omitted SMS subscription routes are not registered. */
@@ -166,6 +169,7 @@ export function buildApp(
       dependencies.jobRepository,
       dependencies.jobPreferences,
       dependencies.jobAnswers,
+      dependencies.careerResearch,
     );
   }
   if (dependencies.accommodation) {
