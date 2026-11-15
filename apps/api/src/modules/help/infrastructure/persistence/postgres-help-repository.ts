@@ -2,6 +2,7 @@
 // owner_id so another learner's records are never reachable, even with
 // their id. Duplicate submissions are resolved atomically via the unique
 // (owner_id, client_request_id) constraint.
+import { createHash } from 'node:crypto';
 import type pg from 'pg';
 import type { OwnedScope } from '../../../identity/domain/principal.ts';
 import type {
@@ -131,6 +132,15 @@ export class PostgresHelpRepository implements HelpRepository {
       [id, scope.ownerId],
     );
     const row = result.rows[0];
+    if (row) {
+      await this.#pool.query(
+        `UPDATE delivery_intents
+            SET status = 'cancelled',
+                content_ref = NULL
+          WHERE content_ref LIKE $1 AND status = 'pending'`,
+        [`help_reply:${id}:%`],
+      );
+    }
     return row ? toHelpRequest(row) : null;
   }
 
@@ -212,38 +222,93 @@ export class PostgresHelpRepository implements HelpRepository {
     body: string,
   ): Promise<AddReplyResult | null> {
     // Verify the request exists, has not expired, and is in a replyable state.
-    const reqResult = await this.#pool.query<{ state: HelpRequestState; expires_at: Date }>(
-      `SELECT state, expires_at FROM help_requests WHERE id = $1`,
-      [helpRequestId],
-    );
+    const reqResult = await this.#pool.query<{
+      state: HelpRequestState;
+      expires_at: Date;
+      owner_id: string;
+    }>(`SELECT state, expires_at, owner_id FROM help_requests WHERE id = $1`, [helpRequestId]);
     const req = reqResult.rows[0];
     if (!req) return null;
     if (req.state === 'cancelled' || req.state === 'resolved') return null;
     if (req.expires_at <= new Date()) return null;
 
-    // Attempt insert; ON CONFLICT means the reply already exists (idempotent).
-    const insertResult = await this.#pool.query<HelpReplyRow>(
-      `INSERT INTO help_request_replies (help_request_id, author_id, client_reply_id, body)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (help_request_id, client_reply_id) DO NOTHING
-       RETURNING id, help_request_id, author_id, client_reply_id, body, created_at, read_at`,
-      [helpRequestId, authorId, clientReplyId, body],
-    );
+    const client = await this.#pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    if (insertResult.rows[0]) {
-      return { kind: 'added', reply: toHelpReply(insertResult.rows[0]) };
+      // Attempt insert; ON CONFLICT means the reply already exists (idempotent).
+      const insertResult = await client.query<HelpReplyRow>(
+        `INSERT INTO help_request_replies (help_request_id, author_id, client_reply_id, body)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (help_request_id, client_reply_id) DO NOTHING
+         RETURNING id, help_request_id, author_id, client_reply_id, body, created_at, read_at`,
+        [helpRequestId, authorId, clientReplyId, body],
+      );
+
+      if (insertResult.rows[0]) {
+        const reply = insertResult.rows[0];
+
+        // Notify opted-in learner of staff replies (never self-notify learner)
+        if (authorId !== req.owner_id) {
+          try {
+            const eligibility = await client.query<{ is_eligible: boolean }>(
+              `SELECT EXISTS(
+                 SELECT 1
+                   FROM help_notification_preferences p
+                   JOIN telegram_identities t ON t.learner_id = p.learner_id AND t.revoked_at IS NULL
+                  WHERE p.learner_id = $1 AND p.channel = 'telegram' AND p.opted_in = true
+               ) AS is_eligible`,
+              [req.owner_id],
+            );
+
+            if (eligibility.rows[0]?.is_eligible) {
+              const dedupKey = `help-reply:${helpRequestId}:${reply.id}`;
+              const dedupHex = createHash('sha256').update(dedupKey).digest('hex');
+              const now = new Date();
+              const dedupExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+              await client.query(
+                `INSERT INTO delivery_intents
+                   (dedup_digest, recipient_id, channel, content_ref, content_expires_at, dedup_expires_at, created_at)
+                 VALUES ($1, $2, 'telegram', $3, $4, $5, $6)
+                 ON CONFLICT (dedup_digest) DO NOTHING`,
+                [
+                  dedupHex,
+                  req.owner_id,
+                  `help_reply:${helpRequestId}:${reply.id}`,
+                  req.expires_at,
+                  dedupExpiresAt,
+                  now,
+                ],
+              );
+            }
+          } catch {
+            // A notification enqueue issue must never block or erase the persisted reply
+          }
+        }
+
+        await client.query('COMMIT');
+        return { kind: 'added', reply: toHelpReply(reply) };
+      }
+
+      await client.query('COMMIT');
+
+      // Row already existed — return the existing reply.
+      const existing = await this.#pool.query<HelpReplyRow>(
+        `SELECT id, help_request_id, author_id, client_reply_id, body, created_at, read_at
+           FROM help_request_replies
+          WHERE help_request_id = $1 AND client_reply_id = $2`,
+        [helpRequestId, clientReplyId],
+      );
+      const existingRow = existing.rows[0];
+      if (!existingRow) throw new Error('help_reply: conflict row vanished');
+      return { kind: 'existing', reply: toHelpReply(existingRow) };
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
     }
-
-    // Row already existed — return the existing reply.
-    const existing = await this.#pool.query<HelpReplyRow>(
-      `SELECT id, help_request_id, author_id, client_reply_id, body, created_at, read_at
-         FROM help_request_replies
-        WHERE help_request_id = $1 AND client_reply_id = $2`,
-      [helpRequestId, clientReplyId],
-    );
-    const existingRow = existing.rows[0];
-    if (!existingRow) throw new Error('help_reply: conflict row vanished');
-    return { kind: 'existing', reply: toHelpReply(existingRow) };
   }
 
   async listReplies(helpRequestId: string): Promise<readonly HelpReply[]> {
@@ -286,6 +351,71 @@ export class PostgresHelpRepository implements HelpRepository {
     );
     const row = result.rows[0];
     return row ? toHelpRequest(row) : null;
+  }
+
+  async getNotificationPreference(scope: OwnedScope, channel: string): Promise<boolean> {
+    const result = await this.#pool.query<{ opted_in: boolean }>(
+      `SELECT opted_in FROM help_notification_preferences WHERE learner_id = $1 AND channel = $2`,
+      [scope.ownerId, channel],
+    );
+    return result.rows[0]?.opted_in ?? false;
+  }
+
+  async setNotificationPreference(
+    scope: OwnedScope,
+    channel: string,
+    optedIn: boolean,
+  ): Promise<boolean> {
+    const client = await this.#pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `INSERT INTO help_notification_preferences (learner_id, channel, opted_in, updated_at)
+         VALUES ($1, $2, $3, now())
+         ON CONFLICT (learner_id, channel) DO UPDATE
+         SET opted_in = EXCLUDED.opted_in,
+             updated_at = now()`,
+        [scope.ownerId, channel, optedIn],
+      );
+      if (!optedIn) {
+        await client.query(
+          `UPDATE delivery_intents
+              SET status = 'cancelled',
+                  content_ref = NULL
+            WHERE recipient_id = $1 AND channel = $2 AND status = 'pending'`,
+          [scope.ownerId, channel],
+        );
+      }
+      await client.query('COMMIT');
+      return optedIn;
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async cancelPendingIntentsForHelpRequest(helpRequestId: string): Promise<number> {
+    const result = await this.#pool.query(
+      `UPDATE delivery_intents
+          SET status = 'cancelled',
+              content_ref = NULL
+        WHERE content_ref LIKE $1 AND status = 'pending'`,
+      [`help_reply:${helpRequestId}:%`],
+    );
+    return result.rowCount ?? 0;
+  }
+
+  async cancelPendingIntentsForLearner(learnerId: string, channel: string): Promise<number> {
+    const result = await this.#pool.query(
+      `UPDATE delivery_intents
+          SET status = 'cancelled',
+              content_ref = NULL
+        WHERE recipient_id = $1 AND channel = $2 AND status = 'pending'`,
+      [learnerId, channel],
+    );
+    return result.rowCount ?? 0;
   }
 
   /** Resolves the internal UUID for a (owner, clientRequestId) pair. */

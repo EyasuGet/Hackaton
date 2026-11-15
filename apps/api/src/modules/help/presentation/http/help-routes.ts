@@ -229,4 +229,43 @@ export function registerHelpRoutes(
       return reply.code(200).send({ request: resolved });
     },
   );
+
+  // Gets learner's notification preference for a channel (defaults to telegram).
+  app.get('/api/help/notifications/preference', learnerOnly, async (request, reply) => {
+    const principal = principalOf(request);
+    const channel = (request.query as { channel?: string })?.channel ?? 'telegram';
+    const optedIn = await help.getNotificationPreference(principal, channel);
+    return reply.code(200).send({ channel, optedIn });
+  });
+
+  // Explicit opt-in for support reply notifications.
+  app.post('/api/help/notifications/opt-in', learnerOnly, async (request, reply) => {
+    const principal = principalOf(request);
+    const channel = (request.body as { channel?: string })?.channel ?? 'telegram';
+    await help.optIn(principal, channel);
+    return reply.code(200).send({ channel, optedIn: true });
+  });
+
+  // Explicit opt-out for support reply notifications (suppresses pending intents).
+  app.post('/api/help/notifications/opt-out', learnerOnly, async (request, reply) => {
+    const principal = principalOf(request);
+    const channel = (request.body as { channel?: string })?.channel ?? 'telegram';
+    await help.optOut(principal, channel);
+    return reply.code(200).send({ channel, optedIn: false });
+  });
+
+  // Updates notification preference for a channel.
+  app.put<{ Body: { channel?: string; optedIn: boolean } }>(
+    '/api/help/notifications/preference',
+    learnerOnly,
+    async (request, reply) => {
+      const principal = principalOf(request);
+      const { channel = 'telegram', optedIn } = request.body ?? {};
+      if (typeof optedIn !== 'boolean') {
+        return reply.code(400).send({ error: 'invalid_opted_in' });
+      }
+      await help.setNotificationPreference(principal, channel, optedIn);
+      return reply.code(200).send({ channel, optedIn });
+    },
+  );
 }
