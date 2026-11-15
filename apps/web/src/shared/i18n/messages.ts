@@ -19,6 +19,9 @@ export const en = {
   'app.title': 'Learning assistant',
   'app.languageLabel': 'Language',
   'app.offline': 'You are offline. Showing cached content only.',
+  'app.updateAvailable': 'A new version of the app is available.',
+  'app.refresh': 'Refresh',
+  'app.updated': 'App updated to the latest version.',
   'demo.heading': 'Demo mode',
   'demo.notice':
     'Replies come from labelled test fixtures. This is not a tutor, and no answer is real.',
@@ -62,6 +65,30 @@ export const en = {
     'You are not signed in, or your session has expired. Your question was not sent and is still in the box.',
   'assistant.problemFailed':
     'Your question could not be sent. Check your connection, then press Send to try again. Your question is still in the box.',
+  // Spoken answers (T3-011)
+  'assistant.speechPlay': 'Read answer aloud',
+  'assistant.speechPause': 'Pause speech',
+  'assistant.speechResume': 'Resume speech',
+  'assistant.speechStop': 'Stop speech',
+  'assistant.speechPlaying': 'Playing audio…',
+  'assistant.speechPaused': 'Audio paused',
+  'assistant.speechControlsLabel': 'Speech playback controls',
+  'assistant.speechEngineLabel': 'Speech output engine',
+  'assistant.speechEngineClient': 'Device speech (browser)',
+  'assistant.speechEngineCloud': 'Cloud speech (consented)',
+  'assistant.cloudConsentHeading': 'Consent for cloud speech synthesis',
+  'assistant.cloudConsentBody':
+    'Cloud speech synthesis sends the answer text to an external speech provider to generate spoken audio. No personal identity, question history, or account credentials are shared. You can revoke consent at any time.',
+  'assistant.cloudConsentAccept': 'I consent to cloud speech',
+  'assistant.cloudConsentDecline': 'Decline and keep local only',
+  'assistant.cloudConsentGranted': 'Cloud speech consent active',
+  'assistant.cloudConsentRevoke': 'Revoke cloud speech consent',
+  'assistant.speechErrorFailed':
+    'Spoken audio could not be generated. The complete written answer and citations remain available below.',
+  'assistant.speechErrorUnsupported':
+    'Spoken audio is not available for this language on the selected speech provider. The complete written answer and citations remain available below.',
+  'assistant.speechErrorConsentRequired':
+    'Cloud speech synthesis requires your explicit consent before audio can be generated. The complete written answer and citations remain available below.',
   // Labels around a displayed date; the date values follow the reply language.
   'date.ethiopianCalendar': 'Ethiopian calendar',
   'date.gregorianCalendar': 'Gregorian',
@@ -159,6 +186,9 @@ export const am: Partial<Record<MessageKey, string>> = {
   'app.title': 'የትምህርት ረዳት',
   'app.languageLabel': 'ቋንቋ',
   'app.offline': 'ኢንተርኔት ግንኙነት የለም። ቀደም ሲል የተቀመጡ ይዘቶች ብቻ ይታያሉ።',
+  'app.updateAvailable': 'አዲስ የመተግበሪያ ስሪት ይገኛል።',
+  'app.refresh': 'አድስ',
+  'app.updated': 'መተግበሪያው ወደ አዲሱ ስሪት ተዘምኗል።',
   'demo.heading': 'የሙከራ ሁኔታ',
   'demo.notice': 'መልሶች ከተሰየሙ የሙከራ ናሙናዎች የመጡ ናቸው። ይህ እውነተኛ አስተማሪ አይደለም፤ የትኛውም መልስ እውነተኛ አይደለም።',
   'demo.scenarioLabel': 'የሙከራ መልስ ዓይነት',
@@ -200,6 +230,29 @@ export const am: Partial<Record<MessageKey, string>> = {
   'assistant.problemDenied': 'አልገቡም፤ ወይም ክፍለ ጊዜዎ አብቅቷል። ጥያቄዎ አልተላከም፤ አሁንም በሳጥኑ ውስጥ አለ።',
   'assistant.problemFailed':
     'ጥያቄዎ ሊላክ አልቻለም። ግንኙነትዎን ያረጋግጡ፤ ከዚያ እንደገና ለመሞከር ላክ የሚለውን ይጫኑ። ጥያቄዎ አሁንም በሳጥኑ ውስጥ አለ።',
+  // Spoken answers (T3-011) - draft translations; competent-speaker review required
+  'assistant.speechPlay': 'መልሱን ጮክ ብለህ አንብብ',
+  'assistant.speechPause': 'ድምጽን አቁም',
+  'assistant.speechResume': 'ድምጽን ቀጥል',
+  'assistant.speechStop': 'ድምጽን ጨርስ',
+  'assistant.speechPlaying': 'ድምፅ እየተጫወተ ነው…',
+  'assistant.speechPaused': 'ድምፅ ቆሟል',
+  'assistant.speechControlsLabel': 'የድምፅ ማጫወቻ መቆጣጠሪያዎች',
+  'assistant.speechEngineLabel': 'የድምፅ ውፅዓት ሞተር',
+  'assistant.speechEngineClient': 'የመሳሪያ ድምፅ (አሳሽ)',
+  'assistant.speechEngineCloud': 'የደመና ድምፅ (በስምምነት)',
+  'assistant.cloudConsentHeading': 'ለደመና ድምፅ ውህደት ስምምነት',
+  'assistant.cloudConsentBody':
+    'የደመና ድምፅ ውህደት የተነገረ ድምፅ ለማመንጨት የመልስ ጽሑፉን ወደ ውጫዊ የድምፅ አቅራቢ ይልካል። ምንም የግል ማንነት፣ የጥያቄ ታሪክ ወይም የመለያ ምስክርነቶች አይጋሩም። በማንኛውም ጊዜ ፈቃድዎን መሰረዝ ይችላሉ።',
+  'assistant.cloudConsentAccept': 'በደመና ድምፅ እስማማለሁ',
+  'assistant.cloudConsentDecline': 'አትቀበል እና በአካባቢው ብቻ አቆይ',
+  'assistant.cloudConsentGranted': 'የደመና ድምፅ ስምምነት ገቢር ነው',
+  'assistant.cloudConsentRevoke': 'የደመና ድምፅ ስምምነትን ሰርዝ',
+  'assistant.speechErrorFailed': 'የተነገረ ድምፅ ማመንጨት አልተቻለም። ሙሉው የተፃፈ መልስ እና ጥቅሶች ከታች ይገኛሉ።',
+  'assistant.speechErrorUnsupported':
+    'በተመረጠው የድምፅ አቅራቢ ላይ ለዚህ ቋንቋ የተነገረ ድምፅ አይገኝም። ሙሉው የተፃፈ መልስ እና ጥቅሶች ከታች ይገኛሉ።',
+  'assistant.speechErrorConsentRequired':
+    'ድምፅ ከመመንጨቱ በፊት የደመና ድምፅ ውህደት የእርስዎን ግልጽ ስምምነት ይፈልጋል። ሙሉው የተፃፈ መልስ እና ጥቅሶች ከታች ይገኛሉ።',
   'date.ethiopianCalendar': 'የኢትዮጵያ አቆጣጠር',
   'date.gregorianCalendar': 'የግሪጎሪያን አቆጣጠር',
   'date.addisAbabaTime': 'የአዲስ አበባ ሰዓት',

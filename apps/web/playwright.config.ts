@@ -8,6 +8,7 @@ const pageOrigin = 'http://localhost:5173';
 // The browser tests sign in with synthetic demo sessions, so this test-only API
 // runs in demo mode and accepts the Vite page's origin.
 const apiEnv = {
+  API_HOST: process.env.API_HOST ?? '127.0.0.1',
   ...Object.fromEntries(
     Object.entries(process.env).filter(
       (entry): entry is [string, string] => entry[1] !== undefined,
