@@ -9,7 +9,10 @@ import {
 } from './audio-recorder.ts';
 import type { AskResult, ConversationClient } from './conversation.ts';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  localStorage.clear();
+});
 
 const mockAnswer: AskResult = {
   kind: 'answer',

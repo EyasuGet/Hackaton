@@ -5,6 +5,7 @@
 // Private by design: visible only to the requesting learner and authorised coordinator.
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { T, type MessageKey } from '../../shared/i18n/i18n.tsx';
+import { DraftNotice, useDraft } from '../../shared/drafts/drafts.tsx';
 import {
   addAccommodationReply,
   cancelAccommodationRequest,
@@ -423,6 +424,8 @@ export function AccommodationPanel({
   readonly role?: 'learner' | 'support';
 }) {
   const [phase, setPhase] = useState<ComposerPhase>({ kind: 'idle' });
+  // The description is also kept on this device, so it survives reload and session expiry.
+  const [savedDescription, setSavedDescription] = useDraft('accommodation');
   const [existingRequests, setExistingRequests] = useState<readonly AccommodationRequest[]>([]);
   const [isCoordinator, setIsCoordinator] = useState(role === 'support');
   const inFlight = useRef(false);
@@ -502,12 +505,13 @@ export function AccommodationPanel({
     if (phase.kind !== 'selecting_job') return;
     const job = phase.jobs.find((j) => j.id === phase.selectedJobId);
     if (!job) return;
-    setPhase({ kind: 'composing', job, description: '' });
+    setPhase({ kind: 'composing', job, description: savedDescription });
   }
 
   function onDescriptionChange(e: ChangeEvent<HTMLTextAreaElement>) {
     if (phase.kind !== 'composing') return;
     setPhase({ ...phase, description: e.target.value });
+    setSavedDescription(e.target.value);
   }
 
   function onReview(e: FormEvent) {
@@ -544,6 +548,7 @@ export function AccommodationPanel({
     inFlight.current = false;
 
     if (result.kind === 'submitted' || result.kind === 'existing') {
+      setSavedDescription('');
       setPhase({ kind: 'waiting', request: result.request, job });
       // Prepend to existing requests list
       setExistingRequests((prev) => [
@@ -710,6 +715,13 @@ export function AccommodationPanel({
             rows={5}
             dir="auto"
             aria-required="true"
+          />
+          <DraftNotice
+            value={phase.description}
+            onClear={() => {
+              setPhase({ ...phase, description: '' });
+              setSavedDescription('');
+            }}
           />
           <div className="actions">
             <button type="submit" disabled={!phase.description.trim()}>

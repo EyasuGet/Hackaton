@@ -18,6 +18,7 @@ import {
   type Locale,
   type MessageKey,
 } from '../../shared/i18n/i18n.tsx';
+import { DraftNotice, useDraft } from '../../shared/drafts/drafts.tsx';
 import { formatAddisDate, type DateLanguage } from '../../shared/i18n/addis-date.ts';
 import type { AskResult, Citation, ConversationClient } from './conversation.ts';
 import { AudioRecorderError, BrowserAudioRecorder, type AudioRecorder } from './audio-recorder.ts';
@@ -142,7 +143,7 @@ export function Assistant({
   onResearchModeChange,
 }: AssistantProps) {
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useDraft('question');
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [internalSimpleLanguage, setInternalSimpleLanguage] = useState(defaultSimpleLanguage);
@@ -860,6 +861,7 @@ export function Assistant({
             <T k={PROBLEM_TEXT[problem]} />
           </p>
         )}
+        <DraftNotice value={draft} onClear={() => setDraft('')} />
 
         {/* Voice recording, transcribing, and review controls (T3-010-B) */}
         <div className="voice-controls" role="region" aria-label={t('assistant.voiceRecord')}>

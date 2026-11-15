@@ -27,6 +27,8 @@ export interface DemoSessionRepository {
   createSession(principalId: string, tokenDigest: string, expiresAt: Date): Promise<void>;
   /** True if an active session was revoked; false if the token was not one. */
   revokeSession(tokenDigest: string, now: Date): Promise<boolean>;
+  /** Moves an unrevoked, unexpired session's expiry to `expiresAt`; false if there is none. */
+  extendSession(tokenDigest: string, now: Date, expiresAt: Date): Promise<boolean>;
 }
 
 export interface IssuedSecret {
@@ -84,6 +86,18 @@ export class DemoSessions {
     const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
     await this.#repository.createSession(principalId, digestToken(token), expiresAt);
     return { secret: token, expiresAt };
+  }
+
+  /**
+   * Gives an active session a fresh full lifetime, so a learner warned of expiry can
+   * keep working. Null if demo mode is off or the token is not an active session.
+   */
+  async extend(token: string): Promise<Date | null> {
+    if (!this.#demoMode) return null;
+    const now = this.#now();
+    const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
+    const extended = await this.#repository.extendSession(digestToken(token), now, expiresAt);
+    return extended ? expiresAt : null;
   }
 
   /** Ends the session for this bearer token. False if the token is not an active session. */

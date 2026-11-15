@@ -39,6 +39,7 @@ function appWith(
         consumeHandoff: () => Promise.resolve(null),
         createSession: () => Promise.resolve(),
         revokeSession: () => Promise.resolve(false),
+        extendSession: () => Promise.resolve(false),
       },
       true,
     ),
