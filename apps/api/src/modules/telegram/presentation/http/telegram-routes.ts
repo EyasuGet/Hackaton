@@ -206,6 +206,30 @@ export function registerTelegramRoutes(
         return reply.code(code).send({ error: result.reason });
       }
 
+      if (result.status === 'rate_limited') {
+        return reply.code(429).send({
+          error: 'rate_limited',
+          message: result.message,
+          retryAfterSec: result.retryAfterSec,
+        });
+      }
+
+      if (result.status === 'answered') {
+        return reply.code(200).send({
+          ok: true,
+          status: 'answered',
+          answer: result.answer,
+          citations: result.citations,
+          kind: result.kind,
+          answerLang: result.answerLang,
+          matchedJobId: result.matchedJobId,
+          replayed: result.replayed ?? false,
+          method: 'sendMessage',
+          chat_id: String(update.message?.chat.id),
+          text: result.answer,
+        });
+      }
+
       return reply.code(200).send({ ok: true, status: result.status });
     },
   );
