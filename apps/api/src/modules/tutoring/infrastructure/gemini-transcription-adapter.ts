@@ -46,14 +46,17 @@ export class GeminiTranscriptionAdapter implements TranscriptionPort {
       return { status: 'too_large' };
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${TRANSCRIPTION_MODEL}:generateContent?key=${this.#apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${TRANSCRIPTION_MODEL}:generateContent`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': this.#apiKey!,
+        },
         signal: controller.signal,
         body: JSON.stringify({
           contents: [
