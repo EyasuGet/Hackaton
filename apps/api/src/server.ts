@@ -19,6 +19,7 @@ import { PostgresDemoSessionRepository } from './modules/identity/infrastructure
 import { PostgresPrincipalRepository } from './modules/identity/infrastructure/postgres-principal-repository.ts';
 import { Accommodation } from './modules/accommodation/application/accommodation.ts';
 import { PostgresAccommodationRepository } from './modules/accommodation/infrastructure/persistence/postgres-accommodation-repository.ts';
+import { JobAnswers } from './modules/careers/application/job-answers.ts';
 import { JobPreferences } from './modules/careers/application/job-preferences.ts';
 import { PostgresJobPreferencesRepository } from './modules/careers/infrastructure/postgres-job-preferences-repository.ts';
 import { PostgresJobRepository } from './modules/careers/infrastructure/postgres-job-repository.ts';
@@ -49,7 +50,9 @@ const onlineProvider = new GeminiGroundedAnswerProvider();
 const helpRepository = new PostgresHelpRepository(pool);
 const sharingRepository = new PostgresSharingRepository(pool);
 const helpRequestLookup = new PostgresHelpRequestLookup(pool);
+const jobRepository = new PostgresJobRepository(pool);
 const jobPreferences = new JobPreferences(new PostgresJobPreferencesRepository(pool));
+const jobAnswers = new JobAnswers(jobRepository);
 const telegramLinkRepository = new PostgresTelegramLinkRepository(pool);
 const telegramService = new TelegramLinkService(telegramLinkRepository, {
   webhookSecret: config.telegram.webhookSecret,
@@ -68,14 +71,16 @@ const app = buildApp(
       faqProvider,
       onlineProvider,
       content,
+      jobAnswers,
     ),
     content,
     help: new Help(helpRepository),
     staffHelp: new StaffHelp(helpRepository),
     sharing: new Sharing(sharingRepository, helpRequestLookup),
     accommodation: new Accommodation(new PostgresAccommodationRepository(pool)),
-    jobRepository: new PostgresJobRepository(pool),
+    jobRepository,
     jobPreferences,
+    jobAnswers,
     telegramService,
   },
   { logger: true },

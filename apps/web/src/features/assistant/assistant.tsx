@@ -28,6 +28,7 @@ interface Entry {
   readonly lang?: string;
   readonly createdAt?: string;
   readonly citations?: readonly Citation[];
+  readonly provider?: 'online' | 'faq' | 'job';
 }
 
 type Problem = 'empty' | 'denied' | 'failed';
@@ -319,6 +320,7 @@ export function Assistant({
         lang: reply.lang,
         createdAt: reply.createdAt,
         ...(reply.citations ? { citations: reply.citations } : {}),
+        ...(reply.provider ? { provider: reply.provider } : {}),
       },
     ]);
     setDraft('');
@@ -485,11 +487,13 @@ export function Assistant({
                     k={
                       entry.speaker === 'learner'
                         ? 'assistant.speakerLearner'
-                        : mode === 'online'
-                          ? 'assistant.speakerOnline'
-                          : mode === 'faq'
-                            ? 'assistant.speakerFaq'
-                            : 'assistant.speakerAssistant'
+                        : entry.provider === 'job'
+                          ? 'assistant.speakerJob'
+                          : mode === 'online'
+                            ? 'assistant.speakerOnline'
+                            : mode === 'faq'
+                              ? 'assistant.speakerFaq'
+                              : 'assistant.speakerAssistant'
                     }
                   />
                 </p>
@@ -509,7 +513,18 @@ export function Assistant({
                       {entry.citations.map((c) => (
                         <li key={`${c.sourceId}-${c.sectionId}`} className="citation-item">
                           <cite>
-                            {c.sourceTitle} — {c.heading}
+                            {c.url ? (
+                              <a
+                                href={c.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="citation-link"
+                              >
+                                {c.sourceTitle} — {c.heading}
+                              </a>
+                            ) : (
+                              `${c.sourceTitle} — ${c.heading}`
+                            )}
                           </cite>
                         </li>
                       ))}
