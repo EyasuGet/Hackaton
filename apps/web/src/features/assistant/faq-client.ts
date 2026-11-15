@@ -2,7 +2,13 @@
 // (T3-007-A & T3-007-C).
 // Retains atomic client-side requestId claims, session authorization, explicit external consent,
 // and maps citations and provider provenance into the accessible Reply model.
-import type { AskResult, Citation, ConversationClient, Reply } from './conversation.ts';
+import type {
+  AskResult,
+  Citation,
+  ConversationClient,
+  Reply,
+  TranscriptionResult,
+} from './conversation.ts';
 
 function record(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null;
@@ -106,6 +112,57 @@ export function createAnswerClient({
         };
 
         return { kind: 'answer', reply };
+      } catch {
+        return { kind: 'failed' };
+      }
+    },
+
+    async transcribe(audioBase64: string, mimeType: string): Promise<TranscriptionResult> {
+      const token = getToken();
+      if (!token) {
+        return { kind: 'denied' };
+      }
+
+      try {
+        const response = await fetch('/api/tutoring/transcription', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            audio: audioBase64,
+            mimeType,
+          }),
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          return { kind: 'denied' };
+        }
+        if (response.status === 413) {
+          return { kind: 'too_large' };
+        }
+        if (response.status === 503) {
+          return { kind: 'unavailable' };
+        }
+        if (response.status === 400) {
+          const body = record(await response.json().catch(() => null));
+          if (body?.error === 'unsupported_format') {
+            return { kind: 'unsupported_format' };
+          }
+          return { kind: 'failed' };
+        }
+        if (!response.ok) {
+          return { kind: 'failed' };
+        }
+
+        const data = record(await response.json());
+        if (!data || typeof data.transcript !== 'string') {
+          return { kind: 'failed' };
+        }
+
+        const lang = data.lang === 'am' ? 'am' : 'en';
+        return { kind: 'transcribed', transcript: data.transcript, lang };
       } catch {
         return { kind: 'failed' };
       }
