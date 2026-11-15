@@ -31,7 +31,7 @@ import { PostgresHelpRepository } from './modules/help/infrastructure/persistenc
 import { Sharing } from './modules/sharing/application/sharing.ts';
 import { PostgresHelpRequestLookup } from './modules/sharing/infrastructure/persistence/postgres-help-request-lookup.ts';
 import { PostgresSharingRepository } from './modules/sharing/infrastructure/persistence/postgres-sharing-repository.ts';
-import { GeminiGroundedAnswerProvider } from './evaluations/grounding/provider-adapter.ts';
+import { GeminiGroundedAnswerProvider } from './modules/tutoring/infrastructure/gemini-grounded-answer-provider.ts';
 import { HttpTelegramClient } from './modules/telegram/infrastructure/http-telegram-client.ts';
 import { TelegramLinkService } from './modules/telegram/application/telegram-link-service.ts';
 import { PostgresTelegramLinkRepository } from './modules/telegram/infrastructure/persistence/postgres-telegram-link-repository.ts';
@@ -65,19 +65,25 @@ const sharingRepository = new PostgresSharingRepository(pool);
 const helpRequestLookup = new PostgresHelpRequestLookup(pool);
 const jobRepository = new PostgresJobRepository(pool);
 const jobPreferencesRepo = new PostgresJobPreferencesRepository(pool);
-const careerResearch = new CareerResearchService(new MockCareerResearchProvider());
+const jobAnswers = new JobAnswers(jobRepository);
+// External career research is disabled when no real search provider is configured (D08).
+// Synthetic mock provider is only mounted in explicit demo mode.
+const careerResearch = config.demoMode
+  ? new CareerResearchService(new MockCareerResearchProvider())
+  : undefined;
+// Single shared Tutoring instance for both web and Telegram channels, fully configured with jobAnswers:
 const tutoring = new Tutoring(
   new PostgresTutoringRepository(pool),
   faqProvider,
   onlineProvider,
   content,
   admissionController,
+  jobAnswers,
 );
 const telegramMessenger = new HttpTelegramMessenger(config.telegram.botToken);
 const telegramLinkRepository = new PostgresTelegramLinkRepository(pool);
 const telegramClient = new HttpTelegramClient({ botToken: config.telegram.botToken });
 const jobPreferences = new JobPreferences(jobPreferencesRepo, telegramLinkRepository);
-const jobAnswers = new JobAnswers(jobRepository);
 const speechProvider = new DefaultSpeechSynthesizerProvider();
 const telegramService = new TelegramLinkService(telegramLinkRepository, {
   webhookSecret: config.telegram.webhookSecret,
@@ -100,14 +106,7 @@ const app = buildApp(
     demoRecords: new DemoRecords(new PostgresDemoRecordRepository(pool)),
     demoSessions: new DemoSessions(new PostgresDemoSessionRepository(pool), config.demoMode),
     demoAllowedOrigins: config.demoAllowedOrigins,
-    tutoring: new Tutoring(
-      new PostgresTutoringRepository(pool),
-      faqProvider,
-      onlineProvider,
-      content,
-      admissionController,
-      jobAnswers,
-    ),
+    tutoring,
     transcription,
     speechProvider,
     content,
@@ -118,7 +117,7 @@ const app = buildApp(
     jobRepository,
     jobPreferences,
     jobAnswers,
-    careerResearch,
+    ...(careerResearch ? { careerResearch } : {}),
     employerService,
     telegramService,
     admissionController,

@@ -153,7 +153,7 @@ export class GeminiGroundedAnswerProvider implements GroundedAnswerProvider, Onl
 
     const userPrompt = `Course Passages:\n${passagesText}\n\nQuestion: ${request.question}`;
     const model = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.#apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
@@ -161,7 +161,10 @@ export class GeminiGroundedAnswerProvider implements GroundedAnswerProvider, Onl
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.#apiKey ? { 'x-goog-api-key': this.#apiKey } : {}),
+        },
         signal: controller.signal,
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
