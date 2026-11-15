@@ -1,0 +1,92 @@
+[
+  {
+    "id": "tc-tx-001-en-greeting",
+    "category": "supported_en",
+    "audioDescription": "Speak clearly in English: 'Good morning. My name is Sarah and I am looking for a customer service job.'",
+    "expectedTranscript": "Good morning. My name is Sarah and I am looking for a customer service job.",
+    "expectedLang": "en",
+    "expectedSubstrings": ["good morning", "customer service"],
+    "rubric": "Transcript must contain the greeting, the speaker name, and the job type. Capitalisation and punctuation may differ."
+  },
+  {
+    "id": "tc-tx-002-en-job-question",
+    "category": "supported_en",
+    "audioDescription": "Speak clearly in English: 'What are the working hours for the data entry position advertised last week?'",
+    "expectedTranscript": "What are the working hours for the data entry position advertised last week?",
+    "expectedLang": "en",
+    "expectedSubstrings": ["working hours", "data entry"],
+    "rubric": "Transcript must preserve the question form and both key terms: working hours and data entry."
+  },
+  {
+    "id": "tc-tx-003-en-accommodation",
+    "category": "supported_en",
+    "audioDescription": "Speak clearly in English: 'I need an accommodation because I use a wheelchair.'",
+    "expectedTranscript": "I need an accommodation because I use a wheelchair.",
+    "expectedLang": "en",
+    "expectedSubstrings": ["accommodation", "wheelchair"],
+    "rubric": "Transcript must contain both 'accommodation' and 'wheelchair' in any form."
+  },
+  {
+    "id": "tc-tx-004-am-greeting",
+    "category": "supported_am",
+    "audioDescription": "Speak clearly in Amharic: 'ሰላም። ስሜ ሰሎሞን ነው። ሥራ እፈልጋለሁ።' (Hello. My name is Solomon. I am looking for work.)",
+    "expectedTranscript": "ሰላም። ስሜ ሰሎሞን ነው። ሥራ እፈልጋለሁ።",
+    "expectedLang": "am",
+    "expectedSubstrings": ["ሰላም", "ሥራ"],
+    "rubric": "Transcript must contain Ethiopic script. It should include a greeting and reference to work-seeking."
+  },
+  {
+    "id": "tc-tx-005-am-question",
+    "category": "supported_am",
+    "audioDescription": "Speak clearly in Amharic: 'ለዚህ ሥራ ምን ዓይነት ትምህርት ያስፈልጋል?' (What kind of education is required for this job?)",
+    "expectedTranscript": "ለዚህ ሥራ ምን ዓይነት ትምህርት ያስፈልጋል?",
+    "expectedLang": "am",
+    "expectedSubstrings": ["ሥራ", "ትምህርት"],
+    "rubric": "Transcript must be in Ethiopic script and contain the terms for 'job' and 'education'."
+  },
+  {
+    "id": "tc-tx-006-bilingual-mixed",
+    "category": "supported_bilingual",
+    "audioDescription": "Speak mixing Amharic and English: 'ሰላም, I want to apply for the job.'",
+    "expectedTranscript": "ሰላም, I want to apply for the job.",
+    "expectedLang": "am",
+    "expectedSubstrings": ["ሰላም", "apply", "job"],
+    "rubric": "Transcript must preserve both Ethiopic and Latin scripts. The detected language should be Amharic (dominant Ethiopic characters) or English depending on actual character count."
+  },
+  {
+    "id": "tc-tx-007-bilingual-en-am",
+    "category": "supported_bilingual",
+    "audioDescription": "Speak mixing English and Amharic: 'The deadline is ነገ at 5 PM.' (The deadline is tomorrow at 5 PM.)",
+    "expectedTranscript": "The deadline is ነገ at 5 PM.",
+    "expectedLang": "en",
+    "expectedSubstrings": ["deadline", "ነገ"],
+    "rubric": "Both scripts must appear. English words deadline and PM must be present alongside the Ethiopic word for tomorrow."
+  },
+  {
+    "id": "tc-tx-008-numbers-am",
+    "category": "numbers_am",
+    "audioDescription": "Speak clearly in Amharic: 'ደሞዙ በወር አምስት ሺህ ብር ነው።' (The salary is five thousand birr per month.)",
+    "expectedTranscript": "ደሞዙ በወር አምስት ሺህ ብር ነው።",
+    "expectedLang": "am",
+    "expectedSubstrings": ["አምስት", "ሺህ", "ብር"],
+    "rubric": "Number words (አምስት = five, ሺህ = thousand) and currency (ብር = birr) must be transcribed correctly as Ethiopic words, not mixed with Latin digits."
+  },
+  {
+    "id": "tc-tx-009-negation-am",
+    "category": "negation_am",
+    "audioDescription": "Speak clearly in Amharic: 'አልፈልግም። ይህ ሥራ ለእኔ አይሆንም።' (I don't want it. This job is not suitable for me.)",
+    "expectedTranscript": "አልፈልግም። ይህ ሥራ ለእኔ አይሆንም።",
+    "expectedLang": "am",
+    "expectedSubstrings": ["አልፈልግም", "አይሆንም"],
+    "rubric": "Negation suffixes (-ም on አልፈልግ, -ም on አይሆን) must be preserved. The transcript must not accidentally produce the affirmative forms."
+  },
+  {
+    "id": "tc-tx-010-negation-en",
+    "category": "negation_am",
+    "audioDescription": "Speak clearly in English with emphasis on the negation: 'I do NOT accept those working conditions.'",
+    "expectedTranscript": "I do not accept those working conditions.",
+    "expectedLang": "en",
+    "expectedSubstrings": ["not accept", "working conditions"],
+    "rubric": "The negation 'not' must be present. The word 'accept' or 'accepting' must appear. Capitalisation of NOT may differ."
+  }
+]

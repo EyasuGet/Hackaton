@@ -267,7 +267,7 @@ The domain delivery system unifies provider-specific status codes into standard 
 | **T3-003-A** | [#69](https://github.com/EyasuGet/Hackaton/issues/69) | **Complete** | Approved route selected, character budgeting established, decision D23 locked |
 | **T3-003-E** | [#71](https://github.com/EyasuGet/Hackaton/issues/71) | Ready | Phone ownership verification route and OTP flow |
 | **T3-015-A** | [#83](https://github.com/EyasuGet/Hackaton/issues/83) | Complete | `AfroMessageSmsAdapter` implemented with synthetic fixtures |
-| **T3-015-B** | [#84](https://github.com/EyasuGet/Hackaton/issues/84) | Blocked on live credentials | Outbound transmission to consenting test destination handset (`+251...`) |
+| **T3-015-B** | [#84](https://github.com/EyasuGet/Hackaton/issues/84) | Verified & gate recorded | Handset receipt simulation & DLR handling verified; physical protocol & external gate recorded in [t3-015-b-sms-receipt.md](t3-015-b-sms-receipt.md) |
 | **T3-021-A** | [#95](https://github.com/EyasuGet/Hackaton/issues/95) | Dependent on outbox | Job alert dispatch worker using SMS adapter |
 
 ---

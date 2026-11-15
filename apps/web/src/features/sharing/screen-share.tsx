@@ -4,7 +4,13 @@
 // Features a persistent accessible stop control and graceful disclosure for unsupported browsers.
 import { useEffect, useId, useRef, useState } from 'react';
 import { T, useT } from '../../shared/i18n/i18n.tsx';
-import { captureScreen, closePeerConnection, stopMediaStream } from './media-connection.ts';
+import {
+  captureScreen,
+  clampSenderBitrate,
+  closePeerConnection,
+  MAX_3G_BITRATE_BPS,
+  stopMediaStream,
+} from './media-connection.ts';
 import {
   getSessionByHelpRequestId,
   initiateSession,
@@ -34,9 +40,16 @@ export interface ScreenShareProps {
   readonly helpRequestId: string;
   readonly role?: ScreenShareRole;
   readonly onStop?: () => void;
+  readonly rtcConfig?: RTCConfiguration;
 }
 
-export function ScreenShare({ token, helpRequestId, role = 'learner', onStop }: ScreenShareProps) {
+export function ScreenShare({
+  token,
+  helpRequestId,
+  role = 'learner',
+  onStop,
+  rtcConfig,
+}: ScreenShareProps) {
   const t = useT();
   const headingId = useId();
   const statusId = useId();
@@ -67,9 +80,21 @@ export function ScreenShare({ token, helpRequestId, role = 'learner', onStop }: 
     }
   }, [phase]);
 
-  // Teardown tracks, peer connection, and signalling on unmount
+  // Teardown tracks, peer connection, and signalling on unmount or browser window close
   useEffect(() => {
+    const handleWindowClose = () => {
+      stopMediaStream(localStreamRef.current);
+      localStreamRef.current = null;
+      closePeerConnection(pcRef.current);
+      pcRef.current = null;
+    };
+
+    window.addEventListener('beforeunload', handleWindowClose);
+    window.addEventListener('pagehide', handleWindowClose);
+
     return () => {
+      window.removeEventListener('beforeunload', handleWindowClose);
+      window.removeEventListener('pagehide', handleWindowClose);
       stopMediaStream(localStreamRef.current);
       localStreamRef.current = null;
       closePeerConnection(pcRef.current);
@@ -207,15 +232,18 @@ export function ScreenShare({ token, helpRequestId, role = 'learner', onStop }: 
   function setupSharerPeerConnection(session: SharingSession, stream: MediaStream) {
     if (typeof RTCPeerConnection === 'undefined') return;
 
-    const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    });
+    const pc = new RTCPeerConnection(
+      rtcConfig ?? {
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      },
+    );
     pcRef.current = pc;
 
-    // Add video track only
+    // Add video track only and clamp bitrate for low-bandwidth 3G
     const track = stream.getVideoTracks()[0];
     if (track) {
-      pc.addTrack(track, stream);
+      const sender = pc.addTrack(track, stream);
+      void clampSenderBitrate(sender, MAX_3G_BITRATE_BPS, 15);
     }
 
     pc.onicecandidate = (event) => {
@@ -256,9 +284,11 @@ export function ScreenShare({ token, helpRequestId, role = 'learner', onStop }: 
     }
 
     setPhase({ kind: 'connecting', session });
-    const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    });
+    const pc = new RTCPeerConnection(
+      rtcConfig ?? {
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      },
+    );
     pcRef.current = pc;
 
     pc.ontrack = (event) => {

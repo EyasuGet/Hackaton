@@ -30,6 +30,12 @@ import type { Sharing } from '../modules/sharing/application/sharing.ts';
 import { registerSharingRoutes } from '../modules/sharing/presentation/http/sharing-routes.ts';
 import type { TelegramLinkService } from '../modules/telegram/application/telegram-link-service.ts';
 import { registerTelegramRoutes } from '../modules/telegram/presentation/http/telegram-routes.ts';
+import type { SmsSubscriptionService } from '../modules/delivery/application/sms-subscription-service.ts';
+import { registerSmsSubscriptionRoutes } from '../modules/delivery/presentation/http/sms-subscription-routes.ts';
+import type { TranscriptionPort } from '../modules/tutoring/application/ports/transcription-port.ts';
+import type { ProviderAdmissionController } from '../modules/tutoring/application/provider-admission.ts';
+import type { SpeechSynthesizerProvider } from '../modules/tutoring/application/ports/speech-synthesizer-provider.ts';
+import { registerSpeechRoutes } from '../modules/tutoring/presentation/http/speech-routes.ts';
 import type { Tutoring } from '../modules/tutoring/application/tutoring.ts';
 import { registerTutoringRoutes } from '../modules/tutoring/presentation/http/tutoring-routes.ts';
 
@@ -42,6 +48,8 @@ export interface AppDependencies {
   /** Exact page origins allowed to start a demo session. */
   readonly demoAllowedOrigins: readonly string[];
   readonly tutoring: Tutoring;
+  /** Optional; when omitted the transcription route is not registered. */
+  readonly transcription?: TranscriptionPort;
   readonly content: ContentAccess;
   /** Optional; when omitted the help routes are not registered (for tests that do not exercise them). */
   readonly help?: Help;
@@ -55,6 +63,12 @@ export interface AppDependencies {
   readonly jobAnswers?: JobAnswers;
   /** Optional; when omitted Telegram channel routes are not registered. */
   readonly telegramService?: TelegramLinkService;
+  /** Optional; when omitted SMS subscription routes are not registered. */
+  readonly smsSubscriptionService?: SmsSubscriptionService;
+  /** Optional provider admission controller for route-level provider admission (T3-024-C). */
+  readonly admissionController?: ProviderAdmissionController;
+  /** Optional custom speech synthesizer provider (defaults to synthetic WAV generator). */
+  readonly speechProvider?: SpeechSynthesizerProvider;
 }
 
 export function buildApp(
@@ -128,7 +142,12 @@ export function buildApp(
     authenticate(dependencies.resolvePrincipal),
     dependencies.demoRecords,
   );
-  registerTutoringRoutes(app, authenticate(dependencies.resolvePrincipal), dependencies.tutoring);
+  registerTutoringRoutes(
+    app,
+    authenticate(dependencies.resolvePrincipal),
+    dependencies.tutoring,
+    dependencies.transcription,
+  );
   if (dependencies.help && dependencies.staffHelp) {
     registerHelpRoutes(
       app,
@@ -158,6 +177,22 @@ export function buildApp(
   }
   if (dependencies.telegramService) {
     registerTelegramRoutes(app, dependencies.resolvePrincipal, dependencies.telegramService);
+  }
+  if (dependencies.smsSubscriptionService) {
+    registerSmsSubscriptionRoutes(
+      app,
+      dependencies.resolvePrincipal,
+      dependencies.smsSubscriptionService,
+    );
+  }
+  if (dependencies.speechProvider) {
+    const admission = dependencies.admissionController ?? dependencies.tutoring.admissionController;
+    registerSpeechRoutes(
+      app,
+      authenticate(dependencies.resolvePrincipal),
+      admission,
+      dependencies.speechProvider,
+    );
   }
   return app;
 }
