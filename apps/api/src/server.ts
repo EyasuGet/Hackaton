@@ -31,6 +31,8 @@ import { PostgresSharingRepository } from './modules/sharing/infrastructure/pers
 import { FaqProvider } from './modules/tutoring/application/faq-provider.ts';
 import { Tutoring } from './modules/tutoring/application/tutoring.ts';
 import { PostgresTutoringRepository } from './modules/tutoring/infrastructure/persistence/postgres-tutoring-repository.ts';
+import { TelegramIdentityService } from './modules/channels/telegram/application/telegram-identity-service.ts';
+import { PostgresTelegramIdentityRepository } from './modules/channels/telegram/infrastructure/persistence/postgres-telegram-identity-repository.ts';
 
 const config = loadOrExit(() => loadConfig(process.env));
 const migrations = await loadMigrations(MIGRATIONS_DIR);
@@ -46,6 +48,7 @@ const helpRepository = new PostgresHelpRepository(pool);
 const sharingRepository = new PostgresSharingRepository(pool);
 const helpRequestLookup = new PostgresHelpRequestLookup(pool);
 const jobPreferences = new JobPreferences(new PostgresJobPreferencesRepository(pool));
+const telegramIdentity = new TelegramIdentityService(new PostgresTelegramIdentityRepository(pool));
 
 const app = buildApp(
   {
@@ -62,6 +65,8 @@ const app = buildApp(
     accommodation: new Accommodation(new PostgresAccommodationRepository(pool)),
     jobRepository: new PostgresJobRepository(pool),
     jobPreferences,
+    telegramIdentity,
+    telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET?.trim() || undefined,
   },
   { logger: true },
 );

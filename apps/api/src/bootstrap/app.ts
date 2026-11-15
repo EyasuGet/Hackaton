@@ -29,6 +29,8 @@ import type { Sharing } from '../modules/sharing/application/sharing.ts';
 import { registerSharingRoutes } from '../modules/sharing/presentation/http/sharing-routes.ts';
 import type { Tutoring } from '../modules/tutoring/application/tutoring.ts';
 import { registerTutoringRoutes } from '../modules/tutoring/presentation/http/tutoring-routes.ts';
+import type { TelegramIdentityService } from '../modules/channels/telegram/application/telegram-identity-service.ts';
+import { registerTelegramRoutes } from '../modules/channels/telegram/presentation/http/telegram-routes.ts';
 
 export interface AppDependencies {
   /** Must not throw: report an unavailable dependency as not ready. */
@@ -49,6 +51,9 @@ export interface AppDependencies {
   readonly accommodation?: Accommodation;
   readonly jobRepository?: JobRepository;
   readonly jobPreferences?: JobPreferences;
+  /** Optional Telegram channel identity service (T3-012-A). */
+  readonly telegramIdentity?: TelegramIdentityService | undefined;
+  readonly telegramWebhookSecret?: string | undefined;
 }
 
 export function buildApp(
@@ -117,6 +122,14 @@ export function buildApp(
       app,
       authenticate(dependencies.resolvePrincipal),
       dependencies.accommodation,
+    );
+  }
+  if (dependencies.telegramIdentity) {
+    registerTelegramRoutes(
+      app,
+      authenticate(dependencies.resolvePrincipal),
+      dependencies.telegramIdentity,
+      { webhookSecret: dependencies.telegramWebhookSecret },
     );
   }
   return app;
