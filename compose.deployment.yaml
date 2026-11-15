@@ -30,6 +30,7 @@ services:
   # Fastify application runtime.
   api:
     image: node:22-alpine
+    user: node
     restart: unless-stopped
     working_dir: /app
     volumes:
