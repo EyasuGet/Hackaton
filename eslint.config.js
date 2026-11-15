@@ -5,7 +5,16 @@ import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  { ignores: ['**/dist/', 'apps/web/test-results/', 'apps/web/playwright-report/'] },
+  {
+    ignores: [
+      '**/dist/',
+      'apps/web/test-results/',
+      'apps/web/playwright-report/',
+      // Service worker: browser-only globals (self, caches, fetch) are not in the
+      // ESLint environment; this file is not part of the TypeScript project.
+      'apps/web/public/sw.js',
+    ],
+  },
   js.configs.recommended,
   tseslint.configs.recommendedTypeChecked,
   {
@@ -19,4 +28,16 @@ export default defineConfig(
   },
   // Plain JavaScript config files are not part of any tsconfig project.
   { files: ['**/*.js'], extends: [tseslint.configs.disableTypeChecked] },
+  {
+    files: ['apps/web/public/sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        caches: 'readonly',
+        fetch: 'readonly',
+        URL: 'readonly',
+        Response: 'readonly',
+      },
+    },
+  },
 );

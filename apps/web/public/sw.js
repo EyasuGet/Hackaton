@@ -1,5 +1,4 @@
-/* global self, caches, fetch, URL */
-// Service worker for offline FAQ support (T3-008-A).
+// Service worker for offline FAQ and app shell caching (T3-008-A & T3-008-B).
 // Caches the app shell (HTML + static assets) so the demo/FAQ mode works after
 // preparation. Authenticated API responses are never cached: private data must
 // not survive page closure or account switching.
@@ -10,7 +9,7 @@
 //   API calls (/api/*): network-only — never cached.
 //   Everything else: network-first, cache fallback.
 
-const CACHE = 'track3-shell-v1';
+const CACHE = 'track3-shell-v2';
 
 // Assets that make up the offline shell. The index path is added at install
 // time by fetching the page; asset files are added lazily on first fetch.
@@ -26,7 +25,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  // Remove any old cache versions from previous SW installs.
+  // Remove any old cache versions from previous SW installs (T3-008-B).
   event.waitUntil(
     caches
       .keys()
@@ -35,6 +34,13 @@ self.addEventListener('activate', (event) => {
       )
       .then(() => self.clients.claim()),
   );
+});
+
+// Support manual update triggers from the update banner.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    void self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {
