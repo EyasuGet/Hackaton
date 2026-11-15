@@ -5,13 +5,14 @@
 import type pg from 'pg';
 import type { OwnedScope } from '../../../identity/domain/principal.ts';
 import type {
+  AddReplyResult,
   ClaimResult,
   HelpRepository,
   QueueItem,
   SubmitHelpInput,
   SubmitResult,
 } from '../../application/ports/help-repository.ts';
-import type { HelpRequest, HelpRequestState } from '../../domain/help-request.ts';
+import type { HelpReply, HelpRequest, HelpRequestState } from '../../domain/help-request.ts';
 
 interface HelpRequestRow {
   id: string;
@@ -26,6 +27,18 @@ interface HelpRequestRow {
   cancelled_at: Date | null;
   claimed_by: string | null;
   claimed_at: Date | null;
+  resolved_at: Date | null;
+  resolved_by: string | null;
+}
+
+interface HelpReplyRow {
+  id: string;
+  help_request_id: string;
+  author_id: string;
+  client_reply_id: string;
+  body: string;
+  created_at: Date;
+  read_at: Date | null;
 }
 
 function toHelpRequest(row: HelpRequestRow): HelpRequest {
@@ -42,13 +55,27 @@ function toHelpRequest(row: HelpRequestRow): HelpRequest {
     cancelledAt: row.cancelled_at ? row.cancelled_at.toISOString() : null,
     claimedBy: row.claimed_by ?? null,
     claimedAt: row.claimed_at ? row.claimed_at.toISOString() : null,
+    resolvedAt: row.resolved_at ? row.resolved_at.toISOString() : null,
+    resolvedBy: row.resolved_by ?? null,
+  };
+}
+
+function toHelpReply(row: HelpReplyRow): HelpReply {
+  return {
+    id: row.id,
+    helpRequestId: row.help_request_id,
+    authorId: row.author_id,
+    clientReplyId: row.client_reply_id,
+    body: row.body,
+    createdAt: row.created_at.toISOString(),
+    readAt: row.read_at ? row.read_at.toISOString() : null,
   };
 }
 
 const SELECT = `
   SELECT id, owner_id, client_request_id, context_snapshot, consent_given,
          state, created_at, expires_at, updated_at, cancelled_at,
-         claimed_by, claimed_at
+         claimed_by, claimed_at, resolved_at, resolved_by
   FROM help_requests
 `;
 
@@ -67,7 +94,7 @@ export class PostgresHelpRepository implements HelpRepository {
        ON CONFLICT (owner_id, client_request_id) DO NOTHING
        RETURNING id, owner_id, client_request_id, context_snapshot, consent_given,
                  state, created_at, expires_at, updated_at, cancelled_at,
-                 claimed_by, claimed_at`,
+                 claimed_by, claimed_at, resolved_at, resolved_by`,
       [scope.ownerId, input.clientRequestId, input.contextSnapshot],
     );
 
@@ -100,7 +127,7 @@ export class PostgresHelpRepository implements HelpRepository {
          AND expires_at > now()
        RETURNING id, owner_id, client_request_id, context_snapshot, consent_given,
                  state, created_at, expires_at, updated_at, cancelled_at,
-                 claimed_by, claimed_at`,
+                 claimed_by, claimed_at, resolved_at, resolved_by`,
       [id, scope.ownerId],
     );
     const row = result.rows[0];
@@ -112,6 +139,12 @@ export class PostgresHelpRepository implements HelpRepository {
       `${SELECT} WHERE id = $1 AND owner_id = $2`,
       [id, scope.ownerId],
     );
+    const row = result.rows[0];
+    return row ? toHelpRequest(row) : null;
+  }
+
+  async findByIdAsStaff(id: string): Promise<HelpRequest | null> {
+    const result = await this.#pool.query<HelpRequestRow>(`${SELECT} WHERE id = $1`, [id]);
     const row = result.rows[0];
     return row ? toHelpRequest(row) : null;
   }
@@ -152,7 +185,7 @@ export class PostgresHelpRepository implements HelpRepository {
           AND expires_at > now()
         RETURNING id, owner_id, client_request_id, context_snapshot, consent_given,
                   state, created_at, expires_at, updated_at, cancelled_at,
-                  claimed_by, claimed_at`,
+                  claimed_by, claimed_at, resolved_at, resolved_by`,
       [id, staffId],
     );
 
@@ -168,8 +201,91 @@ export class PostgresHelpRepository implements HelpRepository {
     if (row.state === 'claimed') {
       return { kind: 'already_claimed', request: toHelpRequest(row) };
     }
-    // cancelled or other terminal state — cannot be claimed
+    // cancelled, resolved, or other terminal state — cannot be claimed
     return null;
+  }
+
+  async addReply(
+    helpRequestId: string,
+    authorId: string,
+    clientReplyId: string,
+    body: string,
+  ): Promise<AddReplyResult | null> {
+    // Verify the request exists, has not expired, and is in a replyable state.
+    const reqResult = await this.#pool.query<{ state: HelpRequestState; expires_at: Date }>(
+      `SELECT state, expires_at FROM help_requests WHERE id = $1`,
+      [helpRequestId],
+    );
+    const req = reqResult.rows[0];
+    if (!req) return null;
+    if (req.state === 'cancelled' || req.state === 'resolved') return null;
+    if (req.expires_at <= new Date()) return null;
+
+    // Attempt insert; ON CONFLICT means the reply already exists (idempotent).
+    const insertResult = await this.#pool.query<HelpReplyRow>(
+      `INSERT INTO help_request_replies (help_request_id, author_id, client_reply_id, body)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (help_request_id, client_reply_id) DO NOTHING
+       RETURNING id, help_request_id, author_id, client_reply_id, body, created_at, read_at`,
+      [helpRequestId, authorId, clientReplyId, body],
+    );
+
+    if (insertResult.rows[0]) {
+      return { kind: 'added', reply: toHelpReply(insertResult.rows[0]) };
+    }
+
+    // Row already existed — return the existing reply.
+    const existing = await this.#pool.query<HelpReplyRow>(
+      `SELECT id, help_request_id, author_id, client_reply_id, body, created_at, read_at
+         FROM help_request_replies
+        WHERE help_request_id = $1 AND client_reply_id = $2`,
+      [helpRequestId, clientReplyId],
+    );
+    const existingRow = existing.rows[0];
+    if (!existingRow) throw new Error('help_reply: conflict row vanished');
+    return { kind: 'existing', reply: toHelpReply(existingRow) };
+  }
+
+  async listReplies(helpRequestId: string): Promise<readonly HelpReply[]> {
+    const result = await this.#pool.query<HelpReplyRow>(
+      `SELECT id, help_request_id, author_id, client_reply_id, body, created_at, read_at
+         FROM help_request_replies
+        WHERE help_request_id = $1
+        ORDER BY created_at ASC`,
+      [helpRequestId],
+    );
+    return result.rows.map(toHelpReply);
+  }
+
+  async markRepliesRead(helpRequestId: string, readerId: string): Promise<void> {
+    // Only mark unread replies by others as read; skip the reader's own replies.
+    await this.#pool.query(
+      `UPDATE help_request_replies
+          SET read_at = now()
+        WHERE help_request_id = $1
+          AND author_id != $2
+          AND read_at IS NULL`,
+      [helpRequestId, readerId],
+    );
+  }
+
+  async resolveRequest(helpRequestId: string, supportId: string): Promise<HelpRequest | null> {
+    const result = await this.#pool.query<HelpRequestRow>(
+      `UPDATE help_requests
+          SET state       = 'resolved',
+              resolved_at = now(),
+              resolved_by = $2,
+              updated_at  = now()
+        WHERE id = $1
+          AND state = 'claimed'
+          AND expires_at > now()
+        RETURNING id, owner_id, client_request_id, context_snapshot, consent_given,
+                  state, created_at, expires_at, updated_at, cancelled_at,
+                  claimed_by, claimed_at, resolved_at, resolved_by`,
+      [helpRequestId, supportId],
+    );
+    const row = result.rows[0];
+    return row ? toHelpRequest(row) : null;
   }
 
   /** Resolves the internal UUID for a (owner, clientRequestId) pair. */

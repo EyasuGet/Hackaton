@@ -25,6 +25,8 @@ const FAKE_REQUEST: HelpRequest = {
   cancelledAt: null,
   claimedBy: null,
   claimedAt: null,
+  resolvedAt: null,
+  resolvedBy: null,
 };
 
 afterEach(cleanup);
