@@ -34,6 +34,7 @@ import { TelegramLinkService } from './modules/telegram/application/telegram-lin
 import { PostgresTelegramLinkRepository } from './modules/telegram/infrastructure/persistence/postgres-telegram-link-repository.ts';
 import { FaqProvider } from './modules/tutoring/application/faq-provider.ts';
 import { Tutoring } from './modules/tutoring/application/tutoring.ts';
+import { GeminiTranscriptionAdapter } from './modules/tutoring/infrastructure/gemini-transcription-adapter.ts';
 import { ProviderAdmissionController } from './modules/tutoring/application/provider-admission.ts';
 import { PostgresTutoringRepository } from './modules/tutoring/infrastructure/persistence/postgres-tutoring-repository.ts';
 
@@ -48,6 +49,7 @@ const pool = createPool(config.database, (error) =>
 const content = new ContentAccess(new PostgresLessonReader(pool), glossary);
 const faqProvider = new FaqProvider(content);
 const onlineProvider = new GeminiGroundedAnswerProvider();
+const transcription = new GeminiTranscriptionAdapter();
 const admissionController = new ProviderAdmissionController(config.providerLimits);
 const helpRepository = new PostgresHelpRepository(pool);
 const sharingRepository = new PostgresSharingRepository(pool);
@@ -76,6 +78,7 @@ const app = buildApp(
       admissionController,
       jobAnswers,
     ),
+    transcription,
     content,
     help: new Help(helpRepository),
     staffHelp: new StaffHelp(helpRepository),

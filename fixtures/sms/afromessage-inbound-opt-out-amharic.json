@@ -1,0 +1,10 @@
+{
+  "acknowledge": "success",
+  "response": {
+    "from": "+251712345678",
+    "to": "8008",
+    "message": "አቁም",
+    "message_id": "mo-msg-optout-002",
+    "timestamp": "2026-11-15T07:21:00.000Z"
+  }
+}

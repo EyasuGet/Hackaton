@@ -5,3 +5,5 @@ dist/
 test-results/
 playwright-report/
 .pnpm-store/
+# Audio recordings for transcription evaluation (personal data, never committed)
+fixtures/evaluations/transcription/audio/
