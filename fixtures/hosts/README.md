@@ -6,8 +6,11 @@ These are distinct-origin host pages used to test the embed loader with postMess
 
 - `localhost-5174.html` — Host A, served from localhost:5174
 - `127-0-0-1-5174.html` — Host B, served from 127.0.0.1:5174
+- `savanna-concept.html` — Savanna static page structure fixture (T3-026-B)
 
-Both load the embed script and test origin validation by attempting to open the assistant iframe from different origins.
+The first two files test origin validation from different host origins. The Savanna fixture is a minimal faithful reproduction of the structural elements of the official Savanna static pages (alx-africa/Savanna-static-pages commit 9e83ac7) with our loader.js added as a final script tag. See `docs/evidence/t3-026-b-savanna-embed.md` for the full fidelity record and evidence.
+
+All load the embed script and verify origin validation, embed lifecycle, and mount stability.
 
 ## Manual test
 
