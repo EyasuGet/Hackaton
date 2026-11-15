@@ -87,6 +87,9 @@ export const en = {
   'assistant.speakerLocal': 'Assistant (local AI)',
   'assistant.speakerJob': 'Assistant (approved jobs)',
   'assistant.speakerResearch': 'Assistant (external web research)',
+  'assistant.speakerQuote': 'Assistant (quoted from your course)',
+  'assistant.quoteNote':
+    'This is a passage from your course, quoted word for word. It is not a written answer.',
   'assistant.researchProvenanceNote':
     'Source: External web research. Information from external web sources is unverified and not part of the approved course curriculum.',
   'assistant.consentLabel': 'Allow external AI processing for course questions',
@@ -414,6 +417,9 @@ export const am: Partial<Record<MessageKey, string>> = {
   'assistant.speakerLearner': 'እርስዎ',
   'assistant.speakerAssistant': 'ረዳት (ሙከራ)',
   'assistant.speakerFaq': 'ረዳት (የትምህርት FAQ)',
+  // T3-054: drafted without a competent speaker; needs review.
+  'assistant.speakerQuote': 'ረዳት (ከትምህርትዎ የተጠቀሰ)',
+  'assistant.quoteNote': 'ይህ ከትምህርትዎ ቃል በቃል የተወሰደ ክፍል ነው። የተጻፈ መልስ አይደለም።',
   'assistant.speakerOnline': 'ረዳት (የመስመር ላይ AI)',
   'assistant.speakerLocal': 'ረዳት (የአካባቢ AI)',
   'assistant.speakerJob': 'ረዳት (የተረጋገጡ ሥራዎች)',

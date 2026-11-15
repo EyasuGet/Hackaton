@@ -70,6 +70,8 @@ export interface AnswerResult {
   readonly provider: 'online' | 'faq' | 'job' | 'local';
   readonly citations: readonly FaqCitation[];
   readonly simpleLanguage?: boolean;
+  /** A verbatim lesson excerpt from the offline FAQ path (T3-054). */
+  readonly quoted?: boolean;
 }
 
 export interface AskFaqResult {
@@ -255,6 +257,7 @@ export class Tutoring {
       provider: 'faq',
       citations: faqResult.citations,
       ...(input.simpleLanguage ? { simpleLanguage: true } : {}),
+      ...(faqResult.quoted ? { quoted: true } : {}),
     };
   }
 

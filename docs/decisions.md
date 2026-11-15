@@ -111,7 +111,12 @@ A clean-architecture, pluggable provider strategy configured via `AI_PROVIDER=fa
    - Evaluated on benchmark `qwen2.5:3b` as well as `mistral:7b` / `llama3:8b`.
    - **Privacy guarantee:** Zero external network transmission. All embeddings, tokens, and completions stay strictly on the local machine/host. Learner external consent check is unnecessary and omitted in the UI.
    - Standard Docker Compose service defined under profile `--profile local-ai` (`ollama/ollama:latest`) with persistent volume `ollama-data`.
-3. **`AI_PROVIDER=faq` (Deterministic offline zero-AI mode):** Uses `FaqProvider` with indexed curriculum FAQs, exact keyword and section citation resolution, requiring 0 GPU resources and 0 network egress.
+3. **`AI_PROVIDER=faq` (Deterministic offline zero-AI mode):** Uses `FaqProvider` with indexed curriculum FAQs and section citation resolution, requiring 0 GPU resources and 0 network egress. **Amended 2026-11-15 (T3-054, user-approved):** exact-phrase matching refused obvious lesson questions (5 approved entries covered 3 of 8 English sections, and "va" did not match "virtual assistant"). The provider now answers in this order, still generating nothing:
+   1. An approved entry when 3/4 of its pattern's key words (at least two) are in the question *and* 3/4 of the question's key words are in the pattern. Key words ignore English and Amharic question words, fold plurals and match prefixes; "va"/"vas" also match "virtual assistant(s)".
+   2. Otherwise, a **verbatim excerpt** of the best-covered lesson passage in that course, when 2/3 of the question's key words (at least two) occur in it. It is returned with `quoted: true`, cited, and labelled in the UI as "quoted from your course … not a written answer".
+   3. Otherwise, the honest limitation.
+
+   Checked on the real course fixtures: 10 lesson questions answered with the right section (5 FAQ, 5 quote), and 5 off-topic questions refused, including Amharic. Alternatives considered: more hand-written FAQ entries only (still refuses anything unlisted), or smarter matching only (sections without entries still refused).
 
 **Evaluation & Verification:**
 Documented in [`docs/evidence/t3-037-pluggable-ai-layer.md`](evidence/t3-037-pluggable-ai-layer.md). Evaluated across 12 approved grounding benchmark cases (`pnpm eval:grounding`):

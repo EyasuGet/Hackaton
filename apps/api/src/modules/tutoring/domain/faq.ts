@@ -22,4 +22,6 @@ export interface FaqAnswerResult {
   readonly answerText: string;
   readonly answerLang: 'en' | 'am';
   readonly citations: readonly FaqCitation[];
+  /** The text is a verbatim lesson excerpt, not an approved written answer (T3-054). */
+  readonly quoted?: boolean;
 }

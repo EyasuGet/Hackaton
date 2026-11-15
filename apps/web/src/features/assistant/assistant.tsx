@@ -687,17 +687,19 @@ export function Assistant({
                     k={
                       entry.speaker === 'learner'
                         ? 'assistant.speakerLearner'
-                        : entry.provider === 'external_web_research'
-                          ? 'assistant.speakerResearch'
-                          : entry.provider === 'job'
-                            ? 'assistant.speakerJob'
-                            : entry.provider === 'local' || mode === 'local'
-                              ? 'assistant.speakerLocal'
-                              : mode === 'online'
-                                ? 'assistant.speakerOnline'
-                                : mode === 'faq'
-                                  ? 'assistant.speakerFaq'
-                                  : 'assistant.speakerAssistant'
+                        : entry.provenance?.kind === 'course'
+                          ? 'assistant.speakerQuote'
+                          : entry.provider === 'external_web_research'
+                            ? 'assistant.speakerResearch'
+                            : entry.provider === 'job'
+                              ? 'assistant.speakerJob'
+                              : entry.provider === 'local' || mode === 'local'
+                                ? 'assistant.speakerLocal'
+                                : mode === 'online'
+                                  ? 'assistant.speakerOnline'
+                                  : mode === 'faq'
+                                    ? 'assistant.speakerFaq'
+                                    : 'assistant.speakerAssistant'
                     }
                   />
                 </p>
@@ -711,6 +713,11 @@ export function Assistant({
                       <T k="assistant.replyLanguageNote" />
                     </p>
                   )}
+                {entry.provenance?.kind === 'course' && (
+                  <p className="research-provenance-disclaimer" role="note">
+                    <T k="assistant.quoteNote" />
+                  </p>
+                )}
                 {entry.provider === 'external_web_research' && (
                   <p className="research-provenance-disclaimer" role="note">
                     <T k="assistant.researchProvenanceNote" />

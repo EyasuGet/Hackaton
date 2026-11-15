@@ -85,6 +85,7 @@ export function registerTutoringRoutes(
         provider: result.provider,
         citations: result.citations,
         ...(result.simpleLanguage ? { simpleLanguage: true } : {}),
+        ...(result.quoted ? { quoted: true } : {}),
       });
     } catch (err: unknown) {
       if (err instanceof TutoringError) {
