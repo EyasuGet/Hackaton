@@ -1,0 +1,6 @@
+{
+  "acknowledge": "error",
+  "response": {
+    "errors": ["Sender identifier not found or unverified"]
+  }
+}

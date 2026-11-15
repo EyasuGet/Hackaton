@@ -1,0 +1,6 @@
+{
+  "acknowledge": "error",
+  "response": {
+    "errors": ["Unable to send your message. Invalid recipient format: 1234"]
+  }
+}

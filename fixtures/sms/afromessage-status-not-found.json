@@ -1,0 +1,6 @@
+{
+  "acknowledge": "error",
+  "response": {
+    "errors": ["Message not found or invalid message ID..."]
+  }
+}
