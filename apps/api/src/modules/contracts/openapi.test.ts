@@ -128,6 +128,7 @@ describe('OpenAPI 3.1 Specification Contract Validation (T3-026-A)', () => {
       content: dummy as never,
       help: dummy as never,
       staffHelp: dummy as never,
+      helpScreenshots: dummy as never,
       sharing: dummy as never,
       accommodation: dummy as never,
       jobRepository: dummyRepo as never,

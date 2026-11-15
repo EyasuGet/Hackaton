@@ -245,3 +245,30 @@ export async function markRepliesRead(token: string, helpRequestId: string): Pro
     return false;
   }
 }
+
+/** Attaches the chosen image to an owned help request. Resolves true on success. */
+export async function attachScreenshot(token: string, id: string, image: File): Promise<boolean> {
+  try {
+    const response = await fetch(`/api/help/requests/${id}/screenshot`, {
+      method: 'PUT',
+      headers: { 'content-type': image.type, authorization: `Bearer ${token}` },
+      body: image,
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Deletes the screenshot from an owned help request. Resolves true on success. */
+export async function removeScreenshot(token: string, id: string): Promise<boolean> {
+  try {
+    const response = await fetch(`/api/help/requests/${id}/screenshot`, {
+      method: 'DELETE',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}

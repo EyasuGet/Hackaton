@@ -120,6 +120,18 @@ Documented in [`docs/evidence/t3-037-pluggable-ai-layer.md`](evidence/t3-037-plu
 - `AI_PROVIDER=faq`: 12/12 passed (100% Grounding Accuracy, 0% Hallucination, 100% Citation Validity).
 Unit tests in `apps/api/src/modules/tutoring/local-ollama-provider.test.ts`, `apps/api/src/bootstrap/config.test.ts`, and `apps/api/src/modules/tutoring/tutoring.test.ts`. UI tests in `apps/web/src/features/assistant/assistant.test.tsx`.
 
+### Phone-friendly live help — T3-048, 2026-11-15
+
+**Android screen capture, checked 2026-11-15:** `getDisplayMedia()` is still not available in Chrome, Firefox or Samsung Internet on Android, or in Android WebView, so a phone browser cannot share its screen with support. Sources: Chromium blink-dev Intent-to-Ship threads that exclude Android because it lacks the API, and a vendor guide (Fora Soft, October 2026) citing MDN compatibility data. These are secondary sources; a check on a real current Android phone is still outstanding, and the T3-048 acceptance (TalkBack on a real phone) needs that device anyway.
+
+**Selected:** two learner-initiated alternatives inside the help request, nothing captured without an explicit action:
+- *Share what I see in the assistant* adds the visible conversation to the help text **as text**, which the learner can read, edit or delete before the existing disclosure and confirm step. Text fields, including an unsent question, are never read.
+- *Attach a screenshot*: one PNG, JPEG or WebP image of at most 1 MiB, chosen with the device's own file or screenshot picker, previewed and removable before sending and removable while the request is open.
+
+**Alternative rejected:** rendering the assistant view to an image in the browser (DOM-to-image), as the issue first suggested. It needs a new dependency, sends 100 KB or more where text needs a few KB on 3G, and support staff using a screen reader cannot read an image. The learner's own screenshot covers what text cannot show, such as another app.
+
+**Retention:** a screenshot lives no longer than its help request (see [retention](retention.md)). Only the owner and the support person who claimed the request can view it, and it is never cached.
+
 ## External gates and remaining precision checks
 
 | Gate | Current state | Required evidence / treatment |
@@ -130,7 +142,7 @@ Unit tests in `apps/api/src/modules/tutoring/local-ollama-provider.test.ts`, `ap
 | SMS | AfroMessage route confirmed (T3-003-A); handset receipt simulation verified & live credentials gate recorded (T3-015-B) | Route selected and character budgeting specified; AfroMessage adapter implemented with synthetic fixtures (T3-015-A); receipt simulation and DLR handling verified with protocol and external credentials gate recorded in `docs/evidence/t3-015-b-sms-receipt.md` (T3-015-B) |
 | SMS ownership | Resolved by Decision D24 and `docs/evidence/t3-003-e-phone-verification.md` | Cryptographic salted SHA-256 OTP contract (6-digit, 10m TTL, 3 attempts max, 60s cooldown) approved before T3-021-A |
 | Voice/AI | [T3-003-B selections and feasibility tests](ai-feasibility.md) recorded 2026-11-14; API integration unverified | Obtain approved access/processing/budget, then feature-specific bilingual evidence and format/citation tests; shortlist recommendations do not pass downstream quality gates. **Capacity blocker:** the recorded free-tier caps (answers 500/day, transcription 25/day, speech 10/day, shared across users) cannot support the 20-session test (T3-024-A), rehearsals and the live demo; paid quota needs explicit budget authorisation, otherwise voice stays a limited path with typed input and FAQ fallback |
-| Screen sharing | Android browser limitation known; actual infrastructure untested | Desktop cross-network proof and organiser response on mobile alternative; do not declare requirement waived |
+| Screen sharing | Android browser still lacks `getDisplayMedia()` (checked 2026-11-15, secondary sources); phone alternative is a text snapshot and a screenshot in the help request ([T3-048](#phone-friendly-live-help--t3-048-2026-11-15)) | Desktop cross-network proof; real Android phone with TalkBack showing support what the learner sees; organiser response on the mobile alternative; do not declare requirement waived |
 | Co-design devices | Meetings describe shared consultation availability; no gate run recorded | Reserve early/retest slots; record participant continuity and real NVDA/TalkBack, keyboard/zoom/sound-off device/unaided outcomes |
 | Retention policy precision | Seven-day default agreed; [provisional contract](retention.md) anchors expiry at each item's creation (strictest); institution confirmation not yet obtained | Confirm the anchor and the [open decisions](retention.md#open-decisions-approval-still-needed) with the institution before real data; prove purge, shared-copy, backup/provider handling; no silent extension |
 | Open licence / assets | Written brief and verbal ownership wording need written reconciliation; starter has no repository-level licence | Lesson-text extraction, translation, offline caching and redistribution approved (team-relayed, 2026-11-14; [T3-002 record](static-starter-boundary.md#contracts-and-open-questions)). Still obtain written licence terms and image/asset approval; library notices do not license the full capture |

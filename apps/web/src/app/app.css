@@ -658,3 +658,12 @@ button[aria-disabled='true'] {
   margin-bottom: 0.75rem;
   font-size: 0.85rem;
 }
+
+/* Screenshot preview in the help form (T3-048): never wider than the screen. */
+.help-screenshot-preview img,
+img.help-screenshot-preview {
+  display: block;
+  max-inline-size: 100%;
+  max-block-size: 16rem;
+  block-size: auto;
+}
