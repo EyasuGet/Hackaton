@@ -268,6 +268,7 @@ describe('answering job questions using approved records (T3-019-B)', () => {
           consumeHandoff: () => Promise.resolve(null),
           createSession: () => Promise.resolve(),
           revokeSession: () => Promise.resolve(false),
+          extendSession: () => Promise.resolve(false),
         },
         true,
       ),

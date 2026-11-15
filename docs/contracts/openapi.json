@@ -274,6 +274,49 @@
         }
       }
     },
+    "/api/demo/session/extend": {
+      "post": {
+        "tags": ["Identity & Demo Sessions"],
+        "summary": "Extend demo session token",
+        "description": "Gives the active demo session presented in the Authorization header a fresh full lifetime, so a learner warned of expiry keeps their work.",
+        "operationId": "extendDemoSession",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Session extended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["expiresAt"],
+                  "additionalProperties": false,
+                  "properties": { "expiresAt": { "type": "string", "format": "date-time" } }
+                },
+                "example": { "expiresAt": "2026-11-15T14:00:00.000Z" }
+              }
+            }
+          },
+          "400": {
+            "description": "Presented token is not an active session token (e.g. provisioned operator key)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorEnvelope" },
+                "example": { "error": "not_a_session" }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorEnvelope" },
+                "example": { "error": "unauthenticated" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/demo/support-check": {
       "get": {
         "tags": ["Demo Fixtures"],

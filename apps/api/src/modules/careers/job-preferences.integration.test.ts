@@ -452,6 +452,7 @@ describe('Job Alert Subscriptions and Matching Integration (T3-020-A)', () => {
             consumeHandoff: () => Promise.resolve(null),
             createSession: () => Promise.resolve(),
             revokeSession: () => Promise.resolve(false),
+            extendSession: () => Promise.resolve(false),
           },
           true,
         ),

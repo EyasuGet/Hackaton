@@ -111,6 +111,20 @@ The assistant supports three AI operational modes configured via `AI_PROVIDER` (
 
 ---
 
+## 🗣️ 21 October Findings → Our Answer
+
+The findings are as listed in [issue #219](https://github.com/EyasuGet/Hackaton/issues/219); the original 21 October co-design notes are not stored in this repository.
+
+| 21 October finding | Our answer | Evidence | Status |
+| --- | --- | --- | --- |
+| Forms time out | Unsent questions, help requests and accommodation descriptions are saved on the learner's device, with a "saved on this device only" note and a **Clear draft** button. The learner is warned 5 minutes before the session ends and can choose **Stay signed in**. Signing out clears the drafts. | [`demo-session.spec.ts`](apps/web/tests/e2e/demo-session.spec.ts) — *a session expiring mid-form loses no typed text* | Addressed |
+| ID demanded | No flow asks for ID, a diagnosis or proof. Sign-in is a one-time link. The accommodation form states that no medical proof or diagnosis is required and asks learners not to include medical details. | Interface text audit, 2026-11-15 (`accommodation.intro`, `accommodation.descriptionPrompt` in [`messages.ts`](apps/web/src/shared/i18n/messages.ts)); [T3-025-A](docs/evidence/t3-025-a-accessibility-desktop.md) | Addressed |
+| No captions or sign language | Everything spoken is also text: replies stay on screen during read-aloud, and voice questions become editable text before they are sent. The product has no video that needs captions. Sign-language interpretation is not provided. | [Conformance report, 1.2.1](docs/conformance.md) | Partly — sign language is outside Track 3 scope |
+| Help English-only | The help request, help inbox and accommodation flows have Amharic interface text; a test fails if any dictionary entry lacks Amharic. Afaan Oromo, Tigrinya, Somali and Arabic are in progress ([T3-046](https://github.com/EyasuGet/Hackaton/issues/218)). | [`i18n.test.tsx`](apps/web/src/shared/i18n/i18n.test.tsx) | Addressed for Amharic; other languages in progress |
+| Job boards break under screen readers | Learners ask about approved vacancies inside the accessible conversation, with cited links and an honest answer when a role is unknown. SMS job alerts reach phones without a browser. External job boards themselves are not changed. | [T3-025-A](docs/evidence/t3-025-a-accessibility-desktop.md), [T3-021-B](docs/evidence/t3-021-b-sms-job-alerts.md) | Addressed in our product; external boards out of scope |
+
+---
+
 ## ♿ Accessibility & Honest Limitations
 
 - **Screen Reader Testing**: Evaluated with NVDA on Windows and TalkBack on Android.
