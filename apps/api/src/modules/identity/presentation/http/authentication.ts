@@ -37,9 +37,10 @@ export function authenticate(resolvePrincipal: ResolvePrincipal): preHandlerAsyn
 }
 
 /** Must run after authenticate(). */
-export function requireRole(role: Role): preHandlerAsyncHookHandler {
+export function requireRole(...roles: readonly Role[]): preHandlerAsyncHookHandler {
   return async (request: FastifyRequest, reply: FastifyReply) => {
-    if (request.principal?.role !== role) return reply.code(403).send({ error: 'forbidden' });
+    if (!request.principal || !roles.includes(request.principal.role))
+      return reply.code(403).send({ error: 'forbidden' });
   };
 }
 

@@ -244,6 +244,15 @@ export class PostgresTutoringRepository implements TutoringRepository {
     return requestResult.rowCount ?? 0;
   }
 
+  async listCourseQuestionsForAnalytics(courseId: string): Promise<readonly string[]> {
+    const result = await this.#pool.query<{ question: string }>(
+      `SELECT question FROM tutoring_requests
+       WHERE course_id = $1 AND purged_at IS NULL AND question IS NOT NULL AND trim(question) != ''`,
+      [courseId],
+    );
+    return result.rows.map((row) => row.question);
+  }
+
   async recordOutcome(
     scope: OwnedScope,
     requestId: string,
