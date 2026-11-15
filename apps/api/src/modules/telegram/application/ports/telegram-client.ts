@@ -33,7 +33,16 @@ export interface TelegramAnswerCallbackParams {
   readonly text?: string | undefined;
 }
 
+export interface TelegramGetFileResult {
+  readonly ok: boolean;
+  readonly filePath?: string | undefined;
+  readonly fileSize?: number | undefined;
+  readonly error?: string | undefined;
+}
+
 export interface TelegramClient {
   sendMessage(params: TelegramSendMessageParams): Promise<TelegramSendResult>;
   answerCallbackQuery?(params: TelegramAnswerCallbackParams): Promise<boolean>;
+  getFile?(fileId: string): Promise<TelegramGetFileResult>;
+  downloadFile?(filePath: string): Promise<Uint8Array | null>;
 }

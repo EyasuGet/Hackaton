@@ -19,12 +19,36 @@ export interface TelegramChat {
   readonly username?: string | undefined;
 }
 
+export interface TelegramVoice {
+  readonly file_id: string;
+  readonly file_unique_id?: string | undefined;
+  readonly duration: number;
+  readonly mime_type?: string | undefined;
+  readonly file_size?: number | undefined;
+}
+
 export interface TelegramMessage {
   readonly messageId: number;
   readonly from?: TelegramUser | undefined;
   readonly chat: TelegramChat;
   readonly date: number;
   readonly text?: string | undefined;
+  readonly voice?: TelegramVoice | undefined;
+}
+
+export type VoiceReviewStatus = 'pending' | 'approved' | 'discarded' | 'awaiting_edit';
+
+export interface PendingVoiceReview {
+  readonly id: string;
+  readonly learnerId: string;
+  readonly telegramUserId: string;
+  readonly telegramChatId: string;
+  readonly courseId: string;
+  readonly transcript: string;
+  readonly status: VoiceReviewStatus;
+  readonly expiresAt: Date;
+  readonly resolvedAt?: Date | undefined;
+  readonly createdAt: Date;
 }
 
 export interface TelegramCallbackQuery {

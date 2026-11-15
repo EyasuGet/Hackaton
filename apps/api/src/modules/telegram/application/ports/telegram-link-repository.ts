@@ -1,6 +1,10 @@
 // Persistence port for Telegram identity links and single-use codes (T3-012-A).
 import type { Principal } from '../../../identity/domain/principal.ts';
-import type { TelegramIdentity } from '../../domain/telegram-identity.ts';
+import type {
+  PendingVoiceReview,
+  TelegramIdentity,
+  VoiceReviewStatus,
+} from '../../domain/telegram-identity.ts';
 
 export type LinkFailureReason =
   | 'invalid_code'
@@ -64,6 +68,26 @@ export interface TelegramLinkRepository {
 
   /** Records a processed update and its outcome atomically for replay prevention (T3-019-C). */
   recordProcessedUpdate(params: RecordProcessedUpdateParams): Promise<void>;
+
+  /** Persists a pending Telegram voice review (T3-013-A). */
+  createVoiceReview(review: PendingVoiceReview): Promise<void>;
+
+  /** Finds a pending or active voice review by review ID (T3-013-A). */
+  findVoiceReview(id: string): Promise<PendingVoiceReview | null>;
+
+  /** Finds an active voice review in 'awaiting_edit' status for a Telegram user (T3-013-A). */
+  findAwaitingEditReview(telegramUserId: string): Promise<PendingVoiceReview | null>;
+
+  /**
+   * Atomically transitions a voice review status (T3-013-A).
+   * Returns true if status transitioned, or false if already resolved or expired.
+   */
+  resolveVoiceReview(
+    id: string,
+    status: VoiceReviewStatus,
+    now: Date,
+    transcript?: string,
+  ): Promise<boolean>;
 }
 
 export interface ProcessedTelegramUpdateRecord {
