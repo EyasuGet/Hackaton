@@ -28,6 +28,7 @@ export interface GroundingRequest {
   readonly question: string;
   readonly language: 'am' | 'en';
   readonly passages: readonly EvaluationPassage[];
+  readonly simpleLanguage?: boolean;
 }
 
 export interface GroundingResponse {

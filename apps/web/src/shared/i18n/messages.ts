@@ -38,6 +38,8 @@ export const en = {
   'demo.scenario.jobActive': 'Approved Job: Active vacancy (cited)',
   'demo.scenario.jobExpired': 'Approved Job: Expired vacancy (acknowledged)',
   'demo.scenario.jobUnknown': 'Approved Job: Unknown vacancy (honest limitation)',
+  'demo.scenario.simpleLanguageCited': 'Simple language: Cited course answer',
+  'demo.scenario.simpleLanguageLimitation': 'Simple language: Honest limitation',
   'status.label': 'Service status',
   'status.checking': 'Checking the API…',
   'status.available': 'API available',
@@ -47,6 +49,8 @@ export const en = {
     'Operating in approved course FAQ mode. Answers are grounded in course materials with explicit citations without cloud processing.',
   'assistant.onlineModeNotice':
     'Operating in consented online answer mode. Answers are generated using authorized course materials and external AI processing.',
+  'assistant.simpleLanguageNotice':
+    'Operating in simple-language mode. Answers use shorter sentences and everyday words without altering facts or citations.',
   'assistant.empty': 'No messages yet. Ask a question about your course below.',
   'assistant.speakerLearner': 'You',
   'assistant.speakerAssistant': 'Assistant (demo)',
@@ -56,6 +60,9 @@ export const en = {
   'assistant.consentLabel': 'Allow external AI processing for course questions',
   'assistant.consentHint':
     'When enabled, your questions and relevant course passages are processed by an external AI provider. When disabled, only local approved course FAQs are used.',
+  'assistant.simpleLanguageLabel': 'Use simple, direct language',
+  'assistant.simpleLanguageHint':
+    'Presents shorter sentences and common words while keeping full citations, source evidence, and limitations intact.',
   'assistant.questionLabel': 'Your question',
   'assistant.hint': 'Press Enter to send, or Shift+Enter for a new line.',
   'assistant.send': 'Send',
@@ -281,6 +288,8 @@ export const am: Partial<Record<MessageKey, string>> = {
   'demo.scenario.jobActive': 'የተረጋገጠ ሥራ፡ ክፍት የሥራ መደብ (ከምንጭ ጋር)',
   'demo.scenario.jobExpired': 'የተረጋገጠ ሥራ፡ ጊዜው ያለፈበት የሥራ መደብ (የተገለጸ)',
   'demo.scenario.jobUnknown': 'የተረጋገጠ ሥራ፡ ያልታወቀ የሥራ መደብ (የመረጃ ገደብ)',
+  'demo.scenario.simpleLanguageCited': 'ቀላል ቋንቋ፦ የተጠቀሰ የትምህርት መልስ',
+  'demo.scenario.simpleLanguageLimitation': 'ቀላል ቋንቋ፦ ግልጽ የመረጃ ገደብ',
   'status.label': 'የአገልግሎት ሁኔታ',
   'status.checking': 'ኤፒአዩ እየተፈተሸ ነው…',
   'status.available': 'ኤፒአዩ ይገኛል',
@@ -289,7 +298,9 @@ export const am: Partial<Record<MessageKey, string>> = {
   'assistant.modeNotice':
     'በተረጋገጠ የትምህርት ተደጋጋሚ ጥያቄዎች (FAQ) ሁኔታ ላይ ይገኛል። መልሶች ያለ ደመና ማቀነባበሪያ ከትምህርት ክፍሎች የተገኙ ናቸው።',
   'assistant.onlineModeNotice':
-    'በተፈቀደ የመስመር ላይ AI ሁነታ ላይ ይገኛል። መልሶች ከተፈቀዱ የትምህርት ክፍሎች እና ውጫዊ AI ማቀነባበሪያ የተገኙ ናቸው።',
+    'በተፈቀደ የመስመር ላይ AI ሁኔታ ላይ ይገኛል። መልሶች ከተፈቀዱ የትምህርት ክፍሎች እና ውጫዊ AI ማቀነባበሪያ የተገኙ ናቸው።',
+  'assistant.simpleLanguageNotice':
+    'በቀላል ቋንቋ ሁነታ ላይ ይሰራል። እውነታዎችን ወይም ጥቅሶችን ሳይቀይሩ መልሶች በአጫጭር ዓረፍተ ነገሮች እና የተለመዱ ቃላት ይቀርባሉ።',
   'assistant.empty': 'እስካሁን ምንም መልእክት የለም። ስለ ትምህርትዎ ጥያቄ ከታች ይጠይቁ።',
   'assistant.speakerLearner': 'እርስዎ',
   'assistant.speakerAssistant': 'ረዳት (ሙከራ)',
@@ -299,6 +310,9 @@ export const am: Partial<Record<MessageKey, string>> = {
   'assistant.consentLabel': 'ለትምህርት ጥያቄዎች ውጫዊ AI ማቀነባበሪያ ይፈቀድ',
   'assistant.consentHint':
     'ሲፈቀድ ጥያቄዎ እና አግባብነት ያላቸው የትምህርት ክፍሎች በውጫዊ AI ይዘጋጃሉ። ሳይፈቀድ ሲቀር የተረጋገጠው የትምህርት FAQ ብቻ ጥቅም ላይ ይውላል።',
+  'assistant.simpleLanguageLabel': 'ቀላል እና ግልጽ ቋንቋ ተጠቀም',
+  'assistant.simpleLanguageHint':
+    'ሙሉ ጥቅሶችን፣ የምንጭ ማስረጃዎችን እና ገደቦችን እንደያዘ አጫጭር ዓረፍተ ነገሮችን እና የተለመዱ ቃላትን ያቀርባል።',
   'assistant.questionLabel': 'ጥያቄዎ',
   'assistant.hint': 'ለመላክ Enter ይጫኑ፤ ለአዲስ መስመር Shift+Enter ይጫኑ።',
   'assistant.send': 'ላክ',

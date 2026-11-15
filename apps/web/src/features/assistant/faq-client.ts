@@ -42,17 +42,19 @@ export interface AnswerClientOptions {
   readonly courseId: string;
   readonly getToken: () => string | null;
   readonly getConsent?: () => boolean;
+  readonly getSimpleLanguage?: () => boolean;
 }
 
 export function createAnswerClient({
   courseId,
   getToken,
   getConsent,
+  getSimpleLanguage,
 }: AnswerClientOptions): ConversationClient {
   let counter = 1;
 
   return {
-    async ask(question: string): Promise<AskResult> {
+    async ask(question: string, options?: { simpleLanguage?: boolean }): Promise<AskResult> {
       const token = getToken();
       if (!token) {
         return { kind: 'denied' };
@@ -60,6 +62,8 @@ export function createAnswerClient({
 
       const requestId = `req-${Date.now()}-${counter++}`;
       const externalConsent = getConsent ? getConsent() : false;
+      const simpleLanguage =
+        options?.simpleLanguage ?? (getSimpleLanguage ? getSimpleLanguage() : false);
 
       try {
         const response = await fetch('/api/tutoring/answers', {
@@ -73,6 +77,7 @@ export function createAnswerClient({
             requestId,
             question,
             externalConsent,
+            ...(simpleLanguage ? { simpleLanguage: true } : {}),
           }),
         });
 
@@ -101,6 +106,7 @@ export function createAnswerClient({
           data.provider === 'online' || data.provider === 'faq' || data.provider === 'job'
             ? data.provider
             : undefined;
+        const isSimple = data.simpleLanguage === true || simpleLanguage;
 
         const reply: Reply = {
           id,
@@ -109,6 +115,7 @@ export function createAnswerClient({
           createdAt,
           ...(citations.length > 0 ? { citations } : {}),
           ...(provider ? { provider } : {}),
+          ...(isSimple ? { simpleLanguage: true } : {}),
         };
 
         return { kind: 'answer', reply };
