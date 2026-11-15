@@ -2,6 +2,7 @@
 // Non-learner principals have no scope and receive null or empty results.
 // Integrates FaqProvider and OnlineAnswerProvider with explicit consent,
 // authorized retrieval, and truthful failure/limitation states (T3-007-A & T3-007-C).
+import type { JobAnswers } from '../../careers/application/job-answers.ts';
 import type { ContentAccess } from '../../content/application/content-access.ts';
 import { ownedScope, type OwnedScope, type Principal } from '../../identity/domain/principal.ts';
 import type { TutoringConversation } from '../domain/conversation.ts';
@@ -52,7 +53,7 @@ export interface AnswerResult {
   readonly answerText: string;
   readonly answerLang: 'en' | 'am';
   readonly kind: 'answered' | 'insufficient_evidence';
-  readonly provider: 'online' | 'faq';
+  readonly provider: 'online' | 'faq' | 'job';
   readonly citations: readonly FaqCitation[];
 }
 
@@ -72,6 +73,7 @@ export class Tutoring {
   readonly #onlineProvider: OnlineAnswerProvider | undefined;
   readonly #content: ContentAccess | undefined;
   readonly #admissionController: ProviderAdmissionController;
+  readonly #jobAnswers: JobAnswers | undefined;
 
   constructor(
     repository: TutoringRepository,
@@ -79,12 +81,14 @@ export class Tutoring {
     onlineProvider?: OnlineAnswerProvider,
     content?: ContentAccess,
     admissionController?: ProviderAdmissionController,
+    jobAnswers?: JobAnswers,
   ) {
     this.#repository = repository;
     this.#faqProvider = faqProvider;
     this.#onlineProvider = onlineProvider;
     this.#content = content;
     this.#admissionController = admissionController ?? new ProviderAdmissionController();
+    this.#jobAnswers = jobAnswers;
   }
 
   get admissionController(): ProviderAdmissionController {
@@ -100,6 +104,7 @@ export class Tutoring {
   /**
    * Primary answer endpoint enforcing authorized retrieval and external-processing consent.
    * If consent is declined or provider is unavailable, falls back safely to the labelled FAQ path.
+   * Routes job/career questions to JobAnswers without mixing course evidence (T3-019-B).
    */
   async ask(
     principal: Principal,
@@ -136,7 +141,26 @@ export class Tutoring {
       };
     }
 
-    // 2. Determine whether online processing is consented and available
+    // 2. Check if this is a job/career question (T3-019-B)
+    if (this.#jobAnswers && this.#jobAnswers.isJobQuestion(input.question)) {
+      const jobResult = await this.#jobAnswers.answer(principal, input.question);
+      const updated = await this.#repository.recordOutcome(scope, request.id, {
+        state: 'completed',
+        answerText: jobResult.answerText,
+        answerLang: jobResult.answerLang,
+      });
+
+      return {
+        request: updated ?? request,
+        answerText: jobResult.answerText,
+        answerLang: jobResult.answerLang,
+        kind: jobResult.kind,
+        provider: 'job',
+        citations: jobResult.citations,
+      };
+    }
+
+    // 3. Determine whether online processing is consented and available
     const consented = input.externalConsent === true;
     const useOnline =
       consented && this.#onlineProvider !== undefined && this.#onlineProvider.isAvailable();
@@ -145,7 +169,7 @@ export class Tutoring {
       return this.#executeFaqAnswer(scope, request, principal, input);
     }
 
-    // 3. Online path with permission-filtered retrieval and bounded provider admission
+    // 4. Online path with permission-filtered retrieval and bounded provider admission
     return this.#executeOnlineAnswer(scope, request, principal, input, options?.signal);
   }
 

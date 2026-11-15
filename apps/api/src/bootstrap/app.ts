@@ -19,6 +19,7 @@ import {
 import { registerDemoSessionRoutes } from '../modules/identity/presentation/http/demo-session-routes.ts';
 import type { Accommodation } from '../modules/accommodation/application/accommodation.ts';
 import { registerAccommodationRoutes } from '../modules/accommodation/presentation/http/accommodation-routes.ts';
+import type { JobAnswers } from '../modules/careers/application/job-answers.ts';
 import type { JobRepository } from '../modules/careers/application/import-jobs.ts';
 import type { JobPreferences } from '../modules/careers/application/job-preferences.ts';
 import { registerCareersRoutes } from '../modules/careers/presentation/http/careers-routes.ts';
@@ -54,6 +55,7 @@ export interface AppDependencies {
   readonly accommodation?: Accommodation;
   readonly jobRepository?: JobRepository;
   readonly jobPreferences?: JobPreferences;
+  readonly jobAnswers?: JobAnswers;
   /** Optional; when omitted Telegram channel routes are not registered. */
   readonly telegramService?: TelegramLinkService;
   /** Optional provider admission controller for route-level provider admission (T3-024-C). */
@@ -151,6 +153,7 @@ export function buildApp(
       authenticate(dependencies.resolvePrincipal),
       dependencies.jobRepository,
       dependencies.jobPreferences,
+      dependencies.jobAnswers,
     );
   }
   if (dependencies.accommodation) {

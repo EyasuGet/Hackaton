@@ -727,4 +727,103 @@ describe('Assistant', () => {
       expect(synth2.isSupported('am')).toBe(true);
     });
   });
+
+  describe('Job answers and citations (T3-019-B)', () => {
+    it('renders job answers with Assistant (approved jobs) speaker and clickable citation links', async () => {
+      const { client, respond } = controllableClient();
+      render(<Assistant client={client} mode="faq" />);
+      type('Are there any virtual assistant jobs?');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+
+      await respond({
+        kind: 'answer',
+        reply: {
+          id: 'job-ans-1',
+          text: 'Savanna Digital Services has an active opening for a Virtual Assistant Specialist in Addis Ababa. Requirements: managing executive calendars, client correspondence, and digital document filing.',
+          lang: 'en',
+          createdAt: '2026-09-11T12:00:00.000Z',
+          provider: 'job',
+          citations: [
+            {
+              sourceId: 'job-va-specialist-01',
+              sectionId: 'requirements',
+              sourceTitle: 'Savanna Digital Services — Virtual Assistant Specialist',
+              heading: 'Addis Ababa (Active)',
+              url: 'https://digitalbridge.et/jobs/job-va-specialist-01',
+            },
+          ],
+        },
+      });
+
+      const messages = screen.getAllByRole('listitem');
+      expect(messages[0]?.textContent).toBe('YouAre there any virtual assistant jobs?');
+      expect(screen.getByText('Assistant (approved jobs)')).toBeTruthy();
+
+      const link = screen.getByRole('link', {
+        name: 'Savanna Digital Services — Virtual Assistant Specialist — Addis Ababa (Active)',
+      });
+      expect(link).toHaveProperty('href', 'https://digitalbridge.et/jobs/job-va-specialist-01');
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    });
+
+    it('renders expired job acknowledgement with honest limitation and citation', async () => {
+      const { client, respond } = controllableClient();
+      render(<Assistant client={client} mode="faq" />);
+      type('Is the Data Entry Clerk job open?');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+
+      await respond({
+        kind: 'answer',
+        reply: {
+          id: 'job-ans-2',
+          text: 'The Data Entry and Records Clerk position at Ethio Tech Solutions (Addis Ababa) expired on 2026-10-01 and is no longer open for applications.',
+          lang: 'en',
+          createdAt: '2026-09-11T12:00:00.000Z',
+          provider: 'job',
+          citations: [
+            {
+              sourceId: 'job-data-clerk-02',
+              sectionId: 'status',
+              sourceTitle: 'Ethio Tech Solutions — Data Entry and Records Clerk',
+              heading: 'Addis Ababa (Expired)',
+              url: 'https://digitalbridge.et/jobs/job-data-clerk-02',
+            },
+          ],
+        },
+      });
+
+      expect(
+        screen.getAllByText(
+          /The Data Entry and Records Clerk position at Ethio Tech Solutions \(Addis Ababa\) expired on 2026-10-01 and is no longer open for applications\./,
+        ).length,
+      ).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('Assistant (approved jobs)')).toBeTruthy();
+    });
+
+    it('renders honest limitation for unknown jobs without fabricated citations', async () => {
+      const { client, respond } = controllableClient();
+      render(<Assistant client={client} mode="faq" />);
+      type('Is Google hiring a software engineer in Addis Ababa?');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+
+      await respond({
+        kind: 'answer',
+        reply: {
+          id: 'job-ans-3',
+          text: 'I do not have an approved job record for that position or organization. External web search is not used.',
+          lang: 'en',
+          createdAt: '2026-09-11T12:00:00.000Z',
+          provider: 'job',
+        },
+      });
+
+      expect(
+        screen.getAllByText(
+          'I do not have an approved job record for that position or organization. External web search is not used.',
+        ).length,
+      ).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByRole('link')).toBeNull();
+    });
+  });
 });

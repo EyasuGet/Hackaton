@@ -437,3 +437,59 @@ button[aria-disabled='true'] {
   display: block;
   object-fit: contain;
 }
+
+/* High contrast and assistive display preferences (T3-009-B) */
+@media (prefers-contrast: more) {
+  :root {
+    --text: #000000;
+    --muted: #202020;
+    --surface: #ffffff;
+    --panel: #f5f5f5;
+    --accent: #0033cc;
+    --danger: #990000;
+  }
+
+  :focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 3px;
+  }
+
+  button {
+    border: 2px solid ButtonText;
+  }
+
+  .message {
+    border: 2px solid ButtonText;
+  }
+
+  .citations {
+    border-top: 2px solid ButtonText;
+  }
+
+  .assistant-mode-notice {
+    border-inline-start-width: 6px;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 3px;
+  }
+
+  .message {
+    border: 1px solid CanvasText;
+  }
+
+  .citations {
+    border-top: 1px solid CanvasText;
+  }
+
+  button {
+    border: 2px solid ButtonText;
+  }
+
+  .assistant-mode-notice {
+    border-inline-start: 4px solid Highlight;
+  }
+}
