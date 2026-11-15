@@ -57,6 +57,7 @@ const telegramLinkRepository = new PostgresTelegramLinkRepository(pool);
 const telegramService = new TelegramLinkService(telegramLinkRepository, {
   webhookSecret: config.telegram.webhookSecret,
   botToken: config.telegram.botToken,
+  jobAnswers,
 });
 
 const app = buildApp(

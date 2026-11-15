@@ -28,8 +28,13 @@ import {
   type DemoCredential,
   type DemoPrincipalKey,
 } from '../identity/infrastructure/postgres-principal-repository.ts';
+import { readFile } from 'node:fs/promises';
+import { ImportJobs } from '../careers/application/import-jobs.ts';
+import { JobAnswers } from '../careers/application/job-answers.ts';
+import { PostgresJobRepository } from '../careers/infrastructure/postgres-job-repository.ts';
 import { Tutoring } from '../tutoring/application/tutoring.ts';
 import { PostgresTutoringRepository } from '../tutoring/infrastructure/persistence/postgres-tutoring-repository.ts';
+import { SlidingWindowRateLimiter } from './application/rate-limiter.ts';
 import {
   digestLinkCode,
   TelegramLinkService,
@@ -44,6 +49,8 @@ let pool: pg.Pool;
 let tokens: Record<DemoPrincipalKey, string>;
 let telegramRepo: PostgresTelegramLinkRepository;
 let telegramService: TelegramLinkService;
+let jobRepo: PostgresJobRepository;
+let jobAnswers: JobAnswers;
 
 const WEBHOOK_SECRET = 'pg-test-webhook-secret-98765';
 const clock = new Date('2026-11-15T12:00:00Z');
@@ -65,7 +72,7 @@ async function provision(): Promise<Record<DemoPrincipalKey, string>> {
   }
 }
 
-function makeApp() {
+function makeApp(serviceOverride?: TelegramLinkService) {
   const resolvePrincipal = new ResolvePrincipal(new PostgresPrincipalRepository(pool), true, now);
   return buildApp({
     checkReadiness: () => Promise.resolve({ ready: true }),
@@ -75,7 +82,9 @@ function makeApp() {
     demoAllowedOrigins: ['http://localhost:5173'],
     tutoring: new Tutoring(new PostgresTutoringRepository(pool)),
     content: new ContentAccess(new PostgresLessonReader(pool), []),
-    telegramService,
+    jobRepository: jobRepo,
+    jobAnswers,
+    telegramService: serviceOverride ?? telegramService,
   });
 }
 
@@ -86,11 +95,23 @@ beforeAll(async () => {
   await migrate(pool, await loadMigrations(MIGRATIONS_DIR));
   tokens = await provision();
 
+  jobRepo = new PostgresJobRepository(pool);
+  jobAnswers = new JobAnswers(jobRepo);
   telegramRepo = new PostgresTelegramLinkRepository(pool);
   telegramService = new TelegramLinkService(telegramRepo, {
     webhookSecret: WEBHOOK_SECRET,
+    jobAnswers,
     now,
   });
+
+  const importJobs = new ImportJobs(jobRepo);
+  const FIXTURES = new URL('../../../../../fixtures/jobs/', import.meta.url);
+  const vaJob = JSON.parse(await readFile(new URL('demo-va-specialist.json', FIXTURES), 'utf8'));
+  const clerkJob = JSON.parse(
+    await readFile(new URL('demo-expired-data-clerk.json', FIXTURES), 'utf8'),
+  );
+  await importJobs.execute(vaJob);
+  await importJobs.execute(clerkJob);
 });
 
 afterAll(async () => {
@@ -100,14 +121,15 @@ afterAll(async () => {
 });
 
 describe('Telegram Identity PostgreSQL Integration (T3-012-A)', () => {
-  it('applies migration 0014 and creates telegram_link_codes and telegram_identities tables', async () => {
+  it('applies migration 0014 and 0016 and creates telegram tables', async () => {
     const res = await pool.query<{ table_name: string }>(
       `SELECT table_name FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_name IN ('telegram_link_codes', 'telegram_identities')`,
+       WHERE table_schema = 'public' AND table_name IN ('telegram_link_codes', 'telegram_identities', 'telegram_processed_updates')`,
     );
     expect(res.rows.map((r) => r.table_name).sort()).toEqual([
       'telegram_identities',
       'telegram_link_codes',
+      'telegram_processed_updates',
     ]);
   });
 
@@ -399,6 +421,276 @@ describe('Telegram Identity PostgreSQL Integration (T3-012-A)', () => {
           headers: { authorization: `Bearer ${tokens['learner-a']}` },
         });
         expect(reDelete.statusCode).toBe(404);
+      } finally {
+        await app.close();
+      }
+    });
+  });
+
+  describe('Reusing approved job answers in Telegram Webhook (T3-019-C)', () => {
+    it('answers active, expired, and unknown job inquiries with citations and honest limitations over HTTP webhook', async () => {
+      const app = makeApp();
+      try {
+        // 1. Link learner-a to Telegram account 888888
+        const issueRes = await app.inject({
+          method: 'POST',
+          url: '/api/telegram/link-code',
+          headers: { authorization: `Bearer ${tokens['learner-a']}` },
+        });
+        expect(issueRes.statusCode).toBe(201);
+        const { code } = issueRes.json<{ code: string }>();
+
+        const linkRes = await app.inject({
+          method: 'POST',
+          url: '/api/telegram/webhook',
+          headers: { 'x-telegram-bot-api-secret-token': WEBHOOK_SECRET },
+          payload: {
+            update_id: 1000,
+            message: {
+              message_id: 100,
+              from: { id: 888888, is_bot: false, username: 'job_seeker' },
+              chat: { id: 888888, type: 'private' },
+              date: Math.floor(clock.getTime() / 1000),
+              text: `/start ${code}`,
+            },
+          },
+        });
+        expect(linkRes.statusCode).toBe(200);
+        expect(linkRes.json()).toEqual({ ok: true, status: 'linked' });
+
+        // 2. Ask about active job: Virtual Assistant Specialist (demo-va-specialist.json is active as of clock)
+        const activeRes = await app.inject({
+          method: 'POST',
+          url: '/api/telegram/webhook',
+          headers: { 'x-telegram-bot-api-secret-token': WEBHOOK_SECRET },
+          payload: {
+            update_id: 1001,
+            message: {
+              message_id: 101,
+              from: { id: 888888, is_bot: false },
+              chat: { id: 888888, type: 'private' },
+              date: Math.floor(clock.getTime() / 1000),
+              text: 'Tell me about the Virtual Assistant position opening',
+            },
+          },
+        });
+        expect(activeRes.statusCode).toBe(200);
+        const activeBody = activeRes.json<{
+          ok: boolean;
+          status: string;
+          kind: string;
+          matchedJobId?: string;
+          answer: string;
+          citations: Array<{ sourceId: string; url: string; heading: string }>;
+          method: string;
+          chat_id: string;
+          replayed: boolean;
+        }>();
+        expect(activeBody.ok).toBe(true);
+        expect(activeBody.status).toBe('answered');
+        expect(activeBody.kind).toBe('answered');
+        expect(activeBody.matchedJobId).toBe('job-va-specialist-01');
+        expect(activeBody.answer).toContain('Savanna Digital Services');
+        expect(activeBody.answer).toContain('https://digitalbridge.et/jobs/job-va-specialist-01');
+        expect(activeBody.citations).toHaveLength(1);
+        expect(activeBody.citations[0]?.sourceId).toBe('job-va-specialist-01');
+        expect(activeBody.citations[0]?.url).toBe(
+          'https://digitalbridge.et/jobs/job-va-specialist-01',
+        );
+        expect(activeBody.method).toBe('sendMessage');
+        expect(activeBody.chat_id).toBe('888888');
+        expect(activeBody.replayed).toBe(false);
+
+        // 3. Replay exact same active query (update_id: 1001) -> handled idempotently from database
+        const replayRes = await app.inject({
+          method: 'POST',
+          url: '/api/telegram/webhook',
+          headers: { 'x-telegram-bot-api-secret-token': WEBHOOK_SECRET },
+          payload: {
+            update_id: 1001,
+            message: {
+              message_id: 101,
+              from: { id: 888888, is_bot: false },
+              chat: { id: 888888, type: 'private' },
+              date: Math.floor(clock.getTime() / 1000),
+              text: 'Tell me about the Virtual Assistant position opening',
+            },
+          },
+        });
+        expect(replayRes.statusCode).toBe(200);
+        const replayBody = replayRes.json<{
+          status: string;
+          replayed: boolean;
+          matchedJobId?: string;
+        }>();
+        expect(replayBody.status).toBe('answered');
+        expect(replayBody.replayed).toBe(true);
+        expect(replayBody.matchedJobId).toBe('job-va-specialist-01');
+
+        // Verify stored in PostgreSQL telegram_processed_updates table
+        const dbRecord = await pool.query<{ update_id: string; response_status: string }>(
+          'SELECT update_id, response_status FROM telegram_processed_updates WHERE update_id = 1001',
+        );
+        expect(dbRecord.rows).toHaveLength(1);
+        expect(dbRecord.rows[0]?.response_status).toBe('answered');
+
+        // 4. Ask about expired job: Data Entry Clerk (demo-expired-data-clerk.json expired 2026-10-01)
+        const expiredRes = await app.inject({
+          method: 'POST',
+          url: '/api/telegram/webhook',
+          headers: { 'x-telegram-bot-api-secret-token': WEBHOOK_SECRET },
+          payload: {
+            update_id: 1002,
+            message: {
+              message_id: 102,
+              from: { id: 888888, is_bot: false },
+              chat: { id: 888888, type: 'private' },
+              date: Math.floor(clock.getTime() / 1000),
+              text: 'Is the Data Entry and Records Clerk role still open?',
+            },
+          },
+        });
+        expect(expiredRes.statusCode).toBe(200);
+        const expiredBody = expiredRes.json<{
+          status: string;
+          kind: string;
+          matchedJobId?: string;
+          answer: string;
+          citations: Array<{ sourceId: string }>;
+        }>();
+        expect(expiredBody.status).toBe('answered');
+        expect(expiredBody.matchedJobId).toBe('job-data-clerk-02');
+        expect(expiredBody.answer).toContain('expired');
+        expect(expiredBody.answer).toContain('no longer open for applications');
+        expect(expiredBody.citations).toHaveLength(1);
+        expect(expiredBody.citations[0]?.sourceId).toBe('job-data-clerk-02');
+
+        // 5. Ask about unknown job (Google engineer) -> honest limitation without web search
+        const unknownRes = await app.inject({
+          method: 'POST',
+          url: '/api/telegram/webhook',
+          headers: { 'x-telegram-bot-api-secret-token': WEBHOOK_SECRET },
+          payload: {
+            update_id: 1003,
+            message: {
+              message_id: 103,
+              from: { id: 888888, is_bot: false },
+              chat: { id: 888888, type: 'private' },
+              date: Math.floor(clock.getTime() / 1000),
+              text: 'Are there Google software engineer openings in Addis Ababa?',
+            },
+          },
+        });
+        expect(unknownRes.statusCode).toBe(200);
+        const unknownBody = unknownRes.json<{
+          status: string;
+          kind: string;
+          answer: string;
+          citations: unknown[];
+        }>();
+        expect(unknownBody.status).toBe('answered');
+        expect(unknownBody.kind).toBe('insufficient_evidence');
+        expect(unknownBody.answer).toContain('do not have an approved job record');
+        expect(unknownBody.citations).toEqual([]);
+
+        // 6. Unauthenticated update from unlinked user (999999) -> rejected with unauthenticated
+        const unauthRes = await app.inject({
+          method: 'POST',
+          url: '/api/telegram/webhook',
+          headers: { 'x-telegram-bot-api-secret-token': WEBHOOK_SECRET },
+          payload: {
+            update_id: 1004,
+            message: {
+              message_id: 104,
+              from: { id: 999999, is_bot: false },
+              chat: { id: 999999, type: 'private' },
+              date: Math.floor(clock.getTime() / 1000),
+              text: 'What jobs are available?',
+            },
+          },
+        });
+        expect(unauthRes.statusCode).toBe(200);
+        expect(unauthRes.json()).toEqual({ ok: true, status: 'unauthenticated' });
+
+        // Clean up: unlink learner-a
+        await telegramRepo.unlinkByLearnerId(
+          (await telegramService.resolveLearner(888888))!.id,
+          clock,
+        );
+      } finally {
+        await app.close();
+      }
+    });
+
+    it('enforces shared rate limits across channel requests over HTTP webhook', async () => {
+      // Create service with a tight rate limit of 2 requests
+      const tightRateLimiter = new SlidingWindowRateLimiter(2, 60_000, now);
+      const testService = new TelegramLinkService(telegramRepo, {
+        webhookSecret: WEBHOOK_SECRET,
+        jobAnswers,
+        rateLimiter: tightRateLimiter,
+        now,
+      });
+
+      const app = makeApp(testService);
+      try {
+        // Link learner-b to Telegram user 777111
+        const issueRes = await app.inject({
+          method: 'POST',
+          url: '/api/telegram/link-code',
+          headers: { authorization: `Bearer ${tokens['learner-b']}` },
+        });
+        const { code } = issueRes.json<{ code: string }>();
+
+        await app.inject({
+          method: 'POST',
+          url: '/api/telegram/webhook',
+          headers: { 'x-telegram-bot-api-secret-token': WEBHOOK_SECRET },
+          payload: {
+            update_id: 2000,
+            message: {
+              message_id: 200,
+              from: { id: 777111, is_bot: false },
+              chat: { id: 777111, type: 'private' },
+              date: Math.floor(clock.getTime() / 1000),
+              text: `/start ${code}`,
+            },
+          },
+        });
+
+        const makeJobUpdate = (updateId: number) => ({
+          method: 'POST' as const,
+          url: '/api/telegram/webhook',
+          headers: { 'x-telegram-bot-api-secret-token': WEBHOOK_SECRET },
+          payload: {
+            update_id: updateId,
+            message: {
+              message_id: updateId,
+              from: { id: 777111, is_bot: false },
+              chat: { id: 777111, type: 'private' },
+              date: Math.floor(clock.getTime() / 1000),
+              text: 'What job openings are open?',
+            },
+          },
+        });
+
+        // Request 1 -> 200 answered
+        const r1 = await app.inject(makeJobUpdate(2001));
+        expect(r1.statusCode).toBe(200);
+        expect(r1.json<{ status: string }>().status).toBe('answered');
+
+        // Request 2 -> 200 answered
+        const r2 = await app.inject(makeJobUpdate(2002));
+        expect(r2.statusCode).toBe(200);
+        expect(r2.json<{ status: string }>().status).toBe('answered');
+
+        // Request 3 -> 429 rate_limited
+        const r3 = await app.inject(makeJobUpdate(2003));
+        expect(r3.statusCode).toBe(429);
+        expect(r3.json<{ error: string }>().error).toBe('rate_limited');
+
+        // Clean up link
+        await telegramRepo.unlinkByTelegramUserId('777111', clock);
       } finally {
         await app.close();
       }

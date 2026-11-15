@@ -49,4 +49,26 @@ export interface TelegramLinkRepository {
    * Telegram user. Returns null if unlinked, revoked, or non-existent.
    */
   findPrincipalByTelegramUserId(telegramUserId: string): Promise<Principal | null>;
+
+  /** Finds a recorded processed update by its Telegram update ID for replay prevention (T3-019-C). */
+  findProcessedUpdate(updateId: number): Promise<ProcessedTelegramUpdateRecord | null>;
+
+  /** Records a processed update and its outcome atomically for replay prevention (T3-019-C). */
+  recordProcessedUpdate(params: RecordProcessedUpdateParams): Promise<void>;
+}
+
+export interface ProcessedTelegramUpdateRecord {
+  readonly updateId: number;
+  readonly telegramUserId?: string | undefined;
+  readonly responseStatus: string;
+  readonly responsePayload: Record<string, unknown>;
+  readonly processedAt: Date;
+}
+
+export interface RecordProcessedUpdateParams {
+  readonly updateId: number;
+  readonly telegramUserId?: string | undefined;
+  readonly responseStatus: string;
+  readonly responsePayload: Record<string, unknown>;
+  readonly now: Date;
 }

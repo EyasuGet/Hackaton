@@ -1,7 +1,8 @@
-// Application service for Telegram identity linking and revocation (T3-012-A).
+// Application service for Telegram identity linking and revocation (T3-012-A / T3-019-C).
 // Manages single-use link codes, expiry, replay prevention, private chat enforcement,
-// update authenticity verification, and unlinking.
+// update authenticity verification, rate limits, job question routing, and unlinking.
 import { createHash, randomBytes } from 'node:crypto';
+import type { JobAnswers, JobCitation } from '../../careers/application/job-answers.ts';
 import type { Principal } from '../../identity/domain/principal.ts';
 import {
   isPrivateChat,
@@ -13,14 +14,46 @@ import type {
   LinkFailureReason,
   TelegramLinkRepository,
 } from './ports/telegram-link-repository.ts';
+import { type RateLimiter, SlidingWindowRateLimiter } from './rate-limiter.ts';
 import { verifyWebhookSecret } from './telegram-authenticity.ts';
 
 /** Link code time-to-live: 15 minutes. */
 export const TELEGRAM_LINK_CODE_TTL_MS = 15 * 60 * 1000;
 
+export interface TelegramSender {
+  sendMessage(params: { chatId: string | number; text: string }): Promise<boolean>;
+}
+
+export class FetchTelegramSender implements TelegramSender {
+  readonly #botToken: string;
+
+  constructor(botToken: string) {
+    this.#botToken = botToken;
+  }
+
+  async sendMessage(params: { chatId: string | number; text: string }): Promise<boolean> {
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${this.#botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: params.chatId,
+          text: params.text,
+        }),
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
 export interface TelegramLinkServiceOptions {
   readonly webhookSecret?: string | undefined;
   readonly botToken?: string | undefined;
+  readonly jobAnswers?: JobAnswers | undefined;
+  readonly rateLimiter?: RateLimiter | undefined;
+  readonly sender?: TelegramSender | undefined;
   readonly now?: (() => Date) | undefined;
 }
 
@@ -48,15 +81,42 @@ export type WebhookHandlingResult =
   | { readonly status: 'unauthorized' }
   | { readonly status: 'ignored' }
   | { readonly status: 'rejected'; readonly reason: 'group_chats_not_allowed' | 'bots_not_allowed' }
-  | { readonly status: 'linked'; readonly identity: TelegramIdentity }
+  | {
+      readonly status: 'linked';
+      readonly identity: TelegramIdentity;
+      readonly replayed?: boolean | undefined;
+    }
   | {
       readonly status: 'link_failed';
       readonly reason:
         LinkFailureReason | 'group_chats_not_allowed' | 'bots_not_allowed' | 'invalid_user_id';
+      readonly replayed?: boolean | undefined;
     }
-  | { readonly status: 'unlinked'; readonly unlinked: boolean }
-  | { readonly status: 'authenticated'; readonly principal: Principal }
-  | { readonly status: 'unauthenticated' };
+  | {
+      readonly status: 'unlinked';
+      readonly unlinked: boolean;
+      readonly replayed?: boolean | undefined;
+    }
+  | {
+      readonly status: 'answered';
+      readonly answer: string;
+      readonly citations: readonly JobCitation[];
+      readonly kind: 'answered' | 'insufficient_evidence';
+      readonly answerLang: 'en' | 'am';
+      readonly matchedJobId?: string | undefined;
+      readonly replayed?: boolean | undefined;
+    }
+  | {
+      readonly status: 'rate_limited';
+      readonly message: string;
+      readonly retryAfterSec?: number | undefined;
+    }
+  | {
+      readonly status: 'authenticated';
+      readonly principal: Principal;
+      readonly replayed?: boolean | undefined;
+    }
+  | { readonly status: 'unauthenticated'; readonly replayed?: boolean | undefined };
 
 export function digestLinkCode(code: string): string {
   return createHash('sha256').update(code).digest('hex');
@@ -66,13 +126,20 @@ export class TelegramLinkService {
   readonly #repository: TelegramLinkRepository;
   readonly #webhookSecret?: string | undefined;
   readonly #botToken?: string | undefined;
+  readonly #jobAnswers?: JobAnswers | undefined;
+  readonly #rateLimiter: RateLimiter;
+  readonly #sender?: TelegramSender | undefined;
   readonly #now: () => Date;
 
   constructor(repository: TelegramLinkRepository, options: TelegramLinkServiceOptions = {}) {
     this.#repository = repository;
     this.#webhookSecret = options.webhookSecret;
     this.#botToken = options.botToken;
+    this.#jobAnswers = options.jobAnswers;
     this.#now = options.now ?? (() => new Date());
+    this.#rateLimiter = options.rateLimiter ?? new SlidingWindowRateLimiter(15, 60_000, this.#now);
+    this.#sender =
+      options.sender ?? (options.botToken ? new FetchTelegramSender(options.botToken) : undefined);
   }
 
   get webhookSecret(): string | undefined {
@@ -81,6 +148,18 @@ export class TelegramLinkService {
 
   get botToken(): string | undefined {
     return this.#botToken;
+  }
+
+  get jobAnswers(): JobAnswers | undefined {
+    return this.#jobAnswers;
+  }
+
+  get rateLimiter(): RateLimiter {
+    return this.#rateLimiter;
+  }
+
+  get sender(): TelegramSender | undefined {
+    return this.#sender;
   }
 
   /**
@@ -195,13 +274,14 @@ export class TelegramLinkService {
 
   /**
    * Processes an incoming Telegram update (e.g. from a webhook).
-   * Verifies authenticity, enforces private chats, and handles /start <code> and /unlink.
+   * Verifies authenticity, enforces private chats, replay protection, rate limits,
+   * handles /start <code>, /unlink, and answers approved job questions.
    */
   async handleWebhookUpdate(
     update: TelegramUpdate,
     secretHeader?: string,
   ): Promise<WebhookHandlingResult> {
-    // Verify webhook secret if configured
+    // 1. Verify webhook secret if configured
     if (this.#webhookSecret && !verifyWebhookSecret(secretHeader, this.#webhookSecret)) {
       return { status: 'unauthorized' };
     }
@@ -211,12 +291,12 @@ export class TelegramLinkService {
       return { status: 'ignored' };
     }
 
-    // Enforce private chats: group chats never establish learner access
+    // 2. Enforce private chats: group chats never establish learner access
     if (!isPrivateChat(message.chat)) {
       return { status: 'rejected', reason: 'group_chats_not_allowed' };
     }
 
-    // Enforce non-bot sender
+    // 3. Enforce non-bot sender
     if (message.from?.isBot) {
       return { status: 'rejected', reason: 'bots_not_allowed' };
     }
@@ -227,7 +307,7 @@ export class TelegramLinkService {
 
     const text = message.text?.trim() ?? '';
 
-    // Handle linking command: /start <code> or /link <code>
+    // 4. Handle linking command: /start <code> or /link <code>
     const linkMatch = /^\/(?:start|link)\s+([A-Za-z0-9_-]{20,128})$/i.exec(text);
     if (linkMatch) {
       const code = linkMatch[1]!;
@@ -240,13 +320,12 @@ export class TelegramLinkService {
         telegramUsername: message.from.username,
       });
 
-      if (linkResult.success) {
-        return { status: 'linked', identity: linkResult.identity };
-      }
-      return { status: 'link_failed', reason: linkResult.reason };
+      return linkResult.success
+        ? { status: 'linked', identity: linkResult.identity }
+        : { status: 'link_failed', reason: linkResult.reason };
     }
 
-    // Handle unlinking command: /unlink
+    // 5. Handle unlinking command: /unlink
     if (/^\/unlink(?:@\w+)?$/i.test(text)) {
       const unlinked = await this.unlinkByTelegram({
         telegramUserId: message.from.id,
@@ -255,11 +334,91 @@ export class TelegramLinkService {
       return { status: 'unlinked', unlinked };
     }
 
-    // For other messages, check if sender is an actively linked learner
-    const principal = await this.resolveLearner(message.from.id);
-    if (principal) {
-      return { status: 'authenticated', principal };
+    // 6. Replay check by update_id for incoming questions / updates
+    if (update.updateId && update.updateId > 0) {
+      const cached = await this.#repository.findProcessedUpdate(update.updateId);
+      if (cached) {
+        return {
+          ...cached.responsePayload,
+          status: cached.responseStatus as WebhookHandlingResult['status'],
+          replayed: true,
+        } as WebhookHandlingResult;
+      }
     }
-    return { status: 'unauthenticated' };
+
+    // 7. For other messages, check if sender is an actively linked learner
+    const principal = await this.resolveLearner(message.from.id);
+    if (!principal) {
+      const outcome: WebhookHandlingResult = { status: 'unauthenticated' };
+      if (update.updateId && update.updateId > 0) {
+        await this.#repository.recordProcessedUpdate({
+          updateId: update.updateId,
+          telegramUserId: String(message.from.id),
+          responseStatus: 'unauthenticated',
+          responsePayload: outcome as unknown as Record<string, unknown>,
+          now: this.#now(),
+        });
+      }
+      return outcome;
+    }
+
+    // 8. Shared rate limit check across channel invocations
+    const rateCheck = this.#rateLimiter.consume(String(message.from.id));
+    if (!rateCheck.allowed) {
+      const isAmharic = /[\u1200-\u137F]/.test(text);
+      const msg = isAmharic
+        ? 'በጣም ብዙ ጥያቄዎች ቀርበዋል። እባክዎ ጥቂት ደቂቃ ቆይተው እንደገና ይሞክሩ።'
+        : 'Too many requests. Please wait a moment before trying again.';
+      return {
+        status: 'rate_limited',
+        message: msg,
+        retryAfterSec: rateCheck.retryAfterSec,
+      };
+    }
+
+    // 9. Job question check (T3-019-C)
+    if (this.#jobAnswers && this.#jobAnswers.isJobQuestion(text)) {
+      const jobResult = await this.#jobAnswers.answer(principal, text, this.#now());
+      const outcome: WebhookHandlingResult = {
+        status: 'answered',
+        answer: jobResult.answerText,
+        citations: jobResult.citations,
+        kind: jobResult.kind,
+        answerLang: jobResult.answerLang,
+        matchedJobId: jobResult.matchedJobId,
+      };
+
+      if (update.updateId && update.updateId > 0) {
+        await this.#repository.recordProcessedUpdate({
+          updateId: update.updateId,
+          telegramUserId: String(message.from.id),
+          responseStatus: 'answered',
+          responsePayload: outcome as unknown as Record<string, unknown>,
+          now: this.#now(),
+        });
+      }
+
+      if (this.#sender) {
+        await this.#sender.sendMessage({
+          chatId: message.chat.id,
+          text: jobResult.answerText,
+        });
+      }
+
+      return outcome;
+    }
+
+    // 10. General authenticated message
+    const outcome: WebhookHandlingResult = { status: 'authenticated', principal };
+    if (update.updateId && update.updateId > 0) {
+      await this.#repository.recordProcessedUpdate({
+        updateId: update.updateId,
+        telegramUserId: String(message.from.id),
+        responseStatus: 'authenticated',
+        responsePayload: { status: 'authenticated' },
+        now: this.#now(),
+      });
+    }
+    return outcome;
   }
 }

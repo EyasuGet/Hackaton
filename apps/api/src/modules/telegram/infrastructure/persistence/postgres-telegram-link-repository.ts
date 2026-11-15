@@ -8,6 +8,8 @@ import type { TelegramIdentity } from '../../domain/telegram-identity.ts';
 import type {
   ConsumeLinkParams,
   ConsumeLinkResult,
+  ProcessedTelegramUpdateRecord,
+  RecordProcessedUpdateParams,
   TelegramLinkRepository,
 } from '../../application/ports/telegram-link-repository.ts';
 
@@ -236,5 +238,44 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       demo: row.is_demo,
       courseIds: row.course_ids,
     };
+  }
+
+  async findProcessedUpdate(updateId: number): Promise<ProcessedTelegramUpdateRecord | null> {
+    const result = await this.#pool.query<{
+      update_id: string;
+      telegram_user_id: string | null;
+      response_status: string;
+      response_payload: Record<string, unknown>;
+      processed_at: Date;
+    }>(
+      `SELECT update_id, telegram_user_id, response_status, response_payload, processed_at
+       FROM telegram_processed_updates
+       WHERE update_id = $1`,
+      [updateId],
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      updateId: Number(row.update_id),
+      telegramUserId: row.telegram_user_id ?? undefined,
+      responseStatus: row.response_status,
+      responsePayload: row.response_payload,
+      processedAt: row.processed_at,
+    };
+  }
+
+  async recordProcessedUpdate(params: RecordProcessedUpdateParams): Promise<void> {
+    await this.#pool.query(
+      `INSERT INTO telegram_processed_updates (update_id, telegram_user_id, response_status, response_payload, processed_at)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (update_id) DO NOTHING`,
+      [
+        params.updateId,
+        params.telegramUserId ?? null,
+        params.responseStatus,
+        JSON.stringify(params.responsePayload),
+        params.now,
+      ],
+    );
   }
 }

@@ -1,11 +1,17 @@
 import { createHmac } from 'node:crypto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { JobRepository } from '../careers/application/import-jobs.ts';
+import { JobAnswers } from '../careers/application/job-answers.ts';
+import type { JobRecord } from '../careers/domain/job.ts';
 import type { Principal } from '../identity/domain/principal.ts';
 import type {
   ConsumeLinkParams,
   ConsumeLinkResult,
+  ProcessedTelegramUpdateRecord,
+  RecordProcessedUpdateParams,
   TelegramLinkRepository,
 } from './application/ports/telegram-link-repository.ts';
+import { SlidingWindowRateLimiter } from './application/rate-limiter.ts';
 import {
   verifyTelegramInitData,
   verifyWebhookSecret,
@@ -14,6 +20,7 @@ import {
   digestLinkCode,
   TelegramLinkService,
   TELEGRAM_LINK_CODE_TTL_MS,
+  type TelegramSender,
 } from './application/telegram-link-service.ts';
 import type { TelegramIdentity, TelegramUpdate } from './domain/telegram-identity.ts';
 
@@ -124,6 +131,23 @@ class InMemoryTelegramLinkRepository implements TelegramLinkRepository {
     if (identity.learnerId === learnerA.id) return learnerA;
     if (identity.learnerId === learnerB.id) return learnerB;
     return null;
+  }
+
+  readonly processedUpdates = new Map<number, ProcessedTelegramUpdateRecord>();
+
+  findProcessedUpdate(updateId: number): Promise<ProcessedTelegramUpdateRecord | null> {
+    return Promise.resolve(this.processedUpdates.get(updateId) ?? null);
+  }
+
+  recordProcessedUpdate(params: RecordProcessedUpdateParams): Promise<void> {
+    this.processedUpdates.set(params.updateId, {
+      updateId: params.updateId,
+      telegramUserId: params.telegramUserId,
+      responseStatus: params.responseStatus,
+      responsePayload: params.responsePayload,
+      processedAt: params.now,
+    });
+    return Promise.resolve();
   }
 }
 
@@ -557,6 +581,371 @@ describe('TelegramLinkService Unit Tests (T3-012-A)', () => {
 
       // Verified unlinked
       expect(await service.resolveLearner('987654321')).toBeNull();
+    });
+  });
+
+  describe('Reusing approved job answers in Telegram (T3-019-C)', () => {
+    let mockJobRepo: JobRepository;
+    let jobAnswers: JobAnswers;
+    let mockSender: TelegramSender;
+    let activeJob: JobRecord;
+    let expiredJob: JobRecord;
+
+    beforeEach(async () => {
+      activeJob = {
+        id: 'job-data-clerk-01',
+        title: 'Data Entry and Records Clerk',
+        organization: 'Ethio Tech Solutions',
+        category: 'administrative',
+        location: 'Bole, Addis Ababa',
+        description: 'Transcribe bilingual forms and verify records. 40+ WPM required.',
+        sourceUrl: 'https://digitalbridge.et/jobs/data-entry-clerk',
+        postedAt: new Date('2026-11-01T08:00:00Z'),
+        expiresAt: new Date('2026-12-31T23:59:59Z'),
+        status: 'active',
+        version: 'starter-1.0',
+        publicationId: 'pub-data-01',
+        withdrawn: false,
+        isDemo: true,
+        importedAt: currentTime,
+      };
+
+      expiredJob = {
+        id: 'job-va-specialist-02',
+        title: 'Virtual Assistant Specialist',
+        organization: 'Savanna Digital Services',
+        category: 'administrative',
+        location: 'Addis Ababa (Bole / Remote)',
+        description: 'Executive calendar management and client correspondence.',
+        sourceUrl: 'https://digitalbridge.et/jobs/va-specialist',
+        postedAt: new Date('2026-09-01T08:00:00Z'),
+        expiresAt: new Date('2026-11-01T00:00:00Z'),
+        status: 'expired',
+        version: 'starter-1.0',
+        publicationId: 'pub-va-02',
+        withdrawn: false,
+        isDemo: true,
+        importedAt: currentTime,
+      };
+
+      mockJobRepo = {
+        importJob: () => Promise.reject(new Error('not implemented')),
+        getJob: (id: string) => {
+          if (id === activeJob.id) return Promise.resolve(activeJob);
+          if (id === expiredJob.id) return Promise.resolve(expiredJob);
+          return Promise.resolve(null);
+        },
+        listJobs: () => Promise.resolve([activeJob, expiredJob]),
+        getPublicationEvent: () => Promise.resolve(null),
+      };
+
+      jobAnswers = new JobAnswers(mockJobRepo);
+      mockSender = {
+        sendMessage: vi.fn().mockResolvedValue(true),
+      };
+
+      service = new TelegramLinkService(repository, {
+        webhookSecret,
+        botToken,
+        jobAnswers,
+        sender: mockSender,
+        now,
+      });
+
+      // Link learnerA to Telegram user 987654321
+      const { code } = await service.issueLinkCode(learnerA);
+      await service.linkAccount({
+        code,
+        telegramUserId: '987654321',
+        telegramChatId: '987654321',
+        chatType: 'private',
+        telegramUsername: 'alice_telegram',
+      });
+    });
+
+    it('answers active job inquiries with approved citations and outbound Telegram delivery', async () => {
+      const update: TelegramUpdate = {
+        updateId: 201,
+        message: {
+          messageId: 10,
+          chat: { id: '987654321', type: 'private' },
+          from: { id: '987654321', isBot: false },
+          date: Math.floor(currentTime.getTime() / 1000),
+          text: 'Tell me about the Data Entry Clerk opening',
+        },
+      };
+
+      const result = await service.handleWebhookUpdate(update, webhookSecret);
+      expect(result.status).toBe('answered');
+      if (result.status === 'answered') {
+        expect(result.kind).toBe('answered');
+        expect(result.matchedJobId).toBe(activeJob.id);
+        expect(result.answer).toContain('Ethio Tech Solutions');
+        expect(result.answer).toContain(activeJob.sourceUrl);
+        expect(result.citations).toHaveLength(1);
+        expect(result.citations[0]?.sourceId).toBe(activeJob.id);
+        expect(result.citations[0]?.url).toBe(activeJob.sourceUrl);
+      }
+
+      // Outbound delivery via sender
+      expect(mockSender.sendMessage).toHaveBeenCalledWith({
+        chatId: '987654321',
+        text: expect.stringContaining('Ethio Tech Solutions'),
+      });
+    });
+
+    it('answers expired job questions by explicitly stating the position is closed', async () => {
+      const update: TelegramUpdate = {
+        updateId: 202,
+        message: {
+          messageId: 11,
+          chat: { id: '987654321', type: 'private' },
+          from: { id: '987654321', isBot: false },
+          date: Math.floor(currentTime.getTime() / 1000),
+          text: 'Is the Virtual Assistant position open?',
+        },
+      };
+
+      const result = await service.handleWebhookUpdate(update, webhookSecret);
+      expect(result.status).toBe('answered');
+      if (result.status === 'answered') {
+        expect(result.kind).toBe('answered');
+        expect(result.matchedJobId).toBe(expiredJob.id);
+        expect(result.answer).toContain('expired');
+        expect(result.answer).toContain('no longer open for applications');
+        expect(result.citations).toHaveLength(1);
+        expect(result.citations[0]?.sourceId).toBe(expiredJob.id);
+      }
+    });
+
+    it('provides honest limitations without web search for unknown job questions', async () => {
+      const update: TelegramUpdate = {
+        updateId: 203,
+        message: {
+          messageId: 12,
+          chat: { id: '987654321', type: 'private' },
+          from: { id: '987654321', isBot: false },
+          date: Math.floor(currentTime.getTime() / 1000),
+          text: 'Does Google have open software engineer jobs in Addis Ababa?',
+        },
+      };
+
+      const result = await service.handleWebhookUpdate(update, webhookSecret);
+      expect(result.status).toBe('answered');
+      if (result.status === 'answered') {
+        expect(result.kind).toBe('insufficient_evidence');
+        expect(result.answer).toContain('do not have an approved job record');
+        expect(result.citations).toEqual([]);
+      }
+    });
+
+    it('identifies missing facts (salary) in approved job records truthfully', async () => {
+      const update: TelegramUpdate = {
+        updateId: 204,
+        message: {
+          messageId: 13,
+          chat: { id: '987654321', type: 'private' },
+          from: { id: '987654321', isBot: false },
+          date: Math.floor(currentTime.getTime() / 1000),
+          text: 'What is the salary for the Data Entry Clerk job?',
+        },
+      };
+
+      const result = await service.handleWebhookUpdate(update, webhookSecret);
+      expect(result.status).toBe('answered');
+      if (result.status === 'answered') {
+        expect(result.kind).toBe('insufficient_evidence');
+        expect(result.answer).toContain('does not specify salary information');
+        expect(result.answer).toContain(activeJob.sourceUrl);
+        expect(result.citations).toHaveLength(1);
+      }
+    });
+
+    it('answers career questions in Amharic with Amharic citations', async () => {
+      const update: TelegramUpdate = {
+        updateId: 205,
+        message: {
+          messageId: 14,
+          chat: { id: '987654321', type: 'private' },
+          from: { id: '987654321', isBot: false },
+          date: Math.floor(currentTime.getTime() / 1000),
+          text: 'ክፍት የሥራ መደቦች አሉ?',
+        },
+      };
+
+      const result = await service.handleWebhookUpdate(update, webhookSecret);
+      expect(result.status).toBe('answered');
+      if (result.status === 'answered') {
+        expect(result.answerLang).toBe('am');
+        expect(result.answer).toContain('በአሁኑ ወቅት ክፍት የሆኑ የተረጋገጡ የሥራ መደቦች');
+        expect(result.citations.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('enforces channel identity and rejects unlinked Telegram users from accessing job records', async () => {
+      const unlinkedUpdate: TelegramUpdate = {
+        updateId: 206,
+        message: {
+          messageId: 15,
+          chat: { id: '444444444', type: 'private' },
+          from: { id: '444444444', isBot: false },
+          date: Math.floor(currentTime.getTime() / 1000),
+          text: 'What jobs are available?',
+        },
+      };
+
+      const result = await service.handleWebhookUpdate(unlinkedUpdate, webhookSecret);
+      expect(result.status).toBe('unauthenticated');
+    });
+
+    it('rejects job questions sent to unapproved group chats or from bots', async () => {
+      const groupUpdate: TelegramUpdate = {
+        updateId: 207,
+        message: {
+          messageId: 16,
+          chat: { id: '-100888888', type: 'supergroup', title: 'Open Jobs Group' },
+          from: { id: '987654321', isBot: false },
+          date: Math.floor(currentTime.getTime() / 1000),
+          text: 'What jobs are available?',
+        },
+      };
+
+      const groupResult = await service.handleWebhookUpdate(groupUpdate, webhookSecret);
+      expect(groupResult.status).toBe('rejected');
+      if (groupResult.status === 'rejected') {
+        expect(groupResult.reason).toBe('group_chats_not_allowed');
+      }
+
+      const botUpdate: TelegramUpdate = {
+        updateId: 208,
+        message: {
+          messageId: 17,
+          chat: { id: '987654321', type: 'private' },
+          from: { id: '987654321', isBot: true },
+          date: Math.floor(currentTime.getTime() / 1000),
+          text: 'What jobs are available?',
+        },
+      };
+
+      const botResult = await service.handleWebhookUpdate(botUpdate, webhookSecret);
+      expect(botResult.status).toBe('rejected');
+      if (botResult.status === 'rejected') {
+        expect(botResult.reason).toBe('bots_not_allowed');
+      }
+    });
+
+    it('enforces replay prevention: duplicate update_id returns identical result without re-evaluating use case', async () => {
+      const answerSpy = vi.spyOn(jobAnswers, 'answer');
+
+      const update: TelegramUpdate = {
+        updateId: 301,
+        message: {
+          messageId: 20,
+          chat: { id: '987654321', type: 'private' },
+          from: { id: '987654321', isBot: false },
+          date: Math.floor(currentTime.getTime() / 1000),
+          text: 'What jobs are available?',
+        },
+      };
+
+      // First delivery
+      const first = await service.handleWebhookUpdate(update, webhookSecret);
+      expect(first.status).toBe('answered');
+      expect(answerSpy).toHaveBeenCalledTimes(1);
+
+      // Replayed delivery with exact same updateId
+      const second = await service.handleWebhookUpdate(update, webhookSecret);
+      expect(second.status).toBe('answered');
+      if (second.status === 'answered') {
+        expect(second.replayed).toBe(true);
+        expect(second.answer).toBe((first as { answer: string }).answer);
+      }
+      // jobAnswers.answer must NOT have been called again!
+      expect(answerSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('enforces shared rate limits across channel requests', async () => {
+      // Configure rate limiter with small limit of 2 requests
+      const testLimiter = new SlidingWindowRateLimiter(2, 60_000, now);
+      service = new TelegramLinkService(repository, {
+        webhookSecret,
+        botToken,
+        jobAnswers,
+        rateLimiter: testLimiter,
+        now,
+      });
+
+      const makeUpdate = (id: number): TelegramUpdate => ({
+        updateId: id,
+        message: {
+          messageId: id,
+          chat: { id: '987654321', type: 'private' },
+          from: { id: '987654321', isBot: false },
+          date: Math.floor(currentTime.getTime() / 1000),
+          text: 'What jobs are available?',
+        },
+      });
+
+      // Request 1 -> allowed
+      const res1 = await service.handleWebhookUpdate(makeUpdate(401), webhookSecret);
+      expect(res1.status).toBe('answered');
+
+      // Request 2 -> allowed
+      const res2 = await service.handleWebhookUpdate(makeUpdate(402), webhookSecret);
+      expect(res2.status).toBe('answered');
+
+      // Request 3 -> rate limited!
+      const res3 = await service.handleWebhookUpdate(makeUpdate(403), webhookSecret);
+      expect(res3.status).toBe('rate_limited');
+      if (res3.status === 'rate_limited') {
+        expect(res3.message).toContain('Too many requests');
+        expect(res3.retryAfterSec).toBeGreaterThan(0);
+      }
+    });
+
+    it('revoking identity (/unlink) immediately cuts off job answer access', async () => {
+      const askUpdate: TelegramUpdate = {
+        updateId: 501,
+        message: {
+          messageId: 30,
+          chat: { id: '987654321', type: 'private' },
+          from: { id: '987654321', isBot: false },
+          date: Math.floor(currentTime.getTime() / 1000),
+          text: 'What jobs are available?',
+        },
+      };
+
+      const before = await service.handleWebhookUpdate(askUpdate, webhookSecret);
+      expect(before.status).toBe('answered');
+
+      // User revokes link via /unlink
+      const unlinkUpdate: TelegramUpdate = {
+        updateId: 502,
+        message: {
+          messageId: 31,
+          chat: { id: '987654321', type: 'private' },
+          from: { id: '987654321', isBot: false },
+          date: Math.floor(currentTime.getTime() / 1000),
+          text: '/unlink',
+        },
+      };
+      await service.handleWebhookUpdate(unlinkUpdate, webhookSecret);
+
+      // Subsequent job question is unauthenticated
+      const after = await service.handleWebhookUpdate(
+        {
+          updateId: 503,
+          message: {
+            messageId: 32,
+            chat: { id: '987654321', type: 'private' },
+            from: { id: '987654321', isBot: false },
+            date: Math.floor(currentTime.getTime() / 1000),
+            text: 'What jobs are available?',
+          },
+        },
+        webhookSecret,
+      );
+      expect(after.status).toBe('unauthenticated');
     });
   });
 });
