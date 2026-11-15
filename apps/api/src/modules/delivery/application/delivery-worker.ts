@@ -32,13 +32,15 @@ export interface DispatchPort {
   dispatch(intent: ClaimedDeliveryIntent, now?: Date): Promise<DispatchOutcome>;
 }
 
-export type ProcessAction = 'complete' | 'release' | 'abandon';
+export type ProcessAction = 'complete' | 'release' | 'abandon' | 'fail';
 
 export interface DeliveryWorkerOptions {
   readonly workerId: string;
   readonly intents: DeliveryIntentsPort;
   readonly batchSize?: number;
   readonly leaseDurationMs?: number;
+  readonly maxAttempts?: number;
+  readonly onTerminalFailure?: (intent: ClaimedDeliveryIntent, reason?: string) => void;
 }
 
 export interface BatchProcessingResult {
@@ -46,6 +48,7 @@ export interface BatchProcessingResult {
   readonly completed: number;
   readonly released: number;
   readonly abandoned: number;
+  readonly failed?: number;
 }
 
 export interface DispatchBatchResult {
@@ -65,12 +68,17 @@ export class DeliveryWorker {
   readonly #intents: DeliveryIntentsPort;
   readonly #batchSize: number;
   readonly #leaseDurationMs: number;
+  readonly #maxAttempts: number | undefined;
+  readonly #onTerminalFailure:
+    ((intent: ClaimedDeliveryIntent, reason?: string) => void) | undefined;
 
   constructor(options: DeliveryWorkerOptions) {
     this.workerId = options.workerId;
     this.#intents = options.intents;
     this.#batchSize = options.batchSize ?? DEFAULT_CLAIM_BATCH_SIZE;
     this.#leaseDurationMs = options.leaseDurationMs ?? DEFAULT_LEASE_DURATION_MS;
+    this.#maxAttempts = options.maxAttempts;
+    this.#onTerminalFailure = options.onTerminalFailure;
   }
 
   /**
@@ -101,10 +109,21 @@ export class DeliveryWorker {
     let completed = 0;
     let released = 0;
     let abandoned = 0;
+    let failed = 0;
 
     for (const intent of claimed) {
       try {
-        const action = await handler(intent);
+        let action = await handler(intent);
+
+        // Transition to terminal failure if retry threshold reached on requested release
+        if (
+          action === 'release' &&
+          this.#maxAttempts !== undefined &&
+          intent.attemptCount >= this.#maxAttempts
+        ) {
+          action = 'fail';
+        }
+
         if (action === 'complete') {
           const outcome = await this.#intents.complete(intent.id, this.workerId, now);
           if (outcome.status === 'completed') completed++;
@@ -113,6 +132,21 @@ export class DeliveryWorker {
           const outcome = await this.#intents.release(intent.id, this.workerId);
           if (outcome.status === 'released') released++;
           else abandoned++;
+        } else if (action === 'fail') {
+          if (this.#intents.fail) {
+            const outcome = await this.#intents.fail(intent.id, this.workerId, now);
+            if (outcome.status === 'failed') {
+              failed++;
+              this.#onTerminalFailure?.(
+                intent,
+                `Terminal failure reached after ${intent.attemptCount} attempts`,
+              );
+            } else {
+              abandoned++;
+            }
+          } else {
+            abandoned++;
+          }
         } else {
           abandoned++;
         }
@@ -122,7 +156,16 @@ export class DeliveryWorker {
       }
     }
 
-    return { claimed: claimed.length, completed, released, abandoned };
+    const result: BatchProcessingResult = {
+      claimed: claimed.length,
+      completed,
+      released,
+      abandoned,
+    };
+    if (this.#maxAttempts !== undefined || failed > 0) {
+      return { ...result, failed };
+    }
+    return result;
   }
 
   /**

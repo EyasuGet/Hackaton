@@ -34,4 +34,9 @@ export interface PhoneVerificationRepository {
    * Records a verified phone number mapping for a learner upon successful challenge verification.
    */
   markPhoneVerified(learnerId: string, phoneNumber: string, verifiedAt: Date): Promise<void>;
+
+  /**
+   * Purges expired or exhausted verification challenges as of `now`.
+   */
+  purgeExpired?(now: Date): Promise<number>;
 }

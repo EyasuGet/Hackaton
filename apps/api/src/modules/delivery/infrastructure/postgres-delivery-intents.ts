@@ -200,7 +200,7 @@ export class PostgresDeliveryIntents {
   }
 
   /**
-   * Marks a leased intent as permanently failed; no further dispatch will be attempted.
+   * Marks a leased intent as permanently failed (dead letter); no further dispatch will be attempted.
    * Fencing check: only succeeds if the lease is still held by the caller.
    */
   async fail(id: string, workerId: string, now: Date): Promise<FailOutcome> {

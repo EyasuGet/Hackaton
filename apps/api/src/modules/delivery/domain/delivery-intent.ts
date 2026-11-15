@@ -104,7 +104,6 @@ export type MarkUncertainOutcome =
   | { readonly status: 'uncertain' }
   | { readonly status: 'lost_lease' }
   | { readonly status: 'not_found' };
-
 export type CancelLeasedOutcome =
   | { readonly status: 'cancelled' }
   | { readonly status: 'lost_lease' }

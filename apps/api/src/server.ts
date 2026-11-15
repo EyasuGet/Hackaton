@@ -66,6 +66,7 @@ const telegramService = new TelegramLinkService(telegramLinkRepository, {
   botToken: config.telegram.botToken,
   jobPreferencesRepository: jobPreferencesRepo,
   telegramClient,
+  jobAnswers,
 });
 
 const app = buildApp(
