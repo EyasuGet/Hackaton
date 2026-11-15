@@ -46,8 +46,13 @@ async function expectNoSeriousViolations(
 
 async function signIn(page: Page, principal: string, width = 1280) {
   await page.setViewportSize({ width, height: 900 });
+  await page.goto('about:blank');
   await page.goto(`/#handoff=${newHandoffCode(principal)}`);
   await expect(page.getByRole('status', { name: 'Sign-in status' })).toContainText('Signed in');
+  if ((await page.locator('html').getAttribute('lang')) !== 'en') {
+    await page.getByRole('button', { name: 'English' }).click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  }
 }
 
 async function useAmharic(page: Page) {
@@ -76,7 +81,7 @@ const PANELS = {
     'Your help requests',
     'Request interview accommodation',
   ],
-  support: ['Your help requests', 'Accommodation Coordinator Inbox'],
+  support: ['Your help requests', 'Accommodation Coordinator Inbox', 'Support Help Queue'],
   teacher: ['Frequently asked topics'],
   employer: ['Employer Recruitment Portal'],
 };
@@ -93,6 +98,8 @@ for (const [principal, headings] of Object.entries(PANELS)) {
         }
         const portal = page.getByRole('heading', { name: 'Employer Recruitment Portal' });
         if (principal !== 'employer') await expect(portal).toHaveCount(0);
+        const supportQueue = page.getByRole('heading', { name: 'Support Help Queue' });
+        if (principal !== 'support') await expect(supportQueue).toHaveCount(0);
         if (locale === 'am') await useAmharic(page);
         await expectNoSeriousViolations(page, testInfo, `${principal}-${locale}-${width}`);
       });
@@ -177,6 +184,11 @@ test('reply threads, screen sharing and the coordinator inbox have no serious vi
     data: { clientReplyId: randomUUID(), body: 'Synthetic support reply.' },
   });
   expect(supportReply.ok()).toBe(true);
+  const waitingCreated = await request.post('/api/help/requests', {
+    headers: learner,
+    data: { clientRequestId: randomUUID(), contextSnapshot: 'Synthetic: waiting in queue.' },
+  });
+  expect(waitingCreated.ok()).toBe(true);
   const jobsResponse = await request.get('/api/jobs', { headers: learner });
   const [job] = ((await jobsResponse.json()) as { jobs: { id: string }[] }).jobs;
   expect(job, 'an approved active job exists').toBeDefined();
@@ -199,9 +211,11 @@ test('reply threads, screen sharing and the coordinator inbox have no serious vi
   await useAmharic(page);
   await expectNoSeriousViolations(page, testInfo, 'learner-claimed-thread-share-am-320');
 
-  // Support: coordinator inbox showing the pending request.
+  // Support: coordinator inbox showing the pending request and support queue showing waiting and claimed.
   await signIn(page, 'support');
   await expect(page.getByText('Synthetic: extra time.').first()).toBeVisible();
+  await expect(page.getByText('Synthetic: stuck on planning.').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /claim/i }).first()).toBeVisible();
   await expectNoSeriousViolations(page, testInfo, 'coordinator-request-en-1280');
   await page.setViewportSize({ width: 320, height: 900 });
   await useAmharic(page);

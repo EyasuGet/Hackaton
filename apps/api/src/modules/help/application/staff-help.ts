@@ -28,6 +28,16 @@ export class StaffHelp {
   }
 
   /**
+   * Returns non-expired requests claimed by the support principal, newest first.
+   * Includes the learner's contextSnapshot.
+   * Returns null for non-support principals.
+   */
+  async listAssigned(principal: Principal): Promise<readonly HelpRequest[] | null> {
+    if (principal.role !== 'support') return null;
+    return this.#repository.listAssigned(principal.id);
+  }
+
+  /**
    * Atomically claims a waiting request for the given support principal.
    * Returns the full request (including contextSnapshot) on success.
    * Returns null for non-support principals or when the request is not found

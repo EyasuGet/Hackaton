@@ -346,6 +346,12 @@ class InMemoryHelpRepository implements HelpRepository {
     );
   }
 
+  listAssigned(staffId: string): Promise<readonly HelpRequest[]> {
+    return Promise.resolve(
+      [...this.requests.values()].filter((r) => r.claimedBy === staffId && r.state === 'claimed'),
+    );
+  }
+
   claimRequest(id: string, staffId: string): Promise<HelpClaimResult | null> {
     const req = this.requests.get(id);
     if (!req || req.state !== 'waiting') return Promise.resolve(null);

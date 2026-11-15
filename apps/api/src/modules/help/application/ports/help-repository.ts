@@ -72,6 +72,12 @@ export interface HelpRepository {
   listQueue(): Promise<readonly QueueItem[]>;
 
   /**
+   * Lists non-expired requests claimed by the specified staff member, newest first.
+   * Scoped strictly to the claiming staff member; includes contextSnapshot.
+   */
+  listAssigned(staffId: string): Promise<readonly HelpRequest[]>;
+
+  /**
    * Atomically transitions a waiting request to claimed, assigning staffId.
    * Returns `claimed` with the full request (including contextSnapshot) when
    * the transition succeeds, or `already_claimed` with the existing record

@@ -2753,6 +2753,10 @@ describe('Telegram One-Tap Human Help (T3-041)', () => {
       return Promise.resolve([]);
     }
 
+    listAssigned(): Promise<readonly HelpRequest[]> {
+      return Promise.resolve([]);
+    }
+
     claimRequest(): Promise<HelpClaimResult | null> {
       return Promise.resolve(null);
     }

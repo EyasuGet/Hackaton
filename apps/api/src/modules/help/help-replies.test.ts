@@ -118,6 +118,17 @@ class InMemoryHelpRepository implements HelpRepository {
     return Promise.resolve(items);
   }
 
+  listAssigned(staffId: string): Promise<readonly HelpRequest[]> {
+    const now = Date.now();
+    const list = [...this.requests.values()]
+      .filter(
+        (r) =>
+          r.claimedBy === staffId && r.state === 'claimed' && new Date(r.expiresAt).getTime() > now,
+      )
+      .sort((a, b) => (b.claimedAt ?? b.createdAt).localeCompare(a.claimedAt ?? a.createdAt));
+    return Promise.resolve(list);
+  }
+
   claimRequest(id: string, staffId: string): Promise<ClaimResult | null> {
     const req = this.requests.get(id);
     if (!req) return Promise.resolve(null);
