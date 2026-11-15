@@ -312,6 +312,60 @@ describe('Assistant', () => {
     expect([prefix?.textContent, prefix?.getAttribute('lang')]).toEqual(['ረዳት፦ ', 'am']);
   });
 
+  it('renders online mode notice and labels assistant as online AI in mode="online"', async () => {
+    const { client, respond } = controllableClient();
+    render(<Assistant client={client} mode="online" />);
+
+    expect(screen.getByRole('note').textContent).toContain(
+      'Operating in consented online answer mode',
+    );
+
+    type('What is an AI task?');
+    fireEvent.keyDown(questionBox(), { key: 'Enter' });
+    await respond({
+      kind: 'answer',
+      reply: {
+        id: 'r-online-1',
+        text: 'AI tools assist with drafting notes [artificial-intelligence-and-the-future-of-va-work].',
+        lang: 'en',
+        createdAt: '2026-09-11T12:00:00.000Z',
+        provider: 'online',
+      },
+    });
+
+    const messages = screen.getAllByRole('listitem').map((item) => item.textContent);
+    expect(messages[1]).toContain('Assistant (online AI)');
+  });
+
+  it('renders consent toggle and switches mode without losing the typed question', () => {
+    const { client } = controllableClient();
+    const onConsentChange = vi.fn();
+    const { rerender } = render(
+      <Assistant client={client} mode="faq" consent={false} onConsentChange={onConsentChange} />,
+    );
+
+    const checkbox = screen.getByLabelText<HTMLInputElement>(
+      'Allow external AI processing for course questions',
+    );
+    expect(checkbox.checked).toBe(false);
+    expect(screen.getByRole('note').textContent).toContain('Operating in approved course FAQ mode');
+
+    type('Unsent question remains intact');
+    fireEvent.click(checkbox);
+    expect(onConsentChange).toHaveBeenCalledWith(true);
+
+    // Parent rerenders with consent=true and mode="online"
+    rerender(
+      <Assistant client={client} mode="online" consent={true} onConsentChange={onConsentChange} />,
+    );
+
+    expect(checkbox.checked).toBe(true);
+    expect(screen.getByRole('note').textContent).toContain(
+      'Operating in consented online answer mode',
+    );
+    expect(questionBox()).toHaveProperty('value', 'Unsent question remains intact');
+  });
+
   describe('Spoken answers (T3-011)', () => {
     async function clickButton(button: HTMLElement) {
       await act(async () => {

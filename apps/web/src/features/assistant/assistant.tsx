@@ -76,12 +76,14 @@ function MessageDate({
 
 export interface AssistantProps {
   readonly client: ConversationClient;
-  readonly mode?: 'demo' | 'faq';
+  readonly mode?: 'demo' | 'faq' | 'online';
   readonly speechSynthesizer?: SpeechSynthesizer;
   readonly cloudSynthesizer?: SpeechSynthesizer;
   readonly defaultSpeechEngine?: 'client' | 'cloud';
   readonly defaultCloudConsent?: boolean;
   readonly onCloudConsentChange?: (consented: boolean) => void;
+  readonly consent?: boolean;
+  readonly onConsentChange?: (consented: boolean) => void;
 }
 
 export function Assistant({
@@ -92,6 +94,8 @@ export function Assistant({
   defaultSpeechEngine = 'client',
   defaultCloudConsent = false,
   onCloudConsentChange,
+  consent,
+  onConsentChange,
 }: AssistantProps) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [draft, setDraft] = useState('');
@@ -123,6 +127,8 @@ export function Assistant({
     hint: useId(),
     problem: useId(),
     heading: useId(),
+    consent: useId(),
+    consentHint: useId(),
     speechEngine: useId(),
   };
   const t = useT();
@@ -349,6 +355,30 @@ export function Assistant({
         </p>
       )}
 
+      {mode === 'online' && (
+        <p className="assistant-mode-notice" role="note">
+          <T k="assistant.onlineModeNotice" />
+        </p>
+      )}
+
+      {onConsentChange && (
+        <div className="assistant-consent-control">
+          <label htmlFor={ids.consent}>
+            <input
+              id={ids.consent}
+              type="checkbox"
+              checked={consent ?? false}
+              aria-describedby={ids.consentHint}
+              onChange={(e) => onConsentChange(e.target.checked)}
+            />
+            <T k="assistant.consentLabel" />
+          </label>
+          <p id={ids.consentHint} className="hint">
+            <T k="assistant.consentHint" />
+          </p>
+        </div>
+      )}
+
       {/* Speech preferences and cloud consent (T3-011) */}
       <div
         className="speech-settings"
@@ -425,9 +455,11 @@ export function Assistant({
                     k={
                       entry.speaker === 'learner'
                         ? 'assistant.speakerLearner'
-                        : mode === 'faq'
-                          ? 'assistant.speakerFaq'
-                          : 'assistant.speakerAssistant'
+                        : mode === 'online'
+                          ? 'assistant.speakerOnline'
+                          : mode === 'faq'
+                            ? 'assistant.speakerFaq'
+                            : 'assistant.speakerAssistant'
                     }
                   />
                 </p>

@@ -28,6 +28,7 @@ import { PostgresHelpRepository } from './modules/help/infrastructure/persistenc
 import { Sharing } from './modules/sharing/application/sharing.ts';
 import { PostgresHelpRequestLookup } from './modules/sharing/infrastructure/persistence/postgres-help-request-lookup.ts';
 import { PostgresSharingRepository } from './modules/sharing/infrastructure/persistence/postgres-sharing-repository.ts';
+import { GeminiGroundedAnswerProvider } from './evaluations/grounding/provider-adapter.ts';
 import { FaqProvider } from './modules/tutoring/application/faq-provider.ts';
 import { Tutoring } from './modules/tutoring/application/tutoring.ts';
 import { PostgresTutoringRepository } from './modules/tutoring/infrastructure/persistence/postgres-tutoring-repository.ts';
@@ -42,6 +43,7 @@ const pool = createPool(config.database, (error) =>
 );
 const content = new ContentAccess(new PostgresLessonReader(pool), glossary);
 const faqProvider = new FaqProvider(content);
+const onlineProvider = new GeminiGroundedAnswerProvider();
 const helpRepository = new PostgresHelpRepository(pool);
 const sharingRepository = new PostgresSharingRepository(pool);
 const helpRequestLookup = new PostgresHelpRequestLookup(pool);
@@ -54,7 +56,12 @@ const app = buildApp(
     demoRecords: new DemoRecords(new PostgresDemoRecordRepository(pool)),
     demoSessions: new DemoSessions(new PostgresDemoSessionRepository(pool), config.demoMode),
     demoAllowedOrigins: config.demoAllowedOrigins,
-    tutoring: new Tutoring(new PostgresTutoringRepository(pool), faqProvider),
+    tutoring: new Tutoring(
+      new PostgresTutoringRepository(pool),
+      faqProvider,
+      onlineProvider,
+      content,
+    ),
     content,
     help: new Help(helpRepository),
     staffHelp: new StaffHelp(helpRepository),

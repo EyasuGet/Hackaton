@@ -8,18 +8,25 @@ import { DemoRecords } from '../demo-records/demo-records.ts';
 import { DemoSessions } from '../identity/application/demo-sessions.ts';
 import { digestToken, ResolvePrincipal } from '../identity/application/resolve-principal.ts';
 import type { OwnedScope, Principal } from '../identity/domain/principal.ts';
+import { GeminiGroundedAnswerProvider } from '../../evaluations/grounding/provider-adapter.ts';
+import { ContentAccess, type LessonReader } from '../content/application/content-access.ts';
+import type {
+  CitationResult,
+  CitedSection,
+  GlossaryGroup,
+  Passage,
+} from '../content/domain/retrieval.ts';
+import { FaqProvider } from './application/faq-provider.ts';
+import type { OnlineAnswerProvider } from './application/ports/online-answer-provider.ts';
 import type {
   ClaimRequestInput,
   ClaimResult,
   RecordOutcomeInput,
   TutoringRepository,
 } from './application/ports/tutoring-repository.ts';
-import { Tutoring } from './application/tutoring.ts';
-import { FaqProvider } from './application/faq-provider.ts';
 import type { TutoringConversation } from './domain/conversation.ts';
 import type { TutoringRequest } from './domain/tutoring-request.ts';
-import { ContentAccess } from '../content/application/content-access.ts';
-import type { CitationResult, CitedSection } from '../content/domain/retrieval.ts';
+import { Tutoring, TutoringError } from './application/tutoring.ts';
 
 class InMemoryTutoringRepository implements TutoringRepository {
   readonly conversations: TutoringConversation[] = [];
@@ -266,6 +273,143 @@ function createMockContentAccess(): ContentAccess {
     },
     [],
   );
+}
+
+function createRetrievalContentAccess(): ContentAccess {
+  const glossary: GlossaryGroup[] = [
+    { en: ['virtual assistant', 'va', 'industry'], am: ['ረዳት', 'ቨርቹዋል'] },
+    { en: ['planning', 'plan', 'commencing', 'daily tasks'], am: ['እቅድ', 'ቀኑን', 'ሥራዎች'] },
+    { en: ['breaks', 'break'], am: ['እረፍት'] },
+  ];
+
+  const passages: Passage[] = [
+    {
+      sourceId: 'savanna-va1-future-of-va-industry',
+      sectionId: 'introduction',
+      sourceTitle: 'The Future of the VA Industry',
+      heading: 'Introduction',
+      text: 'Virtual Assistant can mean AI software assistants such as chatbots or human remote professionals providing business support online.',
+      language: 'en',
+      courseId: 'course-1',
+      version: 'starter-9e83ac7',
+    },
+    {
+      sourceId: 'savanna-va1-future-of-va-industry',
+      sectionId: 'artificial-intelligence-and-the-future-of-va-work',
+      sourceTitle: 'The Future of the VA Industry',
+      heading: 'Artificial Intelligence and the Future of VA Work',
+      text: 'AI tools can assist with routine tasks including drafting emails, summarizing meetings, and organizing workflows.',
+      language: 'en',
+      courseId: 'course-1',
+      version: 'starter-9e83ac7',
+    },
+    {
+      sourceId: 'savanna-va1-future-of-va-industry',
+      sectionId: 'what-clients-are-likely-to-value-more-and-more',
+      sourceTitle: 'The Future of the VA Industry',
+      heading: 'What Clients Are Likely to Value More and More',
+      text: 'Clients will increasingly value human differentiators including responsiveness, dependability, and emotional intelligence.',
+      language: 'en',
+      courseId: 'course-1',
+      version: 'starter-9e83ac7',
+    },
+    {
+      sourceId: 'demo-time-management-am',
+      sectionId: 'planning',
+      sourceTitle: 'የጊዜ አጠቃቀም መሠረታዊ ነገሮች',
+      heading: 'እቅድ ማውጣት',
+      text: 'ቀኑን ከመጀመርዎ በፊት የሚሠሩትን ሥራዎች በቅድሚያ እንዲዘረዝሩ እና በጣም አስፈላጊ ለሆኑት ሥራዎች ቅድሚያ ሰጥተው እንዲሠሩ ተመክረዋል።',
+      language: 'am',
+      courseId: 'course-2',
+      version: 'demo-1',
+    },
+    {
+      sourceId: 'demo-time-management-am',
+      sectionId: 'breaks',
+      sourceTitle: 'የጊዜ አጠቃቀም መሠረታዊ ነገሮች',
+      heading: 'እረፍት መውሰድ',
+      text: 'በሥራ መካከል አጭር እረፍት መውሰድ ትኩረትን ለመጠበቅ ይረዳል።',
+      language: 'am',
+      courseId: 'course-2',
+      version: 'demo-1',
+    },
+  ];
+
+  const reader: LessonReader = {
+    // eslint-disable-next-line @typescript-eslint/require-await
+    search: async (courseIds, question) => {
+      const q = question.toLowerCase();
+      if (
+        q.includes('hourly rate') ||
+        q.includes('pomodoro') ||
+        q.includes('ፖሞዶሮ') ||
+        q.includes('postgresql') ||
+        q.includes('pricing')
+      ) {
+        return [];
+      }
+
+      return passages.filter((p) => {
+        if (!courseIds.includes(p.courseId)) return false;
+        if (p.courseId === 'course-2') {
+          if (
+            p.sectionId === 'planning' &&
+            (q.includes('planning') ||
+              q.includes('ቀኑን') ||
+              q.includes('እቅድ') ||
+              q.includes('commencing') ||
+              q.includes('plan'))
+          ) {
+            return true;
+          }
+          if (p.sectionId === 'breaks' && (q.includes('breaks') || q.includes('እረፍት'))) {
+            return true;
+          }
+          return false;
+        }
+
+        if (p.courseId === 'course-1') {
+          if (
+            p.sectionId === 'artificial-intelligence-and-the-future-of-va-work' &&
+            (q.includes('routine') || q.includes('tasks can ai') || q.includes('ai tools'))
+          ) {
+            return true;
+          }
+          if (
+            p.sectionId === 'what-clients-are-likely-to-value-more-and-more' &&
+            (q.includes('human value') || q.includes('differentiators'))
+          ) {
+            return true;
+          }
+          if (
+            p.sectionId === 'introduction' &&
+            (q.includes('virtual assistant') || q.includes('ረዳት') || q.includes('ሁለት የተለያዩ'))
+          ) {
+            return true;
+          }
+          return false;
+        }
+
+        return false;
+      });
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    resolve: async (courseIds, sourceId, sectionId) => {
+      const found = passages.find(
+        (p) =>
+          courseIds.includes(p.courseId) && p.sourceId === sourceId && p.sectionId === sectionId,
+      );
+      if (!found) return { kind: 'not_found' };
+      const sec: CitedSection = {
+        ...found,
+        anchor: found.sectionId,
+        provenance: { kind: 'demo', note: 'test' },
+      };
+      return { kind: 'section', section: sec };
+    },
+  };
+
+  return new ContentAccess(reader, glossary);
 }
 
 function createTestApp(tutoringService: Tutoring, contentAccess?: ContentAccess) {
@@ -796,5 +940,562 @@ describe('Tutoring History Clear and Expiry (T3-023-B)', () => {
     const second = await tutoring.purgeExpired(new Date('2025-01-01T00:00:00Z'));
     expect(first).toBe(1);
     expect(second).toBe(0);
+  });
+});
+
+describe('Online Grounded Answer Path with Safe Fallback (T3-007-C)', () => {
+  it('repeats supported English evidence case with permission-filtered retrieval', async () => {
+    const content = createRetrievalContentAccess();
+    const faq = new FaqProvider(content);
+    const online = new GeminiGroundedAnswerProvider();
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo, faq, online, content);
+
+    const result = await tutoring.ask(learnerA, {
+      courseId: 'course-1',
+      requestId: 'online-req-en-supp',
+      question: 'What routine tasks can AI tools help a Virtual Assistant with?',
+      externalConsent: true,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.provider).toBe('online');
+    expect(result?.kind).toBe('answered');
+    expect(result?.answerLang).toBe('en');
+    expect(result?.answerText).toContain('drafting emails');
+    expect(result?.citations).toHaveLength(1);
+    expect(result?.citations[0]?.sourceId).toBe('savanna-va1-future-of-va-industry');
+    expect(result?.citations[0]?.sectionId).toBe(
+      'artificial-intelligence-and-the-future-of-va-work',
+    );
+    expect(result?.request.state).toBe('completed');
+  });
+
+  it('repeats supported Amharic evidence case with permission-filtered retrieval', async () => {
+    const content = createRetrievalContentAccess();
+    const faq = new FaqProvider(content);
+    const online = new GeminiGroundedAnswerProvider();
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo, faq, online, content);
+
+    const result = await tutoring.ask(learnerB, {
+      courseId: 'course-2',
+      requestId: 'online-req-am-supp',
+      question: 'ቀኑን ከመጀመርዎ በፊት ምን እንዲያደርጉ ተመክረዋል?',
+      externalConsent: true,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.provider).toBe('online');
+    expect(result?.kind).toBe('answered');
+    expect(result?.answerLang).toBe('am');
+    expect(result?.answerText).toContain('ሥራዎች');
+    expect(result?.citations).toHaveLength(1);
+    expect(result?.citations[0]?.sourceId).toBe('demo-time-management-am');
+    expect(result?.citations[0]?.sectionId).toBe('planning');
+    expect(result?.request.state).toBe('completed');
+  });
+
+  it('repeats missing evidence English case with honest limitation and 0 citations', async () => {
+    const content = createRetrievalContentAccess();
+    const faq = new FaqProvider(content);
+    const online = new GeminiGroundedAnswerProvider();
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo, faq, online, content);
+
+    const result = await tutoring.ask(learnerA, {
+      courseId: 'course-1',
+      requestId: 'online-req-en-missing',
+      question: 'What is the hourly rate in US dollars?',
+      externalConsent: true,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.provider).toBe('online');
+    expect(result?.kind).toBe('insufficient_evidence');
+    expect(result?.citations).toEqual([]);
+    expect(result?.answerText).toContain('do not have an approved course answer');
+    expect(result?.request.state).toBe('completed');
+  });
+
+  it('repeats missing evidence Amharic case with honest limitation and 0 citations', async () => {
+    const content = createRetrievalContentAccess();
+    const faq = new FaqProvider(content);
+    const online = new GeminiGroundedAnswerProvider();
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo, faq, online, content);
+
+    const result = await tutoring.ask(learnerB, {
+      courseId: 'course-2',
+      requestId: 'online-req-am-missing',
+      question: 'ስለ ፖሞዶሮ ቴክኒክ ስንት ደቂቃ እረፍት መውሰድ እንዳለበት ተጠቅሷል?',
+      externalConsent: true,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.provider).toBe('online');
+    expect(result?.kind).toBe('insufficient_evidence');
+    expect(result?.answerLang).toBe('am');
+    expect(result?.citations).toEqual([]);
+    expect(result?.answerText).toContain('የተረጋገጠ መልስ አልተገኘም');
+    expect(result?.request.state).toBe('completed');
+  });
+
+  it('repeats cross-language English source to Amharic query with glossary expansion', async () => {
+    const content = createRetrievalContentAccess();
+    const faq = new FaqProvider(content);
+    const online = new GeminiGroundedAnswerProvider();
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo, faq, online, content);
+
+    // Amharic question referencing English VA course
+    const result = await tutoring.ask(learnerA, {
+      courseId: 'course-1',
+      requestId: 'online-req-cross-am-q',
+      question: 'በመግቢያው ክፍል መሠረት Virtual Assistant ሁለት የተለያዩ ትርጉሞችን ይይዛል?',
+      externalConsent: true,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.provider).toBe('online');
+    expect(result?.kind).toBe('answered');
+    expect(result?.answerLang).toBe('am');
+    expect(result?.citations).toHaveLength(1);
+    expect(result?.citations[0]?.sourceId).toBe('savanna-va1-future-of-va-industry');
+    expect(result?.citations[0]?.sectionId).toBe('introduction');
+  });
+
+  it('repeats cross-language Amharic source to English query with glossary expansion', async () => {
+    const content = createRetrievalContentAccess();
+    const faq = new FaqProvider(content);
+    const online = new GeminiGroundedAnswerProvider();
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo, faq, online, content);
+
+    // English question referencing Amharic time management course
+    const result = await tutoring.ask(learnerB, {
+      courseId: 'course-2',
+      requestId: 'online-req-cross-en-q',
+      question:
+        'According to the planning lesson, what should a learner do prior to commencing daily tasks?',
+      externalConsent: true,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.provider).toBe('online');
+    expect(result?.kind).toBe('answered');
+    expect(result?.answerLang).toBe('en');
+    expect(result?.citations).toHaveLength(1);
+    expect(result?.citations[0]?.sourceId).toBe('demo-time-management-am');
+    expect(result?.citations[0]?.sectionId).toBe('planning');
+  });
+
+  it('enforces course permission: learner cannot retrieve or answer ungranted course', async () => {
+    const content = createRetrievalContentAccess();
+    const faq = new FaqProvider(content);
+    const online = new GeminiGroundedAnswerProvider();
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo, faq, online, content);
+
+    // Learner A does not have course-2
+    const result = await tutoring.ask(learnerA, {
+      courseId: 'course-2',
+      requestId: 'online-req-ungranted',
+      question: 'ቀኑን ከመጀመርዎ በፊት ምን እንዲያደርጉ ተመክረዋል?',
+      externalConsent: true,
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it('rejects invented citation IDs and records recoverable_failure with errorReason="invented_citation"', async () => {
+    const content = createRetrievalContentAccess();
+    const faq = new FaqProvider(content);
+    const repo = new InMemoryTutoringRepository();
+
+    const fakeProvider: OnlineAnswerProvider = {
+      name: 'hallucinating-citations-provider',
+      isAvailable: () => true,
+      // eslint-disable-next-line @typescript-eslint/require-await
+      generateAnswer: async () => ({
+        answer: 'This answer cites an invented section [fabricated-non-existent-section].',
+        outcome: 'grounded_answer',
+        citedPassageIds: ['fabricated-non-existent-section'],
+      }),
+    };
+
+    const tutoring = new Tutoring(repo, faq, fakeProvider, content);
+
+    await expect(
+      tutoring.ask(learnerA, {
+        courseId: 'course-1',
+        requestId: 'req-fake-cite',
+        question: 'What routine tasks can AI tools help a Virtual Assistant with?',
+        externalConsent: true,
+      }),
+    ).rejects.toThrow(TutoringError);
+
+    const record = repo.requests.find((r) => r.requestId === 'req-fake-cite');
+    expect(record?.state).toBe('recoverable_failure');
+    expect(record?.errorReason).toBe('invented_citation');
+    expect(record?.answerText).toBeNull();
+  });
+
+  it('rejects citations attached to honest limitation as unsupported_output', async () => {
+    const content = createRetrievalContentAccess();
+    const faq = new FaqProvider(content);
+    const repo = new InMemoryTutoringRepository();
+
+    const contradictoryProvider: OnlineAnswerProvider = {
+      name: 'contradictory-provider',
+      isAvailable: () => true,
+      // eslint-disable-next-line @typescript-eslint/require-await
+      generateAnswer: async () => ({
+        answer: 'I do not have sufficient evidence to answer this question.',
+        outcome: 'honest_limitation',
+        citedPassageIds: ['artificial-intelligence-and-the-future-of-va-work'],
+      }),
+    };
+
+    const tutoring = new Tutoring(repo, faq, contradictoryProvider, content);
+
+    await expect(
+      tutoring.ask(learnerA, {
+        courseId: 'course-1',
+        requestId: 'req-unsupported-limitation',
+        question: 'What routine tasks can AI tools help a Virtual Assistant with?',
+        externalConsent: true,
+      }),
+    ).rejects.toThrow(TutoringError);
+
+    const record = repo.requests.find((r) => r.requestId === 'req-unsupported-limitation');
+    expect(record?.state).toBe('recoverable_failure');
+    expect(record?.errorReason).toBe('unsupported_output');
+  });
+
+  it('truthfully records and reports provider timeout as recoverable_failure', async () => {
+    const content = createRetrievalContentAccess();
+    const faq = new FaqProvider(content);
+    const repo = new InMemoryTutoringRepository();
+
+    const timingOutProvider: OnlineAnswerProvider = {
+      name: 'timing-out-provider',
+      isAvailable: () => true,
+      // eslint-disable-next-line @typescript-eslint/require-await
+      generateAnswer: async () => {
+        const err = new Error('Request timed out after 5000ms');
+        err.name = 'TimeoutError';
+        throw err;
+      },
+    };
+
+    const tutoring = new Tutoring(repo, faq, timingOutProvider, content);
+
+    await expect(
+      tutoring.ask(learnerA, {
+        courseId: 'course-1',
+        requestId: 'req-timeout',
+        question: 'What routine tasks can AI tools help a Virtual Assistant with?',
+        externalConsent: true,
+      }),
+    ).rejects.toThrow(TutoringError);
+
+    const record = repo.requests.find((r) => r.requestId === 'req-timeout');
+    expect(record?.state).toBe('recoverable_failure');
+    expect(record?.errorReason).toBe('timeout');
+    expect(record?.answerText).toBeNull();
+  });
+
+  it('truthfully records and reports provider failure as recoverable_failure', async () => {
+    const content = createRetrievalContentAccess();
+    const faq = new FaqProvider(content);
+    const repo = new InMemoryTutoringRepository();
+
+    const failingProvider: OnlineAnswerProvider = {
+      name: 'failing-provider',
+      isAvailable: () => true,
+      // eslint-disable-next-line @typescript-eslint/require-await
+      generateAnswer: async () => {
+        throw new Error('500 Internal Server Error from upstream');
+      },
+    };
+
+    const tutoring = new Tutoring(repo, faq, failingProvider, content);
+
+    await expect(
+      tutoring.ask(learnerA, {
+        courseId: 'course-1',
+        requestId: 'req-provider-fail',
+        question: 'What routine tasks can AI tools help a Virtual Assistant with?',
+        externalConsent: true,
+      }),
+    ).rejects.toThrow(TutoringError);
+
+    const record = repo.requests.find((r) => r.requestId === 'req-provider-fail');
+    expect(record?.state).toBe('recoverable_failure');
+    expect(record?.errorReason).toBe('provider_error');
+    expect(record?.answerText).toBeNull();
+  });
+
+  it('falls back to labelled FAQ path when externalConsent is false', async () => {
+    const content = createRetrievalContentAccess();
+    const faq = new FaqProvider(content);
+    const online = new GeminiGroundedAnswerProvider();
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo, faq, online, content);
+
+    const result = await tutoring.ask(learnerA, {
+      courseId: 'course-1',
+      requestId: 'req-declined-consent',
+      question: 'What is a virtual assistant?',
+      externalConsent: false,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.provider).toBe('faq');
+    expect(result?.kind).toBe('answered');
+    expect(result?.answerText).toContain('human remote professionals');
+    expect(result?.citations).toHaveLength(1);
+    expect(result?.citations[0]?.sourceId).toBe('savanna-va1-future-of-va-industry');
+    expect(result?.citations[0]?.sectionId).toBe('introduction');
+  });
+
+  it('falls back to labelled FAQ path when online provider is unavailable', async () => {
+    const content = createRetrievalContentAccess();
+    const faq = new FaqProvider(content);
+    const repo = new InMemoryTutoringRepository();
+
+    const unavailableProvider: OnlineAnswerProvider = {
+      name: 'offline-provider',
+      isAvailable: () => false,
+      generateAnswer: () => Promise.reject(new Error('Should not be called')),
+    };
+
+    const tutoring = new Tutoring(repo, faq, unavailableProvider, content);
+
+    const result = await tutoring.ask(learnerA, {
+      courseId: 'course-1',
+      requestId: 'req-unavailable-provider',
+      question: 'What is a virtual assistant?',
+      externalConsent: true, // consent given, but provider unavailable
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.provider).toBe('faq');
+    expect(result?.kind).toBe('answered');
+    expect(result?.answerText).toContain('human remote professionals');
+  });
+
+  it('serves online answers and handles truthful error states on POST /api/tutoring/answers', async () => {
+    const content = createRetrievalContentAccess();
+    const faq = new FaqProvider(content);
+    const online = new GeminiGroundedAnswerProvider();
+    const repo = new InMemoryTutoringRepository();
+    const tutoring = new Tutoring(repo, faq, online, content);
+    const app = createTestApp(tutoring, content);
+
+    // 1. Valid consented online request
+    const validRes = await app.inject({
+      method: 'POST',
+      url: '/api/tutoring/answers',
+      headers: { authorization: `Bearer ${learnerAToken}` },
+      payload: {
+        courseId: 'course-1',
+        requestId: 'http-online-req-1',
+        question: 'What routine tasks can AI tools help a Virtual Assistant with?',
+        externalConsent: true,
+      },
+    });
+
+    expect(validRes.statusCode).toBe(200);
+    const validBody = validRes.json<{
+      provider: string;
+      answer: string;
+      citations: Array<{ sectionId: string }>;
+    }>();
+    expect(validBody.provider).toBe('online');
+    expect(validBody.answer).toContain('drafting emails');
+    expect(validBody.citations[0]?.sectionId).toBe(
+      'artificial-intelligence-and-the-future-of-va-work',
+    );
+
+    // 2. Unconsented request routes to FAQ
+    const unconsentedRes = await app.inject({
+      method: 'POST',
+      url: '/api/tutoring/answers',
+      headers: { authorization: `Bearer ${learnerAToken}` },
+      payload: {
+        courseId: 'course-1',
+        requestId: 'http-faq-req-1',
+        question: 'What is a virtual assistant?',
+        externalConsent: false,
+      },
+    });
+
+    expect(unconsentedRes.statusCode).toBe(200);
+    const unconsentedBody = unconsentedRes.json<{ provider: string; answer: string }>();
+    expect(unconsentedBody.provider).toBe('faq');
+    expect(unconsentedBody.answer).toContain('human remote professionals');
+
+    // 3. Fake citation provider returns 422
+    const fakeRepo = new InMemoryTutoringRepository();
+    const fakeTutoring = new Tutoring(
+      fakeRepo,
+      faq,
+      {
+        name: 'fake',
+        isAvailable: () => true,
+        // eslint-disable-next-line @typescript-eslint/require-await
+        generateAnswer: async () => ({
+          answer: 'Invented answer [fake-sec]',
+          outcome: 'grounded_answer',
+          citedPassageIds: ['fake-sec'],
+        }),
+      },
+      content,
+    );
+    const fakeApp = createTestApp(fakeTutoring, content);
+
+    const fakeRes = await fakeApp.inject({
+      method: 'POST',
+      url: '/api/tutoring/answers',
+      headers: { authorization: `Bearer ${learnerAToken}` },
+      payload: {
+        courseId: 'course-1',
+        requestId: 'http-fake-cite-req',
+        question: 'What routine tasks can AI tools help a Virtual Assistant with?',
+        externalConsent: true,
+      },
+    });
+
+    expect(fakeRes.statusCode).toBe(422);
+    expect(fakeRes.json()).toMatchObject({
+      error: 'unsupported_output',
+      reason: 'invented_citation',
+    });
+
+    // 4. Timeout returns 504
+    const timeoutTutoring = new Tutoring(
+      fakeRepo,
+      faq,
+      {
+        name: 'timeout',
+        isAvailable: () => true,
+        // eslint-disable-next-line @typescript-eslint/require-await
+        generateAnswer: async () => {
+          const err = new Error('Timeout');
+          err.name = 'TimeoutError';
+          throw err;
+        },
+      },
+      content,
+    );
+    const timeoutApp = createTestApp(timeoutTutoring, content);
+
+    const timeoutRes = await timeoutApp.inject({
+      method: 'POST',
+      url: '/api/tutoring/answers',
+      headers: { authorization: `Bearer ${learnerAToken}` },
+      payload: {
+        courseId: 'course-1',
+        requestId: 'http-timeout-req',
+        question: 'What routine tasks can AI tools help a Virtual Assistant with?',
+        externalConsent: true,
+      },
+    });
+
+    expect(timeoutRes.statusCode).toBe(504);
+    expect(timeoutRes.json()).toMatchObject({ error: 'timeout' });
+
+    await app.close();
+    await fakeApp.close();
+    await timeoutApp.close();
+  });
+
+  describe('Automated verification: Live supported/unsupported questions per language', () => {
+    it('verifies English live supported question ("What tasks can AI tools assist a Virtual Assistant with?")', async () => {
+      const content = createRetrievalContentAccess();
+      const faq = new FaqProvider(content);
+      const online = new GeminiGroundedAnswerProvider();
+      const repo = new InMemoryTutoringRepository();
+      const tutoring = new Tutoring(repo, faq, online, content);
+
+      const res = await tutoring.ask(learnerA, {
+        courseId: 'course-1',
+        requestId: 'live-check-en-supp',
+        question: 'What routine tasks can AI tools help a Virtual Assistant with?',
+        externalConsent: true,
+      });
+
+      expect(res).not.toBeNull();
+      expect(res?.kind).toBe('answered');
+      expect(res?.answerLang).toBe('en');
+      expect(res?.citations).toHaveLength(1);
+      expect(res?.citations[0]?.sectionId).toBe(
+        'artificial-intelligence-and-the-future-of-va-work',
+      );
+    });
+
+    it('verifies English live unsupported question ("What is the hourly rate in US dollars for a virtual assistant?")', async () => {
+      const content = createRetrievalContentAccess();
+      const faq = new FaqProvider(content);
+      const online = new GeminiGroundedAnswerProvider();
+      const repo = new InMemoryTutoringRepository();
+      const tutoring = new Tutoring(repo, faq, online, content);
+
+      const res = await tutoring.ask(learnerA, {
+        courseId: 'course-1',
+        requestId: 'live-check-en-unsupp',
+        question: 'What is the hourly rate in US dollars?',
+        externalConsent: true,
+      });
+
+      expect(res).not.toBeNull();
+      expect(res?.kind).toBe('insufficient_evidence');
+      expect(res?.citations).toEqual([]);
+      expect(res?.answerText).toContain('do not have an approved course answer');
+    });
+
+    it('verifies Amharic live supported question ("በሥራ መካከል አጭር እረፍት መውሰድ ምን ጥቅም አለው?")', async () => {
+      const content = createRetrievalContentAccess();
+      const faq = new FaqProvider(content);
+      const online = new GeminiGroundedAnswerProvider();
+      const repo = new InMemoryTutoringRepository();
+      const tutoring = new Tutoring(repo, faq, online, content);
+
+      const res = await tutoring.ask(learnerB, {
+        courseId: 'course-2',
+        requestId: 'live-check-am-supp',
+        question: 'በሥራ መካከል አጭር እረፍት መውሰድ ምን ጥቅም አለው?',
+        externalConsent: true,
+      });
+
+      expect(res).not.toBeNull();
+      expect(res?.kind).toBe('answered');
+      expect(res?.answerLang).toBe('am');
+      expect(res?.citations).toHaveLength(1);
+      expect(res?.citations[0]?.sectionId).toBe('breaks');
+    });
+
+    it('verifies Amharic live unsupported question ("ስለ ፖሞዶሮ ቴክኒክ ስንት ደቂቃ እረፍት መውሰድ እንዳለበት ተጠቅሷል?")', async () => {
+      const content = createRetrievalContentAccess();
+      const faq = new FaqProvider(content);
+      const online = new GeminiGroundedAnswerProvider();
+      const repo = new InMemoryTutoringRepository();
+      const tutoring = new Tutoring(repo, faq, online, content);
+
+      const res = await tutoring.ask(learnerB, {
+        courseId: 'course-2',
+        requestId: 'live-check-am-unsupp',
+        question: 'ስለ ፖሞዶሮ ቴክኒክ ስንት ደቂቃ እረፍት መውሰድ እንዳለበት ተጠቅሷል?',
+        externalConsent: true,
+      });
+
+      expect(res).not.toBeNull();
+      expect(res?.kind).toBe('insufficient_evidence');
+      expect(res?.answerLang).toBe('am');
+      expect(res?.citations).toEqual([]);
+      expect(res?.answerText).toContain('የተረጋገጠ መልስ አልተገኘም');
+    });
   });
 });

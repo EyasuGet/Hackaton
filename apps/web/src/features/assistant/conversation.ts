@@ -17,6 +17,7 @@ export interface Reply {
   /** Stored ISO 8601 instant; presentation must not rewrite it. */
   readonly createdAt: string;
   readonly citations?: readonly Citation[];
+  readonly provider?: 'online' | 'faq';
 }
 
 /**
