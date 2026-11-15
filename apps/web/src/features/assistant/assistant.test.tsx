@@ -827,6 +827,81 @@ describe('Assistant', () => {
     });
   });
 
+  describe('Learner-selected simple-language mode (T3-029)', () => {
+    it('is disabled by default and starts unchecked', () => {
+      const { client } = controllableClient();
+      render(<Assistant client={client} />);
+      const checkbox = screen.getByLabelText<HTMLInputElement>('Use simple, direct language');
+      expect(checkbox.checked).toBe(false);
+      expect(screen.queryByText(/Operating in simple-language mode/)).toBeNull();
+    });
+
+    it('toggles simple-language mode and invokes onSimpleLanguageChange callback', () => {
+      const { client } = controllableClient();
+      const onChange = vi.fn();
+      render(<Assistant client={client} onSimpleLanguageChange={onChange} />);
+
+      const checkbox = screen.getByLabelText<HTMLInputElement>('Use simple, direct language');
+      fireEvent.click(checkbox);
+      expect(checkbox.checked).toBe(true);
+      expect(onChange).toHaveBeenCalledWith(true);
+      expect(screen.getByText(/Operating in simple-language mode/)).toBeDefined();
+
+      fireEvent.click(checkbox);
+      expect(checkbox.checked).toBe(false);
+      expect(onChange).toHaveBeenCalledWith(false);
+      expect(screen.queryByText(/Operating in simple-language mode/)).toBeNull();
+    });
+
+    it('passes simpleLanguage option to client.ask when enabled', async () => {
+      const { client, ask, respond } = controllableClient();
+      render(<Assistant client={client} defaultSimpleLanguage={true} />);
+
+      const checkbox = screen.getByLabelText<HTMLInputElement>('Use simple, direct language');
+      expect(checkbox.checked).toBe(true);
+
+      type('What is photosynthesis?');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+      expect(ask).toHaveBeenCalledWith('What is photosynthesis?', { simpleLanguage: true });
+
+      await respond(citedEnglishAnswer);
+      expect(screen.getAllByText('Photosynthesis makes sugar.').length).toBeGreaterThan(0);
+      expect(screen.getByText(/Biology Basics — Photosynthesis Section/)).toBeDefined();
+    });
+
+    it('preserves question draft and conversation history when toggling mode', async () => {
+      const { client, respond } = controllableClient();
+      render(<Assistant client={client} />);
+
+      type('First question');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+      await respond(englishAnswer);
+
+      type('Unsent draft');
+
+      const checkbox = screen.getByLabelText<HTMLInputElement>('Use simple, direct language');
+      fireEvent.click(checkbox);
+
+      // Previous answer still in document
+      expect(screen.getAllByText('Photosynthesis makes sugar.').length).toBeGreaterThan(0);
+      // Unsent question draft preserved
+      expect((questionBox() as HTMLTextAreaElement).value).toBe('Unsent draft');
+    });
+
+    it('renders Amharic toggle label and notice in Amharic locale', () => {
+      const { client } = controllableClient();
+      render(
+        <LocaleContext value="am">
+          <Assistant client={client} defaultSimpleLanguage={true} />
+        </LocaleContext>,
+      );
+
+      const checkbox = screen.getByLabelText<HTMLInputElement>('ቀላል እና ግልጽ ቋንቋ ተጠቀም');
+      expect(checkbox.checked).toBe(true);
+      expect(screen.getByText(/በቀላል ቋንቋ ሁነታ ላይ ይሰራል/)).toBeDefined();
+    });
+  });
+
   describe('Career web research mode (T3-028-B)', () => {
     it('starts with research mode disabled by default and presents standard mode notice', () => {
       const { client } = controllableClient();
