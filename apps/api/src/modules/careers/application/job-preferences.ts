@@ -24,14 +24,14 @@ export class JobPreferences {
   ) {
     this.#repository = repository;
     if (secondArg && 'isPhoneVerified' in secondArg) {
-      this.#phoneVerificationService = secondArg as PhoneVerificationService;
+      this.#phoneVerificationService = secondArg;
     } else if (secondArg && 'findIdentityByLearnerId' in secondArg) {
-      this.#telegramLinkRepo = secondArg as TelegramLinkRepository;
+      this.#telegramLinkRepo = secondArg;
     }
     if (thirdArg && 'isPhoneVerified' in thirdArg) {
-      this.#phoneVerificationService = thirdArg as PhoneVerificationService;
+      this.#phoneVerificationService = thirdArg;
     } else if (thirdArg && 'findIdentityByLearnerId' in thirdArg) {
-      this.#telegramLinkRepo = thirdArg as TelegramLinkRepository;
+      this.#telegramLinkRepo = thirdArg;
     }
   }
 
