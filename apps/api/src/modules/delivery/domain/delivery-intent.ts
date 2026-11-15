@@ -10,6 +10,9 @@ export const DEDUP_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 /** Default lease duration for claiming delivery intents: 30 seconds. */
 export const DEFAULT_LEASE_DURATION_MS = 30 * 1000;
 
+/** After this many attempts an intent is permanently failed without further dispatch. */
+export const MAX_ATTEMPT_COUNT = 3;
+
 /** Default and max batch size for bounded worker claims. */
 export const DEFAULT_CLAIM_BATCH_SIZE = 10;
 export const MAX_CLAIM_BATCH_SIZE = 100;
@@ -81,6 +84,23 @@ export type CompleteOutcome =
 
 export type ReleaseOutcome =
   | { readonly status: 'released' }
+  | { readonly status: 'lost_lease' }
+  | { readonly status: 'not_found' };
+
+/** What a channel adapter reports back after attempting to send. */
+export type DispatchOutcome =
+  | { readonly status: 'sent' }
+  | { readonly status: 'failed' }
+  /** Adapter could not confirm delivery — the message may or may not have been sent. */
+  | { readonly status: 'uncertain' };
+
+export type FailOutcome =
+  | { readonly status: 'failed' }
+  | { readonly status: 'lost_lease' }
+  | { readonly status: 'not_found' };
+
+export type MarkUncertainOutcome =
+  | { readonly status: 'uncertain' }
   | { readonly status: 'lost_lease' }
   | { readonly status: 'not_found' };
 
