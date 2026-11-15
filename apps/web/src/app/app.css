@@ -611,7 +611,8 @@ button[aria-disabled='true'] {
 .vacancy-form textarea {
   width: 100%;
   padding: 0.5rem;
-  border: 1px solid #cbd5e1;
+  /* At least 3:1 against the form background so the fields can be found (WCAG 1.4.11). */
+  border: 2px solid var(--muted);
   border-radius: 4px;
   font-size: 0.9rem;
 }

@@ -1,20 +1,48 @@
 // Employer Recruitment Dashboard Component (T3-031).
 // Provides recruitment pipeline management strictly isolated from learner personal tutoring and accommodations.
+// Rendered only for the employer role (T3-050): other roles cannot use it, and seeing
+// "Consented Applicants" would confuse learners.
 import { useEffect, useState, type FormEvent } from 'react';
+import { T, useT, type MessageKey } from '../../shared/i18n/i18n.tsx';
 import { EmployerApi, type ConsentedApplication, type EmployerVacancy } from './employer-api.ts';
 
 interface EmployerDashboardProps {
   readonly sessionToken: string;
 }
 
+/** True once the API confirms the signed-in principal has the employer role. */
+function useIsEmployer(sessionToken: string): boolean {
+  const [isEmployer, setIsEmployer] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    setIsEmployer(false);
+    fetch('/api/me', {
+      headers: { authorization: `Bearer ${sessionToken}` },
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? (res.json() as Promise<{ role?: unknown }>) : null))
+      .then((me) => setIsEmployer(me?.role === 'employer'))
+      // Fail closed: an aborted or failed lookup leaves the portal hidden.
+      .catch(() => {});
+    return () => controller.abort();
+  }, [sessionToken]);
+  return isEmployer;
+}
+
 export function EmployerDashboard({ sessionToken }: EmployerDashboardProps) {
+  const isEmployer = useIsEmployer(sessionToken);
+  return isEmployer ? <EmployerPortal sessionToken={sessionToken} /> : null;
+}
+
+function EmployerPortal({ sessionToken }: EmployerDashboardProps) {
+  const t = useT();
   const [api] = useState(() => new EmployerApi(sessionToken));
   const [vacancies, setVacancies] = useState<readonly EmployerVacancy[]>([]);
   const [selectedVacancy, setSelectedVacancy] = useState<EmployerVacancy | null>(null);
   const [applications, setApplications] = useState<readonly ConsentedApplication[]>([]);
   const [privacyNotice, setPrivacyNotice] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<MessageKey | null>(null);
 
   // New vacancy form state
   const [title, setTitle] = useState('');
@@ -33,8 +61,8 @@ export function EmployerDashboard({ sessionToken }: EmployerDashboardProps) {
     try {
       const data = await api.listVacancies();
       setVacancies(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load vacancies');
+    } catch {
+      setError('employer.errorLoad');
     } finally {
       setIsLoading(false);
     }
@@ -48,8 +76,8 @@ export function EmployerDashboard({ sessionToken }: EmployerDashboardProps) {
       const data = await api.listApplications(vacancy.id);
       setApplications(data.applications);
       setPrivacyNotice(data.privacyNotice);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load applications');
+    } catch {
+      setError('employer.errorApplications');
     } finally {
       setIsLoading(false);
     }
@@ -58,7 +86,7 @@ export function EmployerDashboard({ sessionToken }: EmployerDashboardProps) {
   async function handleCreateVacancy(e: FormEvent) {
     e.preventDefault();
     if (!title.trim() || !description.trim()) {
-      setError('Title and description are required');
+      setError('employer.errorRequired');
       return;
     }
 
@@ -76,8 +104,8 @@ export function EmployerDashboard({ sessionToken }: EmployerDashboardProps) {
       setCategory('');
       setLocation('');
       setVacancies((prev) => [created, ...prev]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to post vacancy');
+    } catch {
+      setError('employer.errorPost');
     } finally {
       setIsSubmitting(false);
     }
@@ -86,26 +114,30 @@ export function EmployerDashboard({ sessionToken }: EmployerDashboardProps) {
   return (
     <div className="employer-dashboard" data-testid="employer-dashboard">
       <header className="employer-header">
-        <h2>Employer Recruitment Portal</h2>
-        <div className="privacy-banner" role="note" aria-label="Privacy Boundary Notice">
+        <h2>
+          <T k="employer.heading" />
+        </h2>
+        <div className="privacy-banner" role="note" aria-label={t('employer.privacyLabel')}>
           <p>
-            <strong>Strict Privacy Boundary:</strong> Employers only access job vacancies and
-            candidates who explicitly consented by submitting applications. Learner tutoring
-            conversations, disability accommodations, and non-consented profiles are strictly
-            inaccessible.
+            <strong>
+              <T k="employer.privacyTitle" />
+            </strong>{' '}
+            <T k="employer.privacyBody" />
           </p>
         </div>
       </header>
 
       {error && (
         <div className="alert-error" role="alert">
-          {error}
+          <T k={error} />
         </div>
       )}
 
       <div className="employer-grid">
         <section className="employer-section" aria-labelledby="post-vacancy-heading">
-          <h3 id="post-vacancy-heading">Post New Vacancy</h3>
+          <h3 id="post-vacancy-heading">
+            <T k="employer.postHeading" />
+          </h3>
           <form
             onSubmit={(e) => {
               void handleCreateVacancy(e);
@@ -113,64 +145,80 @@ export function EmployerDashboard({ sessionToken }: EmployerDashboardProps) {
             className="vacancy-form"
           >
             <div className="form-group">
-              <label htmlFor="vacancy-title">Role Title *</label>
+              <label htmlFor="vacancy-title">
+                <T k="employer.titleLabel" />
+              </label>
               <input
                 id="vacancy-title"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Junior Frontend Developer"
+                placeholder={t('employer.titlePlaceholder')}
                 required
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="vacancy-category">Category</label>
+              <label htmlFor="vacancy-category">
+                <T k="employer.categoryLabel" />
+              </label>
               <input
                 id="vacancy-category"
                 type="text"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                placeholder="e.g. Technology"
+                placeholder={t('employer.categoryPlaceholder')}
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="vacancy-location">Location</label>
+              <label htmlFor="vacancy-location">
+                <T k="employer.locationLabel" />
+              </label>
               <input
                 id="vacancy-location"
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. Addis Ababa / Remote"
+                placeholder={t('employer.locationPlaceholder')}
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="vacancy-description">Description *</label>
+              <label htmlFor="vacancy-description">
+                <T k="employer.descriptionLabel" />
+              </label>
               <textarea
                 id="vacancy-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe responsibilities and requirements"
+                placeholder={t('employer.descriptionPlaceholder')}
                 rows={4}
                 required
               />
             </div>
 
             <button type="submit" disabled={isSubmitting} className="btn-primary">
-              {isSubmitting ? 'Posting...' : 'Publish Vacancy'}
+              <T k={isSubmitting ? 'employer.posting' : 'employer.publish'} />
             </button>
           </form>
         </section>
 
         <section className="employer-section" aria-labelledby="vacancies-heading">
-          <h3 id="vacancies-heading">Your Vacancies</h3>
-          {isLoading && !selectedVacancy && <p>Loading vacancies...</p>}
+          <h3 id="vacancies-heading">
+            <T k="employer.vacanciesHeading" />
+          </h3>
+          {isLoading && !selectedVacancy && (
+            <p>
+              <T k="employer.loadingVacancies" />
+            </p>
+          )}
           {vacancies.length === 0 && !isLoading ? (
-            <p>No vacancies published yet.</p>
+            <p>
+              <T k="employer.noVacancies" />
+            </p>
           ) : (
-            <ul className="vacancy-list" aria-label="Vacancies">
+            <ul className="vacancy-list" aria-label={t('employer.vacanciesList')}>
               {vacancies.map((v) => (
                 <li
                   key={v.id}
@@ -179,11 +227,18 @@ export function EmployerDashboard({ sessionToken }: EmployerDashboardProps) {
                     void handleSelectVacancy(v);
                   }}
                 >
-                  <h4>{v.title}</h4>
+                  {/* Employer-typed text is in any language; the status is an English API value. */}
+                  <h4 dir="auto">{v.title}</h4>
                   <div className="vacancy-meta">
-                    <span className="badge">{v.category}</span>
-                    <span className="location">{v.location}</span>
-                    <span className="status">{v.status}</span>
+                    <span className="badge" dir="auto">
+                      {v.category}
+                    </span>
+                    <span className="location" dir="auto">
+                      {v.location}
+                    </span>
+                    <span className="status" lang="en">
+                      {v.status}
+                    </span>
                   </div>
                   <button
                     type="button"
@@ -193,7 +248,7 @@ export function EmployerDashboard({ sessionToken }: EmployerDashboardProps) {
                       void handleSelectVacancy(v);
                     }}
                   >
-                    View Consented Applicants
+                    <T k="employer.viewApplicants" />
                   </button>
                 </li>
               ))}
@@ -202,32 +257,45 @@ export function EmployerDashboard({ sessionToken }: EmployerDashboardProps) {
         </section>
 
         <section className="employer-section" aria-labelledby="applicants-heading">
-          <h3 id="applicants-heading">Consented Applicants</h3>
+          <h3 id="applicants-heading">
+            <T k="employer.applicantsHeading" />
+          </h3>
           {selectedVacancy ? (
             <div>
               <p className="selected-meta">
-                Showing candidates for: <strong>{selectedVacancy.title}</strong>
+                <T k="employer.showingFor" /> <strong>{selectedVacancy.title}</strong>
               </p>
-              {privacyNotice && <div className="notice-banner">{privacyNotice}</div>}
+              {/* The API supplies this notice in English only. */}
+              {privacyNotice && (
+                <div className="notice-banner" lang="en">
+                  {privacyNotice}
+                </div>
+              )}
               {applications.length === 0 ? (
-                <p>No candidates have applied yet.</p>
+                <p>
+                  <T k="employer.noApplicants" />
+                </p>
               ) : (
-                <ul className="application-list" aria-label="Candidate applications">
+                <ul className="application-list" aria-label={t('employer.applicationsList')}>
                   {applications.map((app) => (
                     <li key={app.id} className="application-card">
                       <h4>{app.learnerFullName}</h4>
                       <p>
-                        <strong>Contact:</strong> {app.contactChannel}
+                        <strong>
+                          <T k="employer.contact" />
+                        </strong>{' '}
+                        {app.contactChannel}
                       </p>
                       {app.resumeUrl && (
                         <p>
                           <a href={app.resumeUrl} target="_blank" rel="noopener noreferrer">
-                            View Candidate Resume
+                            <T k="employer.viewResume" />
                           </a>
                         </p>
                       )}
                       <p className="meta-text">
-                        Applied & Consented: {new Date(app.consentedAt).toLocaleDateString()}
+                        <T k="employer.consentedOn" />{' '}
+                        {new Date(app.consentedAt).toLocaleDateString()}
                       </p>
                     </li>
                   ))}
@@ -235,7 +303,9 @@ export function EmployerDashboard({ sessionToken }: EmployerDashboardProps) {
               )}
             </div>
           ) : (
-            <p>Select a vacancy above to view candidates who consented to share their profile.</p>
+            <p>
+              <T k="employer.selectPrompt" />
+            </p>
           )}
         </section>
       </div>
