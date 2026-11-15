@@ -31,7 +31,21 @@ export type AskResult =
   | { readonly kind: 'denied' }
   | { readonly kind: 'failed' };
 
+export type TranscriptionResult =
+  | {
+      readonly kind: 'transcribed';
+      readonly transcript: string;
+      readonly lang?: 'en' | 'am';
+    }
+  | { readonly kind: 'too_large' }
+  | { readonly kind: 'unsupported_format' }
+  | { readonly kind: 'denied' }
+  | { readonly kind: 'unavailable' }
+  | { readonly kind: 'failed' };
+
 export interface ConversationClient {
   /** Must not reject: report failures as `{ kind: 'failed' }`. */
   ask(question: string): Promise<AskResult>;
+  /** Optional audio transcription endpoint (T3-010-B). */
+  transcribe?(audioBase64: string, mimeType: string): Promise<TranscriptionResult>;
 }
