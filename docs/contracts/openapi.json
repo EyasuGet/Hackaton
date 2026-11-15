@@ -1814,6 +1814,60 @@
         }
       }
     },
+    "/api/help/assigned": {
+      "get": {
+        "tags": ["Human Help"],
+        "summary": "List assigned help requests for authenticated support staff",
+        "description": "Support staff endpoint returning non-expired requests claimed by the authenticated caller, including the learner's shared context snapshot.",
+        "operationId": "listAssignedHelpRequests",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of claimed help requests assigned to caller",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["requests"],
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/HelpRequest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: support role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/help/queue": {
       "get": {
         "tags": ["Human Help"],

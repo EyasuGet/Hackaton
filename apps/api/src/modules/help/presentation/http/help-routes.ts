@@ -105,6 +105,16 @@ export function registerHelpRoutes(
     return { queue };
   });
 
+  // Returns non-expired requests claimed by the authenticated support principal,
+  // newest first, including the learner's shared contextSnapshot.
+  // Staff-only: 403 for learners.
+  app.get('/api/help/assigned', supportOnly, async (request, reply) => {
+    const principal = principalOf(request);
+    const requests = await staffHelp.listAssigned(principal);
+    if (!requests) return reply.code(403).send({ error: 'forbidden' });
+    return { requests };
+  });
+
   // Atomically claims a waiting request for the authenticated support principal.
   // Returns 200 with the full request (including contextSnapshot) on success.
   // Returns 409 when another staff member already claimed it.

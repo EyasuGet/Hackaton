@@ -18,7 +18,7 @@ import {
   seedDemoRecords,
 } from '../demo-records/postgres-demo-record-repository.ts';
 import { DemoSessions } from '../identity/application/demo-sessions.ts';
-import { ResolvePrincipal } from '../identity/application/resolve-principal.ts';
+import { digestToken, ResolvePrincipal } from '../identity/application/resolve-principal.ts';
 import { PostgresDemoSessionRepository } from '../identity/infrastructure/postgres-demo-session-repository.ts';
 import {
   PostgresPrincipalRepository,
@@ -284,6 +284,132 @@ describe('Staff Queue and Claim Integration (T3-017-A)', () => {
       const { queue } = queueRes.json<QueueResponse>();
       const found = queue.some((q) => q.id === requestId);
       expect(found).toBe(false);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('learner is forbidden from the assigned endpoint', async () => {
+    const app = makeApp();
+    try {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/help/assigned',
+        headers: { authorization: `Bearer ${tokens['learner-a']}` },
+      });
+      expect(res.statusCode).toBe(403);
+      expect(res.json()).toEqual({ error: 'forbidden' });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('unauthenticated caller receives 401 from assigned endpoint', async () => {
+    const app = makeApp();
+    try {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/help/assigned',
+      });
+      expect(res.statusCode).toBe(401);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('support staff lists only their own claimed requests with contextSnapshot, excluding other staff and resolved requests', async () => {
+    // Provision a second support staff member to test isolation
+    const secondSupportId = randomUUID();
+    const secondToken = `tok-support-2-${randomUUID()}`;
+    const secondDemoKey = `support-2-${randomUUID()}`;
+    await pool.query(
+      `INSERT INTO principals (id, role, label, token_digest, is_demo, demo_key)
+       VALUES ($1, 'support', 'Demo support person 2', $2, true, $3)`,
+      [secondSupportId, digestToken(secondToken), secondDemoKey],
+    );
+
+    const app = makeApp();
+    try {
+      // 1. Submit two requests from learner-a
+      const sub1 = await app.inject({
+        method: 'POST',
+        url: '/api/help/requests',
+        headers: { authorization: `Bearer ${tokens['learner-a']}` },
+        payload: {
+          clientRequestId: `assigned-test-req-1-${randomUUID()}`,
+          contextSnapshot: 'Learner A context snapshot for request 1',
+        },
+      });
+      const req1Id = sub1.json<SubmitResponse>().request.id;
+
+      const sub2 = await app.inject({
+        method: 'POST',
+        url: '/api/help/requests',
+        headers: { authorization: `Bearer ${tokens['learner-a']}` },
+        payload: {
+          clientRequestId: `assigned-test-req-2-${randomUUID()}`,
+          contextSnapshot: 'Learner A context snapshot for request 2',
+        },
+      });
+      const req2Id = sub2.json<SubmitResponse>().request.id;
+
+      // 2. Staff 1 claims req1; Staff 2 claims req2
+      const claim1 = await app.inject({
+        method: 'POST',
+        url: `/api/help/requests/${req1Id}/claim`,
+        headers: { authorization: `Bearer ${tokens.support}` },
+      });
+      expect(claim1.statusCode).toBe(200);
+
+      const claim2 = await app.inject({
+        method: 'POST',
+        url: `/api/help/requests/${req2Id}/claim`,
+        headers: { authorization: `Bearer ${secondToken}` },
+      });
+      expect(claim2.statusCode).toBe(200);
+
+      // 3. Staff 1 queries /api/help/assigned: should see only req1
+      const res1 = await app.inject({
+        method: 'GET',
+        url: '/api/help/assigned',
+        headers: { authorization: `Bearer ${tokens.support}` },
+      });
+      expect(res1.statusCode).toBe(200);
+      const data1 = res1.json<{ requests: readonly HelpRequest[] }>();
+      expect(data1.requests.some((r) => r.id === req1Id)).toBe(true);
+      expect(data1.requests.some((r) => r.id === req2Id)).toBe(false);
+
+      const myReq1 = data1.requests.find((r) => r.id === req1Id);
+      expect(myReq1?.contextSnapshot).toBe('Learner A context snapshot for request 1');
+      expect(myReq1?.state).toBe('claimed');
+
+      // 4. Staff 2 queries /api/help/assigned: should see only req2
+      const res2 = await app.inject({
+        method: 'GET',
+        url: '/api/help/assigned',
+        headers: { authorization: `Bearer ${secondToken}` },
+      });
+      expect(res2.statusCode).toBe(200);
+      const data2 = res2.json<{ requests: readonly HelpRequest[] }>();
+      expect(data2.requests.some((r) => r.id === req2Id)).toBe(true);
+      expect(data2.requests.some((r) => r.id === req1Id)).toBe(false);
+
+      // 5. Staff 1 resolves req1: it should disappear from assigned list
+      const resolveRes = await app.inject({
+        method: 'POST',
+        url: `/api/help/requests/${req1Id}/resolve`,
+        headers: { authorization: `Bearer ${tokens.support}` },
+      });
+      expect(resolveRes.statusCode).toBe(200);
+
+      const afterResolve = await app.inject({
+        method: 'GET',
+        url: '/api/help/assigned',
+        headers: { authorization: `Bearer ${tokens.support}` },
+      });
+      expect(afterResolve.statusCode).toBe(200);
+      const afterData = afterResolve.json<{ requests: readonly HelpRequest[] }>();
+      expect(afterData.requests.some((r) => r.id === req1Id)).toBe(false);
     } finally {
       await app.close();
     }
