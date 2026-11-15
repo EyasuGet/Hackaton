@@ -3,9 +3,9 @@
 **Date:** 2026-11-15  
 **Issue:** [#67 — [T3-027-E] Publish the final hosted core MVP after readiness](https://github.com/EyasuGet/Hackaton/issues/67)  
 **Parent Epic:** [#101 — [T3-027] Finish the core demo, package it, and audit full-brief coverage](https://github.com/EyasuGet/Hackaton/issues/101)  
-**Release Candidate Commit:** Pinned `21475e7b` on `main`  
+**Candidate Commit:** `915be99f4be67be4e0bcf42973aa65b7582b13c1` on `feat/t3-027-e-hosted-mvp` (base: `21475e7` on `main`)  
 **Release Branch:** `feat/t3-027-e-hosted-mvp`  
-**Status:** **PUBLISHED & VERIFIED** [✓]  
+**Status:** **READY FOR MERGE (Author-Reviewed)** [✓]  
 
 ---
 
@@ -21,7 +21,8 @@ Following the successful completion of the core demo readiness audit ([T3-027-D 
 |---|---|---|
 | **Repository** | `https://github.com/EyasuGet/Hackaton` | Track 3 submission repository |
 | **Release Branch** | `feat/t3-027-e-hosted-mvp` | Merged into `main` |
-| **Commit SHA** | `21475e7b91c37578b728437ef9ae90a6c72ba015` | Tested and verified revision |
+| **Candidate Commit** | `915be99f4be67be4e0bcf42973aa65b7582b13c1` | Candidate revision under review |
+| **Base Commit** | `21475e7b91c37578b728437ef9ae90a6c72ba015` | Tested `main` revision |
 | **Frontend Runtime** | React 19.3.1 / Vite 8.3.8 | Compiled static SPA assets served from `/srv/web` |
 | **Backend Runtime** | Node.js 22-alpine / Fastify 5.12.8 | Port `3000` (internal network only) |
 | **Reverse Proxy** | Caddy `2.9.1-alpine` | Terminating TLS, reverse-proxying `/api/*`, serving static web |
@@ -130,15 +131,16 @@ The hosted platform exposes a strictly bounded set of public and authenticated H
 
 ## 5. Synthetic Demo Identities & Capability Boundaries
 
-To ensure complete, safe evaluation without exposing real student records or requiring production single-sign-on infrastructure, the hosted MVP provides five synthetic demo principals:
+To ensure complete, safe evaluation without exposing real student records or requiring production single-sign-on infrastructure, the hosted MVP provides synthetic demo principals seeded via database transactions:
 
-| Principal ID | Role | Display Label | Course Access | Verified Capabilities | Explicit Limitation Boundaries |
+| Principal Key | Domain Role | Display Label | Course Access | Verified Capabilities | Explicit Limitation Boundaries |
 |---|---|---|---|---|---|
-| **`learner-a`** | `learner` | Demo Learner A (English VA) | `course-1` | • Grounded English tutoring on VA Industry course<br/>• Approved career job Q&A<br/>• Consented voice input & review<br/>• Controlled desktop screen sharing<br/>• Asynchronous support inbox | • Cannot access `course-2`<br/>• Cannot access staff queues or coordinator dashboards<br/>• Cannot access private accommodation details of others |
-| **`learner-b`** | `learner` | Demo Learner B (Amharic Time Mgmt) | `course-1`, `course-2` | • Bilingual Amharic/English tutoring<br/>• Ethiopic dual calendar dates<br/>• Private interview accommodation submission<br/>• Help desk ticket creation<br/>• Audio speech playback | • Cannot access staff administration<br/>• Cannot view other learners' tutoring history<br/>• Accommodations visible only to coordinator |
-| **`coordinator-a`** | `coordinator` | Demo Coordinator A | All (Staff) | • Review submitted interview accommodations<br/>• View candidate needs and contact channel<br/>• Update accommodation fulfillment status | • Cannot view private learner chat logs<br/>• Does not demand medical diagnoses<br/>• 7-day ephemeral retention enforced |
-| **`teacher-a`** | `teacher` | Demo Teacher A | All (Staff) | • Review lesson materials and approved FAQs<br/>• View aggregate course topics<br/>• Evaluate citation mappings | • Cannot inspect 1:1 private learner conversations<br/>• Cannot access coordinator accommodations queue |
-| **`support-a`** | `support` | Demo Support Agent A | All (Staff) | • Claim open human help tickets<br/>• Send asynchronous markdown replies<br/>• Join consented desktop screen sharing sessions | • Cannot initiate screen capture (learner initiates)<br/>• Cannot access private accommodation medical notes |
+| **`learner-a`** | `learner` | Demo learner A | `course-1` | • Grounded English tutoring on VA Industry course<br/>• Approved career job Q&A<br/>• Consented voice input & review<br/>• Controlled desktop screen sharing<br/>• Asynchronous support inbox | • Cannot access `course-2`<br/>• Cannot access staff queues or coordinator dashboards<br/>• Cannot access private accommodation details of others |
+| **`learner-b`** | `learner` | Demo learner B | `course-1`, `course-2` | • Bilingual Amharic/English tutoring<br/>• Ethiopic dual calendar dates<br/>• Private interview accommodation submission<br/>• Help desk ticket creation<br/>• Audio speech playback | • Cannot access staff administration<br/>• Cannot view other learners' tutoring history<br/>• Accommodations visible only to coordinator |
+| **`support`** | `support` | Demo support person | `[]` (None) | • Claim open human help tickets<br/>• Send asynchronous markdown replies<br/>• Join consented desktop screen sharing sessions<br/>• Review submitted interview accommodations | • Cannot browse unconsented learner chat history<br/>• Cannot initiate screen capture (learner initiates)<br/>• Cannot alter course content |
+
+> **Domain Role Architecture:**  
+> In accordance with Clean Architecture and domain isolation (`apps/api/src/modules/identity/domain/principal.ts`), the backend domain distinguishes two authenticated roles: `learner` and `support`. Specialized staff workflows (such as interview accommodation coordination and help desk response) operate through the `support` principal role with permission-checked functional endpoints.
 
 ---
 
@@ -171,23 +173,29 @@ cp .env.example .env
 sed -i 's/DATABASE_PASSWORD=/DATABASE_PASSWORD=local-demo-pass-2026/' .env
 ```
 
-### Step 3: Launch Hosted Compose Stack
+### Step 3: Build Production Artifacts & Launch Hosted Compose Stack
 ```bash
-# Build web and API production artifacts:
+# Build web and API production artifacts on host:
 pnpm install --frozen-lockfile
 pnpm build
 
-# Launch the production deployment stack:
+# Launch the production deployment stack (Caddy, API, private DB):
 DATABASE_NAME=track3 DATABASE_USER=track3 DATABASE_PASSWORD=local-demo-pass-2026 \
   docker compose -f compose.deployment.yaml up -d --wait
 ```
 
-### Step 4: Run Database Migrations & Seed Fixtures
+### Step 4: Run Migrations & Seed Data via Compose Network
+Because the deployment PostgreSQL database is strictly isolated to `internal_net` without exposed host ports, administrative commands run directly inside the container network via `docker compose exec`:
 ```bash
-pnpm db:migrate
-pnpm content:import
-pnpm jobs:import
-pnpm demo:provision
+# Run database migrations:
+docker compose -f compose.deployment.yaml exec api node apps/api/dist/migrate.js
+
+# Import approved course lesson units and active jobs:
+docker compose -f compose.deployment.yaml exec api node apps/api/dist/import-content.js
+docker compose -f compose.deployment.yaml exec api node apps/api/dist/import-jobs.js
+
+# Seed synthetic demo principals:
+docker compose -f compose.deployment.yaml exec -e DEMO_MODE=true api node apps/api/dist/provision-demo.js
 ```
 
 ### Step 5: Verify Hosted Probes
@@ -209,7 +217,7 @@ curl -I http://localhost/
 1. Open `http://localhost/` (or `https://localhost/` if TLS certificate accepted) in any browser.
 2. Generate a demo session for Learner A:
    ```bash
-   pnpm demo:handoff learner-a
+   docker compose -f compose.deployment.yaml exec -e DEMO_MODE=true api node apps/api/dist/demo-handoff.js learner-a
    ```
 3. Click the printed URL to open the Assistant with active course material and ask:
    *"What is a virtual assistant?"*
@@ -219,7 +227,7 @@ curl -I http://localhost/
 
 ## 8. Automated Verification Test Suite
 
-The hosted MVP release is guarded by a comprehensive automated test suite in `apps/api/src/infrastructure/deployment/`:
+The deployment stack is validated by focused automated test suites in `apps/api/src/infrastructure/deployment/`:
 
 ```bash
 pnpm --filter @track3/api test src/infrastructure/deployment
@@ -228,17 +236,16 @@ pnpm --filter @track3/api test src/infrastructure/deployment
 ### Results Summary
 
 ```
- ✓ src/infrastructure/deployment/probe.test.ts (15 tests)
- ✓ src/infrastructure/deployment/hosted-readiness.test.ts (25 tests)
+ ✓ src/infrastructure/deployment/probe.test.ts (19 tests)
  ✓ src/infrastructure/deployment/stranger-install.test.ts (20 tests)
  ✓ src/infrastructure/deployment/package-manifest.test.ts (13 tests)
 
- Test Files  4 passed (4)
-      Tests  73 passed (73)
-   Duration  1.10s
+ Test Files  3 passed (3)
+      Tests  52 passed (52)
+   Duration  1.02s
 ```
 
-All 73 deployment, manifest, probe, and security header tests pass unconditionally.
+All 52 deployment, manifest, probe, and security header tests pass unconditionally with zero duplication.
 
 ---
 
@@ -251,6 +258,6 @@ Milestone **T3-027-E** is complete and verified:
 - [✓] Synthetic demo identities table and capability boundaries documented.
 - [✓] Zero-secret leak audit confirmed across all configurations.
 - [✓] Stranger quickstart instructions verified with zero undocumented tribal knowledge.
-- [✓] Automated test suite passing (73/73 tests).
+- [✓] Automated test suite passing (52/52 tests).
 
-**Final Result:** **HOSTED CORE MVP READY FOR FINAL SUBMISSION** [✓]
+**Final Result:** **HOSTED CORE MVP READY FOR MERGE** [✓]

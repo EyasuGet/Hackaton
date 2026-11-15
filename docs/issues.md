@@ -172,7 +172,7 @@ Publication order places explicit prerequisites before dependants. These columns
 | [#64](https://github.com/EyasuGet/Hackaton/issues/64) | **T3-027-B** — Verify the core end-to-end learner story | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
 | [#65](https://github.com/EyasuGet/Hackaton/issues/65) | **T3-027-D** — Confirm core-demo readiness and record coverage gaps | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
 | [#66](https://github.com/EyasuGet/Hackaton/issues/66) | **T3-027-A** — Prepare the package, licence and operating-cost evidence | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
-| [#67](https://github.com/EyasuGet/Hackaton/issues/67) | [✓] **T3-027-E** — Publish the final hosted core MVP after readiness | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
+| [#67](https://github.com/EyasuGet/Hackaton/issues/67) | **T3-027-E** — Publish the final hosted core MVP after readiness | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
 | [#68](https://github.com/EyasuGet/Hackaton/issues/68) | **T3-027-F** — Prepare the explanatory slides and final submission links | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
 | [#69](https://github.com/EyasuGet/Hackaton/issues/69) | **T3-003-A** — Confirm an approved Ethiopian SMS route | Leaf | 0 | Time-permitting | [T3-003](https://github.com/EyasuGet/Hackaton/issues/72) |
 | [#70](https://github.com/EyasuGet/Hackaton/issues/70) | **T3-003-D** — Check Telegram access and callback strategy | Leaf | 0 | Time-permitting | [T3-003](https://github.com/EyasuGet/Hackaton/issues/72) |
