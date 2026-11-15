@@ -30,6 +30,7 @@ import type { Sharing } from '../modules/sharing/application/sharing.ts';
 import { registerSharingRoutes } from '../modules/sharing/presentation/http/sharing-routes.ts';
 import type { TelegramLinkService } from '../modules/telegram/application/telegram-link-service.ts';
 import { registerTelegramRoutes } from '../modules/telegram/presentation/http/telegram-routes.ts';
+import type { TranscriptionPort } from '../modules/tutoring/application/ports/transcription-port.ts';
 import type { Tutoring } from '../modules/tutoring/application/tutoring.ts';
 import { registerTutoringRoutes } from '../modules/tutoring/presentation/http/tutoring-routes.ts';
 
@@ -42,6 +43,8 @@ export interface AppDependencies {
   /** Exact page origins allowed to start a demo session. */
   readonly demoAllowedOrigins: readonly string[];
   readonly tutoring: Tutoring;
+  /** Optional; when omitted the transcription route is not registered. */
+  readonly transcription?: TranscriptionPort;
   readonly content: ContentAccess;
   /** Optional; when omitted the help routes are not registered (for tests that do not exercise them). */
   readonly help?: Help;
@@ -128,7 +131,12 @@ export function buildApp(
     authenticate(dependencies.resolvePrincipal),
     dependencies.demoRecords,
   );
-  registerTutoringRoutes(app, authenticate(dependencies.resolvePrincipal), dependencies.tutoring);
+  registerTutoringRoutes(
+    app,
+    authenticate(dependencies.resolvePrincipal),
+    dependencies.tutoring,
+    dependencies.transcription,
+  );
   if (dependencies.help && dependencies.staffHelp) {
     registerHelpRoutes(
       app,
