@@ -4369,6 +4369,263 @@
           }
         }
       }
+    },
+    "/api/help/notifications/preference": {
+      "get": {
+        "tags": ["Human Help"],
+        "summary": "Get learner notification preference for support replies",
+        "description": "Returns the authenticated learner notification preference (opt-in status) for support replies on a channel.",
+        "operationId": "getHelpNotificationPreference",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "telegram",
+              "example": "telegram"
+            },
+            "description": "Delivery channel (e.g. telegram)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification preference status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreference"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Human Help"],
+        "summary": "Update learner notification preference for support replies",
+        "description": "Updates whether the learner has opted in to receive external notifications for support replies.",
+        "operationId": "updateHelpNotificationPreference",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["optedIn"],
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "default": "telegram",
+                    "example": "telegram"
+                  },
+                  "optedIn": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated notification preference status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreference"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input - optedIn must be a boolean",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/help/notifications/opt-in": {
+      "post": {
+        "tags": ["Human Help"],
+        "summary": "Opt-in to support reply notifications",
+        "description": "Explicitly opts the learner in to receive external channel alerts when staff reply to help requests.",
+        "operationId": "optInHelpNotifications",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "default": "telegram",
+                    "example": "telegram"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Opt-in confirmation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreference"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/help/notifications/opt-out": {
+      "post": {
+        "tags": ["Human Help"],
+        "summary": "Opt-out of support reply notifications",
+        "description": "Explicitly opts out and suppresses pending delivery intents for support replies.",
+        "operationId": "optOutHelpNotifications",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "default": "telegram",
+                    "example": "telegram"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Opt-out confirmation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreference"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5331,6 +5588,20 @@
           "instructions": {
             "type": "string",
             "example": "Send /start synthetic_telegram_link_code_12345 to @Track3DemoBot in Telegram."
+          }
+        }
+      },
+      "NotificationPreference": {
+        "type": "object",
+        "required": ["channel", "optedIn"],
+        "properties": {
+          "channel": {
+            "type": "string",
+            "example": "telegram"
+          },
+          "optedIn": {
+            "type": "boolean",
+            "example": true
           }
         }
       }
