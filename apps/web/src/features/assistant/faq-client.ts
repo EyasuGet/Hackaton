@@ -119,6 +119,7 @@ export function createAnswerClient({
           ...(citations.length > 0 ? { citations } : {}),
           ...(provider ? { provider } : {}),
           ...(isSimple ? { simpleLanguage: true } : {}),
+          ...(data.quoted === true ? { quoted: true } : {}),
         };
 
         return { kind: 'answer', reply };

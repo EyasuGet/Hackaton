@@ -19,6 +19,8 @@ export interface Reply {
   readonly createdAt: string;
   readonly citations?: readonly Citation[];
   readonly provider?: 'online' | 'faq' | 'job' | 'external_web_research' | 'local';
+  /** A verbatim lesson excerpt from the offline FAQ path, not a written answer (T3-054). */
+  readonly quoted?: boolean;
   readonly provenance?: {
     readonly kind: 'external_web_research' | 'demo' | 'faq' | 'course' | 'job';
     readonly disclaimer?: string;

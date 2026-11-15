@@ -19,6 +19,7 @@ import type {
 import { JobAnswers } from '../careers/application/job-answers.ts';
 import type { JobRecord } from '../careers/domain/job.ts';
 import { FaqProvider } from './application/faq-provider.ts';
+import { labelQuote } from './domain/faq.ts';
 import type {
   OnlineAnswerProvider,
   OnlineAnswerRequest,
@@ -1889,5 +1890,148 @@ describe('Online Grounded Answer Path with Safe Fallback (T3-007-C)', () => {
 
       await app.close();
     });
+  });
+});
+
+describe('Offline FAQ matching and verbatim quotes (T3-054)', () => {
+  const futurePassage: Passage = {
+    sourceId: 'savanna-va1-future-of-va-industry',
+    sectionId: 'so-is-the-future-of-va-promising',
+    sourceTitle: 'The Future of the VA Industry',
+    heading: 'So, is the Future of VA Promising?',
+    text: 'Yes, but not in a passive way. The profession appears to be moving toward a future where Virtual Assistants who are adaptable will continue to be valuable. The future VA is likely to be more than an administrative helper.',
+    language: 'en',
+    courseId: 'course-1',
+    version: 'starter-9e83ac7',
+  };
+
+  /** Course search returns `passages`; citations resolve as in the shared mock. */
+  function contentWith(passages: Passage[]): ContentAccess {
+    const base = createMockContentAccess();
+    return new ContentAccess(
+      {
+        search: () => Promise.resolve(passages),
+        resolve: (courseIds, sourceId, sectionId) =>
+          base.resolve({ ...learnerA, courseIds: [...courseIds] }, sourceId, sectionId),
+      },
+      [],
+    );
+  }
+
+  it('matches an approved entry when the learner abbreviates and reorders words', async () => {
+    const faq = new FaqProvider(contentWith([]));
+
+    const res = await faq.answer(learnerA, 'course-1', 'What tasks can AI help a va with?');
+
+    expect(res.kind).toBe('answered');
+    expect(res.quoted).toBeUndefined();
+    expect(res.citations[0]?.sectionId).toBe('artificial-intelligence-and-the-future-of-va-work');
+  });
+
+  it('does not answer a question with an extra topic using a narrower approved entry', async () => {
+    const faq = new FaqProvider(contentWith([]));
+
+    const res = await faq.answer(
+      learnerA,
+      'course-1',
+      'What should aspiring virtual assistants do?',
+    );
+
+    // "What is a virtual assistant?" covers only two of its three key words; with no
+    // passage to quote, the honest limitation is the only correct reply.
+    expect(res.kind).toBe('insufficient_evidence');
+    expect(res.citations).toEqual([]);
+  });
+
+  it.each(['VA', 'What is', "What's"])(
+    'never answers %j by matching part of a word or question words alone',
+    async (question) => {
+      const faq = new FaqProvider(contentWith([]));
+
+      const res = await faq.answer(learnerA, 'course-1', question);
+
+      // "va" sits inside "value", and "what is" inside every definition pattern.
+      expect(res.kind).toBe('insufficient_evidence');
+    },
+  );
+
+  it('keeps apostrophes inside words when matching an approved entry', async () => {
+    const faq = new FaqProvider(contentWith([]));
+
+    const res = await faq.answer(learnerA, 'course-1', "What's a virtual assistant?");
+
+    expect(res.kind).toBe('answered');
+    expect(res.citations[0]?.sectionId).toBe('introduction');
+  });
+
+  it('quotes a contiguous slice of the passage, keeping its line breaks', async () => {
+    const listPassage: Passage = {
+      ...futurePassage,
+      sectionId: 'what-this-means-for-aspiring-virtual-assistants',
+      heading: 'What This Means for Aspiring Virtual Assistants',
+      text: 'A strong future-ready VA will likely need new habits.\n- Stay comfortable learning new digital tools.\n- Understand how to use AI responsibly.',
+    };
+    const faq = new FaqProvider(contentWith([listPassage]));
+
+    const res = await faq.answer(learnerA, 'course-1', 'What does a future-ready VA need?');
+
+    expect(res.quoted).toBe(true);
+    expect(listPassage.text).toContain(res.answerText);
+    expect(res.answerText).toContain('habits.\n- Stay comfortable');
+  });
+
+  it('quotes the best-covered passage word for word when no approved entry matches', async () => {
+    const faq = new FaqProvider(contentWith([futurePassage]));
+
+    const res = await faq.answer(learnerA, 'course-1', 'What is the future of VA industry?');
+
+    expect(res.kind).toBe('answered');
+    expect(res.quoted).toBe(true);
+    expect(futurePassage.text).toContain(res.answerText);
+    expect(res.answerText).toContain('future');
+    expect(res.citations).toEqual([
+      expect.objectContaining({ sectionId: 'so-is-the-future-of-va-promising' }),
+    ]);
+  });
+
+  it('refuses an Amharic question that shares only one key word with a passage', async () => {
+    const breaks: Passage = {
+      sourceId: 'demo-time-management-am',
+      sectionId: 'breaks',
+      sourceTitle: 'የጊዜ አጠቃቀም መሠረታዊ ነገሮች',
+      heading: 'እረፍት መውሰድ',
+      text: 'በሥራ መካከል አጭር እረፍት መውሰድ ትኩረትን ለመጠበቅ ይረዳል።',
+      language: 'am',
+      courseId: 'course-2',
+      version: 'demo-1',
+    };
+    const faq = new FaqProvider(contentWith([breaks]));
+
+    const res = await faq.answer(learnerB, 'course-2', 'ፖሞዶሮ ስንት ደቂቃ ነው?');
+
+    expect(res.kind).toBe('insufficient_evidence');
+    expect(res.answerLang).toBe('am');
+  });
+
+  it('refuses rather than quoting a passage that shares only one key word', async () => {
+    const faq = new FaqProvider(contentWith([futurePassage]));
+
+    const res = await faq.answer(
+      learnerA,
+      'course-1',
+      'What is the future price of coffee in Paris?',
+    );
+
+    expect(res.kind).toBe('insufficient_evidence');
+    expect(res.quoted).toBeUndefined();
+    expect(res.citations).toEqual([]);
+  });
+});
+
+describe('labelQuote (T3-054)', () => {
+  it('introduces a quote in the reply language and leaves other answers unchanged', () => {
+    expect(labelQuote('Text.', 'en', true)).toBe('Quoted from your course:\nText.');
+    expect(labelQuote('ጽሑፍ።', 'am', true)).toBe('ከትምህርትዎ የተጠቀሰ፦\nጽሑፍ።');
+    expect(labelQuote('Text.', 'en', undefined)).toBe('Text.');
   });
 });
