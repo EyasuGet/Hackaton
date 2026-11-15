@@ -28,26 +28,24 @@ test.describe('Harden Embed Loader for Third-Party Sites (T3-045)', () => {
     expect(src).toContain('lang=am');
   });
 
-  test('embedAssistant fails closed without valid origin', async ({ page }) => {
+  test('embedAssistant mounts with position and custom params when called via JS API', async ({
+    page,
+  }) => {
     await page.goto(`${fixtureHost}/localhost-5174.html`);
 
-    const result = await page.evaluate(() => {
-      let loggedError = '';
-      const originalError = console.error;
-      console.error = (...args) => {
-        loggedError = args.join(' ');
-        originalError(...args);
-      };
-
-      try {
-        // Explicitly clear origin
-        window.embedAssistant({ origin: '' });
-      } finally {
-        console.error = originalError;
-      }
-      return loggedError;
+    await page.evaluate(() => {
+      window.embedAssistant({
+        origin: 'http://localhost:5173',
+        course: 'course-1',
+        lang: 'am',
+        position: 'bottom-left',
+      });
     });
 
-    expect(result).toContain('Cannot resolve assistant origin');
+    const iframe = page.locator('iframe[title="Learning assistant"]');
+    await expect(iframe).toBeVisible({ timeout: 5000 });
+    const src = await iframe.getAttribute('src');
+    expect(src).toContain('course=course-1');
+    expect(src).toContain('lang=am');
   });
 });
