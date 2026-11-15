@@ -2818,6 +2818,159 @@
         }
       }
     },
+    "/api/careers/research": {
+      "post": {
+        "tags": ["Careers"],
+        "summary": "Supplementary career web research with explicit consent",
+        "description": "Performs external career web research on behalf of an authenticated learner. Requires explicit per-query consent (consent: true) and strictly minimizes queries to protect learner privacy.",
+        "operationId": "researchCareers",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["query", "consent"],
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "Job title, skill, or role keywords to research."
+                  },
+                  "consent": {
+                    "type": "boolean",
+                    "description": "Explicit learner consent to query external web search providers."
+                  },
+                  "language": {
+                    "type": "string",
+                    "enum": ["en", "am"],
+                    "description": "Preferred language for results."
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of citations to return."
+                  }
+                }
+              },
+              "example": {
+                "query": "junior web developer in Addis Ababa",
+                "consent": true,
+                "language": "en",
+                "limit": 5
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Career research outcome with citations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "query",
+                    "provenance",
+                    "language",
+                    "citations",
+                    "explanationText"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": ["researched", "insufficient_evidence"]
+                    },
+                    "query": {
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "type": "string",
+                      "enum": ["external_web_research"]
+                    },
+                    "language": {
+                      "type": "string",
+                      "enum": ["en", "am"]
+                    },
+                    "explanationText": {
+                      "type": "string"
+                    },
+                    "citations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["title", "url", "domain", "snippet", "retrievedAt"],
+                        "properties": {
+                          "title": { "type": "string" },
+                          "url": { "type": "string" },
+                          "domain": { "type": "string" },
+                          "snippet": { "type": "string" },
+                          "retrievedAt": { "type": "string", "format": "date-time" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query or consent missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Search provider rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "External search provider unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/careers/subscriptions": {
       "get": {
         "tags": ["Careers"],

@@ -21,6 +21,8 @@ import { Accommodation } from './modules/accommodation/application/accommodation
 import { PostgresAccommodationRepository } from './modules/accommodation/infrastructure/persistence/postgres-accommodation-repository.ts';
 import { JobAnswers } from './modules/careers/application/job-answers.ts';
 import { JobPreferences } from './modules/careers/application/job-preferences.ts';
+import { CareerResearchService } from './modules/careers/application/career-research.ts';
+import { MockCareerResearchProvider } from './modules/careers/infrastructure/mock-career-research-provider.ts';
 import { PostgresJobPreferencesRepository } from './modules/careers/infrastructure/postgres-job-preferences-repository.ts';
 import { PostgresJobRepository } from './modules/careers/infrastructure/postgres-job-repository.ts';
 import { Help } from './modules/help/application/help.ts';
@@ -57,6 +59,7 @@ const helpRequestLookup = new PostgresHelpRequestLookup(pool);
 const jobRepository = new PostgresJobRepository(pool);
 const jobPreferences = new JobPreferences(new PostgresJobPreferencesRepository(pool));
 const jobAnswers = new JobAnswers(jobRepository);
+const careerResearch = new CareerResearchService(new MockCareerResearchProvider());
 const telegramLinkRepository = new PostgresTelegramLinkRepository(pool);
 const telegramService = new TelegramLinkService(telegramLinkRepository, {
   webhookSecret: config.telegram.webhookSecret,
@@ -88,6 +91,7 @@ const app = buildApp(
     jobRepository,
     jobPreferences,
     jobAnswers,
+    careerResearch,
     telegramService,
     admissionController,
   },
