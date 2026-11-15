@@ -19,6 +19,7 @@ import type {
 import { JobAnswers } from '../careers/application/job-answers.ts';
 import type { JobRecord } from '../careers/domain/job.ts';
 import { FaqProvider } from './application/faq-provider.ts';
+import { labelQuote } from './domain/faq.ts';
 import type {
   OnlineAnswerProvider,
   OnlineAnswerRequest,
@@ -1936,8 +1937,47 @@ describe('Offline FAQ matching and verbatim quotes (T3-054)', () => {
       'What should aspiring virtual assistants do?',
     );
 
-    // "What is a virtual assistant?" covers only two of its three key words.
-    expect(res.citations.map((c) => c.sectionId)).not.toContain('introduction');
+    // "What is a virtual assistant?" covers only two of its three key words; with no
+    // passage to quote, the honest limitation is the only correct reply.
+    expect(res.kind).toBe('insufficient_evidence');
+    expect(res.citations).toEqual([]);
+  });
+
+  it.each(['VA', 'What is', "What's"])(
+    'never answers %j by matching part of a word or question words alone',
+    async (question) => {
+      const faq = new FaqProvider(contentWith([]));
+
+      const res = await faq.answer(learnerA, 'course-1', question);
+
+      // "va" sits inside "value", and "what is" inside every definition pattern.
+      expect(res.kind).toBe('insufficient_evidence');
+    },
+  );
+
+  it('keeps apostrophes inside words when matching an approved entry', async () => {
+    const faq = new FaqProvider(contentWith([]));
+
+    const res = await faq.answer(learnerA, 'course-1', "What's a virtual assistant?");
+
+    expect(res.kind).toBe('answered');
+    expect(res.citations[0]?.sectionId).toBe('introduction');
+  });
+
+  it('quotes a contiguous slice of the passage, keeping its line breaks', async () => {
+    const listPassage: Passage = {
+      ...futurePassage,
+      sectionId: 'what-this-means-for-aspiring-virtual-assistants',
+      heading: 'What This Means for Aspiring Virtual Assistants',
+      text: 'A strong future-ready VA will likely need new habits.\n- Stay comfortable learning new digital tools.\n- Understand how to use AI responsibly.',
+    };
+    const faq = new FaqProvider(contentWith([listPassage]));
+
+    const res = await faq.answer(learnerA, 'course-1', 'What does a future-ready VA need?');
+
+    expect(res.quoted).toBe(true);
+    expect(listPassage.text).toContain(res.answerText);
+    expect(res.answerText).toContain('habits.\n- Stay comfortable');
   });
 
   it('quotes the best-covered passage word for word when no approved entry matches', async () => {
@@ -1954,6 +1994,25 @@ describe('Offline FAQ matching and verbatim quotes (T3-054)', () => {
     ]);
   });
 
+  it('refuses an Amharic question that shares only one key word with a passage', async () => {
+    const breaks: Passage = {
+      sourceId: 'demo-time-management-am',
+      sectionId: 'breaks',
+      sourceTitle: 'የጊዜ አጠቃቀም መሠረታዊ ነገሮች',
+      heading: 'እረፍት መውሰድ',
+      text: 'በሥራ መካከል አጭር እረፍት መውሰድ ትኩረትን ለመጠበቅ ይረዳል።',
+      language: 'am',
+      courseId: 'course-2',
+      version: 'demo-1',
+    };
+    const faq = new FaqProvider(contentWith([breaks]));
+
+    const res = await faq.answer(learnerB, 'course-2', 'ፖሞዶሮ ስንት ደቂቃ ነው?');
+
+    expect(res.kind).toBe('insufficient_evidence');
+    expect(res.answerLang).toBe('am');
+  });
+
   it('refuses rather than quoting a passage that shares only one key word', async () => {
     const faq = new FaqProvider(contentWith([futurePassage]));
 
@@ -1966,5 +2025,13 @@ describe('Offline FAQ matching and verbatim quotes (T3-054)', () => {
     expect(res.kind).toBe('insufficient_evidence');
     expect(res.quoted).toBeUndefined();
     expect(res.citations).toEqual([]);
+  });
+});
+
+describe('labelQuote (T3-054)', () => {
+  it('introduces a quote in the reply language and leaves other answers unchanged', () => {
+    expect(labelQuote('Text.', 'en', true)).toBe('Quoted from your course:\nText.');
+    expect(labelQuote('ጽሑፍ።', 'am', true)).toBe('ከትምህርትዎ የተጠቀሰ፦\nጽሑፍ።');
+    expect(labelQuote('Text.', 'en', undefined)).toBe('Text.');
   });
 });

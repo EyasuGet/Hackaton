@@ -119,8 +119,7 @@ export function createAnswerClient({
           ...(citations.length > 0 ? { citations } : {}),
           ...(provider ? { provider } : {}),
           ...(isSimple ? { simpleLanguage: true } : {}),
-          // A verbatim lesson excerpt from the offline path, labelled as such (T3-054).
-          ...(data.quoted === true ? { provenance: { kind: 'course' as const } } : {}),
+          ...(data.quoted === true ? { quoted: true } : {}),
         };
 
         return { kind: 'answer', reply };

@@ -20,11 +20,15 @@ export function loadApprovedFaqs(path?: string): readonly FaqEntry[] {
 }
 
 function normalize(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return (
+    text
+      .toLowerCase()
+      // Apostrophes join a word ("what's", "VA's"); other punctuation separates words.
+      .replace(/['’]/g, '')
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 // Question words that carry no topic, in English and Amharic.
@@ -76,26 +80,39 @@ function coverage(words: readonly string[][], tokens: readonly string[]) {
  * "replace" in "Will AI replace virtual assistants?" is not answered by a definition.
  */
 const FAQ_MATCH = 0.75;
-/** A passage is quoted only when 2/3 of the question's key words (at least two) occur in it. */
+/** A passage is quoted only when 2/3 of the question's key words occur in it (at least two). */
 const QUOTE_MATCH = 2 / 3;
 /** Long enough to answer, short enough for a phone screen and an SMS-sized read-aloud. */
 const QUOTE_MAX_CHARS = 420;
 
-/** Whole sentences of `text`, verbatim, starting at the one with most key words. */
+/**
+ * A contiguous slice of `text`, starting at the sentence or line with most key words and
+ * extended by whole sentences or lines, so the quote is verbatim, line breaks included.
+ */
 function excerpt(text: string, words: readonly string[][]): string {
-  const sentences = text.split(/(?<=[.!?።])\s+/).filter((s) => s.trim());
+  // Segment boundaries: whitespace after sentence-ending punctuation, or a line break.
+  const spans: { start: number; end: number }[] = [];
+  let cursor = 0;
+  for (const separator of text.matchAll(/(?<=[.!?።])\s+|\n+/g)) {
+    spans.push({ start: cursor, end: separator.index });
+    cursor = separator.index + separator[0].length;
+  }
+  spans.push({ start: cursor, end: text.length });
+  const segments = spans.filter(({ start, end }) => text.slice(start, end).trim());
   let best = 0;
   let bestFound = -1;
-  sentences.forEach((sentence, index) => {
-    const { found } = coverage(words, normalize(sentence).split(' '));
+  segments.forEach(({ start, end }, index) => {
+    const { found } = coverage(words, normalize(text.slice(start, end)).split(' '));
     if (found > bestFound) [best, bestFound] = [index, found];
   });
-  let quote = sentences[best] ?? '';
-  for (const next of sentences.slice(best + 1)) {
-    if (quote.length + next.length + 1 > QUOTE_MAX_CHARS) break;
-    quote += ` ${next}`;
+  const first = segments[best];
+  if (!first) return '';
+  let end = first.end;
+  for (const next of segments.slice(best + 1)) {
+    if (next.end - first.start > QUOTE_MAX_CHARS) break;
+    end = next.end;
   }
-  return quote.trim();
+  return text.slice(first.start, end).trim();
 }
 
 const LIMITATION_MESSAGES = {
@@ -117,7 +134,7 @@ export class FaqProvider {
   }
 
   async answer(principal: Principal, courseId: string, question: string): Promise<FaqAnswerResult> {
-    const isAmharic = /[ሀ-፿]/.test(question);
+    const isAmharic = /[\u1200-\u137F]/.test(question);
     const lang = isAmharic ? 'am' : 'en';
     const limitation: FaqAnswerResult = {
       kind: 'insufficient_evidence',
@@ -164,21 +181,22 @@ export class FaqProvider {
   #bestEntry(courseId: string, normQ: string): FaqEntry | undefined {
     const tokens = normQ.split(' ');
     const questionWords = keyWords(normQ);
+    // A question of only question words ("what is") asks about nothing in particular.
+    if (questionWords.length === 0) return undefined;
     let best: { entry: FaqEntry; share: number } | undefined;
     for (const entry of this.#entries) {
       if (entry.courseId !== courseId) continue;
       for (const pattern of entry.patterns) {
         const normPat = normalize(pattern);
-        // The original whole-phrase match still counts in full.
         const { found, share } = coverage(keyWords(pattern), tokens);
         const asked = coverage(questionWords, normPat.split(' ')).share;
         const both = Math.min(share, asked);
-        const score =
-          normQ.includes(normPat) || normPat.includes(normQ)
-            ? 1
-            : found >= 2 && both >= FAQ_MATCH
-              ? both
-              : 0;
+        // The whole pattern asked word for word still counts in full ("va" never matches "value").
+        const score = ` ${normQ} `.includes(` ${normPat} `)
+          ? 1
+          : found >= 2 && both >= FAQ_MATCH
+            ? both
+            : 0;
         if (score > (best?.share ?? 0)) best = { entry, share: score };
       }
     }

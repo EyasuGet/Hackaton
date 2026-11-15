@@ -13,7 +13,7 @@ import {
   type AnswerResult,
   type Tutoring,
 } from '../../tutoring/application/tutoring.ts';
-import type { FaqCitation } from '../../tutoring/domain/faq.ts';
+import { labelQuote, type FaqCitation } from '../../tutoring/domain/faq.ts';
 import {
   formatTelegramTutorResponse,
   isPrivateChat,
@@ -971,7 +971,7 @@ export class TelegramLinkService {
             }
 
             const formatted = formatTelegramTutorResponse(
-              tutorRes.answerText,
+              labelQuote(tutorRes.answerText, tutorRes.answerLang, tutorRes.quoted),
               tutorRes.citations.map((c) => ({
                 sourceId: c.sourceId,
                 sectionId: c.sectionId,
@@ -1843,7 +1843,7 @@ export class TelegramLinkService {
 
     // 18. Format citations cleanly for Telegram chat (source, section title, reference)
     const formattedText = formatTelegramTutorResponse(
-      result.answerText,
+      labelQuote(result.answerText, result.answerLang, result.quoted),
       result.citations,
       result.answerLang,
     );

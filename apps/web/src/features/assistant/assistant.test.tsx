@@ -957,7 +957,7 @@ describe('Assistant', () => {
           lang: 'en',
           createdAt: '2026-09-11T12:00:00.000Z',
           provider: 'faq',
-          provenance: { kind: 'course' },
+          quoted: true,
         },
       });
 

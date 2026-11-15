@@ -19,7 +19,7 @@ import {
 import { validateEthiopianPhoneNumber } from '../domain/phone-number.ts';
 import { analyzeSmsText } from '../domain/sms-encoding.ts';
 import type { Principal } from '../../identity/domain/principal.ts';
-import type { FaqCitation } from '../../tutoring/domain/faq.ts';
+import { labelQuote, type FaqCitation } from '../../tutoring/domain/faq.ts';
 
 export interface SmsTutorServiceOptions {
   readonly phoneVerificationRepository: PhoneVerificationRepository;
@@ -282,8 +282,9 @@ export class SmsTutorService {
       answerOutcome.citations.length > 0
         ? ` [${answerOutcome.citations[0]!.sectionId ?? 'L2-3'}]`
         : '';
-    const fullAnswer = `${answerOutcome.answerText.trim()}${shortCitation}`;
     const lang = answerOutcome.answerLang === 'am' ? 'am' : 'en';
+    const answerText = labelQuote(answerOutcome.answerText.trim(), lang, answerOutcome.quoted);
+    const fullAnswer = `${answerText}${shortCitation}`;
 
     // Segment budgeting
     const { chunk, remainder } = this.#splitForBudget(fullAnswer, lang, this.#maxSegmentsPerReply);
