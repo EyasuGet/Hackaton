@@ -1,5 +1,7 @@
 # Added Telegram and SMS Channel Accessibility, Language, and Consent Evaluation (T3-025-D)
 
+> **Evidence status (2026-11-15, [T3-033 #205](https://github.com/EyasuGet/Hackaton/issues/205)):** This record does not identify a human tester, date and physical device for its screen-reader and "unaided" results, and parts describe automated or simulated runs. Treat those results as unverified until the human gate session is recorded in [`t3-033-gate-session.md`](t3-033-gate-session.md). The current WCAG 2.2 assessment is [`docs/conformance.md`](../conformance.md).
+
 - **Date:** 2026-11-15
 - **Issue:** [#98](https://github.com/EyasuGet/Hackaton/issues/98) — [T3-025-D] Verify added Telegram/SMS accessibility, language, and consent
 - **Parent Epic:** [#99](https://github.com/EyasuGet/Hackaton/issues/99) — [T3-025] Complete the co-designer accessibility gate and conformance evidence
