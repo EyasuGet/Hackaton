@@ -265,6 +265,7 @@ describe('Stranger quickstart & installation proof (T3-026-C)', () => {
             consumeHandoff: () => Promise.resolve(null),
             createSession: () => Promise.resolve(),
             revokeSession: () => Promise.resolve(false),
+            extendSession: () => Promise.resolve(false),
           },
           true,
         ),

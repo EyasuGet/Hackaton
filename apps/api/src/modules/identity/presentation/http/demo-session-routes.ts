@@ -38,6 +38,13 @@ export function registerDemoSessionRoutes(
     },
   );
 
+  app.post('/api/demo/session/extend', { preHandler: authenticated }, async (request, reply) => {
+    const token = bearerToken(request);
+    const expiresAt = token ? await demoSessions.extend(token) : null;
+    if (!expiresAt) return reply.code(400).send({ error: 'not_a_session' });
+    return { expiresAt: expiresAt.toISOString() };
+  });
+
   app.delete('/api/demo/session', { preHandler: authenticated }, async (request, reply) => {
     const token = bearerToken(request);
     // Only session tokens can be signed out; say so rather than report a false success

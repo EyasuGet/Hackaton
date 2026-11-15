@@ -9,6 +9,7 @@
 // their action, and they can remove the screenshot at any time.
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { T, useT, type MessageKey } from '../../shared/i18n/i18n.tsx';
+import { DraftNotice, useDraft } from '../../shared/drafts/drafts.tsx';
 import {
   attachScreenshot,
   cancelHelpRequest,
@@ -49,7 +50,7 @@ function requestKey(): string {
 
 export function HumanHelp({ token }: { readonly token: string }) {
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useDraft('help');
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [screenshotNote, setScreenshotNote] = useState<MessageKey | null>(null);
@@ -128,6 +129,7 @@ export function HumanHelp({ token }: { readonly token: string }) {
         setScreenshotNote(attached ? null : 'help.screenshotAttachFailed');
         setScreenshot(null);
       }
+      setDraft('');
       setPhase({ kind: 'waiting', request: result.request });
       // Move focus to the status region so screen readers announce the new state.
       statusRef.current?.focus();
@@ -202,6 +204,7 @@ export function HumanHelp({ token }: { readonly token: string }) {
             dir="auto"
             aria-required="true"
           />
+          <DraftNotice value={draft} onClear={() => setDraft('')} />
           <button type="button" onClick={onShareView} aria-describedby={ids.shareHint}>
             <T k="help.shareView" />
           </button>

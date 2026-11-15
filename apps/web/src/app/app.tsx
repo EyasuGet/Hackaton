@@ -1,5 +1,6 @@
 // Learner page: the conversation shell driven by labelled demo fixtures or
-// real course FAQ mode when authenticated, an Amharic/English language switch,
+// real course FAQ mode when authenticated, a language switch (English, Amharic and
+// draft Afaan Oromo, Tigrinya, Somali and Arabic),
 // and a footer that checks API health once and reports it in a polite live region.
 import { useEffect, useMemo, useState } from 'react';
 import { Assistant } from '../features/assistant/assistant.tsx';
@@ -20,7 +21,15 @@ import {
   isFixtureScenario,
   type FixtureScenario,
 } from '../features/assistant/fixture-client.ts';
-import { LocaleContext, lookup, T, type Locale, type MessageKey } from '../shared/i18n/i18n.tsx';
+import {
+  LocaleContext,
+  localeDirection,
+  lookup,
+  T,
+  type Locale,
+  type MessageKey,
+} from '../shared/i18n/i18n.tsx';
+import { LOCALE_REVIEW } from '../shared/i18n/messages.ts';
 import { loadStoredPreferences, saveStoredPreferences } from './preferences.ts';
 import { useServiceWorkerUpdate } from './service-worker.ts';
 
@@ -36,6 +45,10 @@ const STATUS_TEXT: Record<ApiStatus, MessageKey> = {
 const LANGUAGES: readonly { locale: Locale; name: string }[] = [
   { locale: 'en', name: 'English' },
   { locale: 'am', name: 'አማርኛ' },
+  { locale: 'om', name: 'Afaan Oromoo' },
+  { locale: 'ti', name: 'ትግርኛ' },
+  { locale: 'so', name: 'Soomaali' },
+  { locale: 'ar', name: 'العربية' },
 ];
 
 // A hung API must not leave the page on "Checking" forever.
@@ -140,9 +153,11 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
     };
   }, []);
 
-  // The page language drives screen-reader pronunciation and font selection.
+  // The page language drives screen-reader pronunciation and font selection; the
+  // direction mirrors the whole layout for Arabic.
   useEffect(() => {
     document.documentElement.lang = locale;
+    document.documentElement.dir = localeDirection(locale);
     document.title = lookup(locale, 'app.title').text;
   }, [locale]);
 
@@ -173,6 +188,11 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
         <h1>
           <T k="app.title" />
         </h1>
+        {LOCALE_REVIEW[locale] === 'draft' && (
+          <p className="translation-draft-notice" role="note">
+            <T k="app.translationDraft" />
+          </p>
+        )}
         {isOffline && (
           <p role="status" aria-live="polite" className="offline-banner">
             <T k="app.offline" />

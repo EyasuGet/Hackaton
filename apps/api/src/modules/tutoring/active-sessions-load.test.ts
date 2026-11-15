@@ -718,6 +718,7 @@ describe('Active Sessions & Bounded AI Concurrency Load Verification (T3-024-A)'
           consumeHandoff: () => Promise.resolve(null),
           createSession: () => Promise.resolve(),
           revokeSession: () => Promise.resolve(false),
+          extendSession: () => Promise.resolve(false),
         },
         true,
       ),

@@ -833,6 +833,96 @@
               </tr>
             </tbody>
           </table>
+          <h2>21 October Findings → Our Answer</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>21 October finding</th>
+                <th>Our answer</th>
+                <th>Evidence</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Forms time out</td>
+                <td>
+                  Unsent questions, help requests and accommodation descriptions are saved on the
+                  learner's device, with a "saved on this device only" note and a
+                  <strong>Clear draft</strong> button. The learner is warned 5 minutes before the
+                  session ends and can choose <strong>Stay signed in</strong>. Signing out clears
+                  the drafts.
+                </td>
+                <td>
+                  <a href="../../apps/web/tests/e2e/demo-session.spec.ts"
+                    ><code>demo-session.spec.ts</code></a
+                  >
+                  — <em>a session expiring mid-form loses no typed text</em>
+                </td>
+                <td>Addressed</td>
+              </tr>
+              <tr>
+                <td>ID demanded</td>
+                <td>
+                  No flow asks for ID, a diagnosis or proof. Sign-in is a one-time link. The
+                  accommodation form states that no medical proof or diagnosis is required and asks
+                  learners not to include medical details.
+                </td>
+                <td>
+                  Interface text audit, 2026-11-15 (<code>accommodation.intro</code>,
+                  <code>accommodation.descriptionPrompt</code> in
+                  <a href="../../apps/web/src/shared/i18n/messages.ts"><code>messages.ts</code></a
+                  >); <a href="../../docs/evidence/t3-025-a-accessibility-desktop.md">T3-025-A</a>
+                </td>
+                <td>Addressed</td>
+              </tr>
+              <tr>
+                <td>No captions or sign language</td>
+                <td>
+                  Everything spoken is also text: replies stay on screen during read-aloud, and
+                  voice questions become editable text before they are sent. The product has no
+                  video that needs captions. Sign-language interpretation is not provided.
+                </td>
+                <td><a href="../../docs/conformance.md">Conformance report, 1.2.1</a></td>
+                <td>Partly — sign language is outside Track 3 scope</td>
+              </tr>
+              <tr>
+                <td>Help English-only</td>
+                <td>
+                  The help request, help inbox and accommodation flows have Amharic interface text;
+                  a test fails if any dictionary entry lacks Amharic. Afaan Oromo, Tigrinya, Somali
+                  and Arabic are in progress (<a
+                    href="https://github.com/EyasuGet/Hackaton/issues/218"
+                    >T3-046</a
+                  >).
+                </td>
+                <td>
+                  <a href="../../apps/web/src/shared/i18n/i18n.test.tsx"
+                    ><code>i18n.test.tsx</code></a
+                  >
+                </td>
+                <td>Addressed for Amharic; other languages in progress</td>
+              </tr>
+              <tr>
+                <td>Job boards break under screen readers</td>
+                <td>
+                  Learners ask about approved vacancies inside the accessible conversation, with
+                  cited links and an honest answer when a role is unknown. SMS job alerts reach
+                  phones without a browser. External job boards themselves are not changed.
+                </td>
+                <td>
+                  <a href="../../docs/evidence/t3-025-a-accessibility-desktop.md">T3-025-A</a>,
+                  <a href="../../docs/evidence/t3-021-b-sms-job-alerts.md">T3-021-B</a>
+                </td>
+                <td>Addressed in our product; external boards out of scope</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>
+            The findings are as listed in
+            <a href="https://github.com/EyasuGet/Hackaton/issues/219">issue #219</a>; the original
+            21 October co-design notes are not stored in this repository.
+          </p>
         </section>
 
         <!-- SLIDE 9: Operating Economics & Sustainability -->

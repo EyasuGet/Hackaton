@@ -1,7 +1,7 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DemoSession } from './demo-session.tsx';
+import { DemoSession, EXPIRY_WARNING_MS } from './demo-session.tsx';
 import { takeHandoffCode } from './session-api.ts';
 
 const TOKEN = 'session-token-value-that-must-stay-in-memory';
@@ -9,6 +9,8 @@ const CODE = 'handoff-code-aaaaaaaaaaaaaaaa';
 
 afterEach(() => {
   cleanup();
+  localStorage.clear();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   window.history.replaceState(null, '', '/');
 });
@@ -19,13 +21,21 @@ function stubApi({ exchangeStatus = 201, signOutStatus = 204 } = {}) {
     if (url === '/api/demo/session' && init?.method === 'POST') {
       return Promise.resolve(
         exchangeStatus === 201
-          ? Response.json({ token: TOKEN, expiresAt: '2026-11-14T11:00:00Z' }, { status: 201 })
+          ? Response.json(
+              { token: TOKEN, expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString() },
+              { status: 201 },
+            )
           : Response.json({ error: 'refused' }, { status: exchangeStatus }),
       );
     }
     if (url === '/api/me') {
       return Promise.resolve(
         Response.json({ label: 'Demo learner A', role: 'learner', demo: true }),
+      );
+    }
+    if (url === '/api/demo/session/extend') {
+      return Promise.resolve(
+        Response.json({ expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString() }),
       );
     }
     if (url === '/api/demo/session' && init?.method === 'DELETE') {
@@ -111,5 +121,50 @@ describe('DemoSession', () => {
 
     expect((await screen.findByRole('alert')).textContent).toContain('could not be confirmed');
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy();
+  });
+
+  it('warns before the session expires and extends it on request', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const fetchMock = stubApi();
+    const onSession = vi.fn();
+    render(<DemoSession handoffCode={CODE} onSession={onSession} />);
+    await screen.findByText(/Signed in as Demo learner A/);
+
+    await act(() => vi.advanceTimersByTimeAsync(2 * 60 * 60 * 1000 - EXPIRY_WARNING_MS));
+    expect(screen.getByRole('alert').textContent).toContain('ends in less than 5 minutes');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stay signed in' }));
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    expect(fetchMock).toHaveBeenCalledWith('/api/demo/session/extend', expect.anything());
+
+    await act(() => vi.advanceTimersByTimeAsync(EXPIRY_WARNING_MS));
+    expect(status().textContent).toContain('Signed in as Demo learner A');
+    expect(onSession).not.toHaveBeenCalledWith(null);
+  });
+
+  it('ends the session at expiry, keeping drafts on this device', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    stubApi();
+    const onSession = vi.fn();
+    localStorage.setItem('track3.draft.help', 'Help text');
+    render(<DemoSession handoffCode={CODE} onSession={onSession} />);
+    await screen.findByText(/Signed in as Demo learner A/);
+
+    await act(() => vi.advanceTimersByTimeAsync(2 * 60 * 60 * 1000));
+
+    expect(status().textContent).toContain('Your session has ended');
+    expect(onSession).toHaveBeenLastCalledWith(null);
+    expect(localStorage.getItem('track3.draft.help')).toBe('Help text');
+  });
+
+  it('clears drafts on this device when the learner signs out', async () => {
+    stubApi();
+    localStorage.setItem('track3.draft.help', 'Help text');
+    render(<DemoSession handoffCode={CODE} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+
+    await screen.findByText(/You have signed out/);
+    expect(localStorage.getItem('track3.draft.help')).toBeNull();
   });
 });

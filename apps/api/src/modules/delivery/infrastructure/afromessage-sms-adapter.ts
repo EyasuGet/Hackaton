@@ -168,13 +168,17 @@ export function parseAfroMessageInboundWebhook(payload: unknown): AfroMessageInb
   const sender =
     typeof responseObj.from === 'string'
       ? responseObj.from
-      : typeof responseObj.phone === 'string'
-        ? responseObj.phone
-        : typeof record.from === 'string'
-          ? record.from
-          : typeof record.phone === 'string'
-            ? record.phone
-            : undefined;
+      : typeof responseObj.sender === 'string'
+        ? responseObj.sender
+        : typeof responseObj.phone === 'string'
+          ? responseObj.phone
+          : typeof record.from === 'string'
+            ? record.from
+            : typeof record.sender === 'string'
+              ? record.sender
+              : typeof record.phone === 'string'
+                ? record.phone
+                : undefined;
 
   const recipient =
     typeof responseObj.to === 'string'

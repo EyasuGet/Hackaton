@@ -48,4 +48,13 @@ export class PostgresDemoSessionRepository implements DemoSessionRepository {
     );
     return result.rowCount === 1;
   }
+
+  async extendSession(tokenDigest: string, now: Date, expiresAt: Date): Promise<boolean> {
+    const result = await this.#pool.query(
+      `UPDATE demo_sessions SET expires_at = $3
+        WHERE token_digest = $1 AND revoked_at IS NULL AND expires_at > $2`,
+      [tokenDigest, now, expiresAt],
+    );
+    return result.rowCount === 1;
+  }
 }
