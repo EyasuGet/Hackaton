@@ -10,7 +10,7 @@
 // 7. Unsupported questions return honest limitations without external AI search.
 // 8. HTTP endpoints POST /api/delivery/sms/inbound handle AfroMessage payload.
 
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import Fastify from 'fastify';
 import type { ResolvePrincipal } from '../identity/application/resolve-principal.ts';
 import type { PhoneVerificationRepository } from './application/ports/phone-verification-repository.ts';
@@ -488,6 +488,42 @@ describe('SmsTutorService (T3-040, T3-041)', () => {
     expect(result.answerText).toContain('[breaks]');
     expect(smsAdapter.sent[0]?.message).toContain('[breaks]');
     expect(smsAdapter.sent[0]?.message).not.toContain('MORE');
+  });
+
+  it('introduces an offline lesson quote as a quote, not an approved answer (T3-054)', async () => {
+    const quoteLearner: Principal = {
+      id: 'learner-quote',
+      role: 'learner',
+      label: 'Quote Learner',
+      demo: false,
+      courseIds: ['course-1'],
+    };
+    phoneRepo.principals.set('+251911223344', quoteLearner);
+    phoneRepo.verifiedPhones.set('+251911223344', quoteLearner.id);
+    vi.spyOn(tutoring, 'ask').mockResolvedValue({
+      request: {} as never,
+      answerText: 'Yes, but not in a passive way.',
+      answerLang: 'en',
+      kind: 'answered',
+      provider: 'faq',
+      citations: [
+        {
+          sourceId: 'savanna-va1-future-of-va-industry',
+          sectionId: 'so-is-the-future-of-va-promising',
+          sourceTitle: 'The Future of the VA Industry',
+          heading: 'So, is the Future of VA Promising?',
+        },
+      ],
+      quoted: true,
+    });
+
+    await service.handleInboundMessage({
+      sender: '+251911223344',
+      message: 'Is the VA future good?',
+    });
+
+    expect(smsAdapter.sent[0]?.message).toMatch(/^Quoted from your course:\nYes, but not/);
+    expect(smsAdapter.sent[0]?.message).toContain('[so-is-the-future-of-va-promising]');
   });
 
   it('enforces single segment budget and paginates long answers with MORE down to final citation', async () => {

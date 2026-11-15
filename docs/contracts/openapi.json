@@ -5758,6 +5758,11 @@
             "type": "boolean",
             "example": false
           },
+          "quoted": {
+            "type": "boolean",
+            "description": "Offline FAQ path only: the answer is a verbatim excerpt of the cited lesson section, not an approved written answer.",
+            "example": false
+          },
           "citations": {
             "type": "array",
             "items": {

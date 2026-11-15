@@ -943,6 +943,31 @@ describe('Assistant', () => {
       expect(screen.getByText('Assistant (course FAQ)')).toBeTruthy();
     });
 
+    it('labels an offline verbatim lesson excerpt as a quote, not a written answer (T3-054)', async () => {
+      const { client, respond } = controllableClient();
+      render(<Assistant client={client} mode="faq" />);
+      type('What is the future of the VA industry?');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+
+      await respond({
+        kind: 'answer',
+        reply: {
+          id: 'quote-1',
+          text: 'Yes, but not in a passive way.',
+          lang: 'en',
+          createdAt: '2026-09-11T12:00:00.000Z',
+          provider: 'faq',
+          quoted: true,
+        },
+      });
+
+      expect(screen.getByText('Assistant (quoted from your course)')).toBeTruthy();
+      expect(screen.queryByText('Assistant (course FAQ)')).toBeNull();
+      expect(
+        screen.getByText(/quoted word for word. It is not a written answer/).getAttribute('role'),
+      ).toBe('note');
+    });
+
     it('toggling research mode ON immediately updates notice and routes questions to researchClient with external provenance', async () => {
       const { client, ask: clientAsk } = controllableClient();
       const {

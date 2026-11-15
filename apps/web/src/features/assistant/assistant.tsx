@@ -38,6 +38,7 @@ interface Entry {
   readonly createdAt?: string;
   readonly citations?: readonly Citation[];
   readonly provider?: 'online' | 'faq' | 'job' | 'external_web_research' | 'local';
+  readonly quoted?: boolean;
   readonly provenance?: {
     readonly kind: string;
     readonly disclaimer?: string;
@@ -487,6 +488,7 @@ export function Assistant({
         ...(reply.provider ? { provider: reply.provider } : {}),
         ...((reply.simpleLanguage ?? isSimpleLanguage) ? { simpleLanguage: true } : {}),
         ...(reply.provenance ? { provenance: reply.provenance } : {}),
+        ...(reply.quoted ? { quoted: true } : {}),
       },
     ]);
     setDraft('');
@@ -687,17 +689,19 @@ export function Assistant({
                     k={
                       entry.speaker === 'learner'
                         ? 'assistant.speakerLearner'
-                        : entry.provider === 'external_web_research'
-                          ? 'assistant.speakerResearch'
-                          : entry.provider === 'job'
-                            ? 'assistant.speakerJob'
-                            : entry.provider === 'local' || mode === 'local'
-                              ? 'assistant.speakerLocal'
-                              : mode === 'online'
-                                ? 'assistant.speakerOnline'
-                                : mode === 'faq'
-                                  ? 'assistant.speakerFaq'
-                                  : 'assistant.speakerAssistant'
+                        : entry.quoted
+                          ? 'assistant.speakerQuote'
+                          : entry.provider === 'external_web_research'
+                            ? 'assistant.speakerResearch'
+                            : entry.provider === 'job'
+                              ? 'assistant.speakerJob'
+                              : entry.provider === 'local' || mode === 'local'
+                                ? 'assistant.speakerLocal'
+                                : mode === 'online'
+                                  ? 'assistant.speakerOnline'
+                                  : mode === 'faq'
+                                    ? 'assistant.speakerFaq'
+                                    : 'assistant.speakerAssistant'
                     }
                   />
                 </p>
@@ -711,6 +715,11 @@ export function Assistant({
                       <T k="assistant.replyLanguageNote" />
                     </p>
                   )}
+                {entry.quoted && (
+                  <p className="quote-note" role="note">
+                    <T k="assistant.quoteNote" />
+                  </p>
+                )}
                 {entry.provider === 'external_web_research' && (
                   <p className="research-provenance-disclaimer" role="note">
                     <T k="assistant.researchProvenanceNote" />
