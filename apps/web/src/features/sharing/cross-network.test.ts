@@ -651,7 +651,9 @@ describe('Mobile Acceptance & Disclosure Verification (T3-018-C)', () => {
     expect(unsupportedNote?.textContent).toMatch(/not supported on this browser or mobile device/i);
 
     // 3. Verify existing staff reply is visible and readable
-    expect(screen.getByText(/hello! i am reviewing your question/i)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText(/hello! i am reviewing your question/i)).toBeTruthy();
+    });
 
     // 4. Verify the asynchronous text reply compose button is available and interactive
     const replyButton = screen.getByRole('button', { name: /^reply$/i });
