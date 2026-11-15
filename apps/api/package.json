@@ -12,7 +12,7 @@
     "jobs:import": "node --env-file-if-exists=../../.env src/import-jobs.ts",
     "demo:handoff": "node --env-file-if-exists=../../.env src/demo-handoff.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --exclude \"**/*.integration.test.ts\"",
+    "test": "node scripts/run-tests.js",
     "test:integration": "vitest run integration.test",
     "eval:grounding": "node --env-file-if-exists=../../.env src/evaluations/grounding/run-eval.ts"
   },
