@@ -43,10 +43,7 @@ export type LinkResult =
   | {
       readonly success: false;
       readonly reason:
-        | LinkFailureReason
-        | 'group_chats_not_allowed'
-        | 'bots_not_allowed'
-        | 'invalid_user_id';
+        LinkFailureReason | 'group_chats_not_allowed' | 'bots_not_allowed' | 'invalid_user_id';
     };
 
 export type WebhookHandlingResult =
@@ -57,10 +54,7 @@ export type WebhookHandlingResult =
   | {
       readonly status: 'link_failed';
       readonly reason:
-        | LinkFailureReason
-        | 'group_chats_not_allowed'
-        | 'bots_not_allowed'
-        | 'invalid_user_id';
+        LinkFailureReason | 'group_chats_not_allowed' | 'bots_not_allowed' | 'invalid_user_id';
     }
   | { readonly status: 'unlinked'; readonly unlinked: boolean }
   | {

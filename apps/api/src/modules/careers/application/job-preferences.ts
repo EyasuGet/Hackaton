@@ -10,10 +10,7 @@ export class JobPreferences {
   readonly #repository: JobPreferencesRepository;
   readonly #telegramLinkRepo?: TelegramLinkRepository | undefined;
 
-  constructor(
-    repository: JobPreferencesRepository,
-    telegramLinkRepo?: TelegramLinkRepository,
-  ) {
+  constructor(repository: JobPreferencesRepository, telegramLinkRepo?: TelegramLinkRepository) {
     this.#repository = repository;
     this.#telegramLinkRepo = telegramLinkRepo;
   }

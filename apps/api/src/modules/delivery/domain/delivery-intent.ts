@@ -18,12 +18,7 @@ export const DEFAULT_CLAIM_BATCH_SIZE = 10;
 export const MAX_CLAIM_BATCH_SIZE = 100;
 
 export type DeliveryIntentStatus =
-  | 'pending'
-  | 'leased'
-  | 'completed'
-  | 'failed'
-  | 'uncertain'
-  | 'cancelled';
+  'pending' | 'leased' | 'completed' | 'failed' | 'uncertain' | 'cancelled';
 
 export interface NewDeliveryIntent {
   /**

@@ -54,7 +54,12 @@ export class TelegramJobAlertDispatcher implements DispatchPort {
     }
 
     const job = await this.#jobRepository.getJob(jobId, now);
-    if (!job || job.withdrawn || job.expiresAt.getTime() <= now.getTime() || job.status !== 'active') {
+    if (
+      !job ||
+      job.withdrawn ||
+      job.expiresAt.getTime() <= now.getTime() ||
+      job.status !== 'active'
+    ) {
       // Content has expired or job was withdrawn: suppress delivery immediately.
       return { status: 'cancelled', reason: 'job_expired_or_withdrawn' };
     }

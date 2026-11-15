@@ -39,11 +39,7 @@ export interface JobPreferencesRepository {
    * cancels any queued pending delivery intents for this learner and channel,
    * and removes the contact destination.
    */
-  unsubscribeAll(
-    scope: OwnedScope,
-    channel: string,
-    now?: Date,
-  ): Promise<number>;
+  unsubscribeAll(scope: OwnedScope, channel: string, now?: Date): Promise<number>;
 
   /**
    * Lists all subscriptions owned by the requesting learner, newest first.
