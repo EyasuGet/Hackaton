@@ -137,6 +137,31 @@ describe('HelpInbox (T3-016-B & T3-017-B)', () => {
     });
   });
 
+  it('renders screen share control for claimed requests', async () => {
+    vi.stubGlobal('navigator', {
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+      mediaDevices: {
+        getDisplayMedia: vi.fn(),
+      },
+    });
+
+    vi.spyOn(helpApi, 'listHelpRequests').mockResolvedValue({
+      kind: 'ok',
+      requests: [
+        {
+          ...FAKE_REQUEST,
+          state: 'claimed',
+          claimedBy: 'staff-1',
+          claimedAt: new Date().toISOString(),
+        },
+      ],
+    });
+    wrap(<HelpInbox token="tok" />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /share chosen screen/i })).toBeTruthy();
+    });
+  });
+
   it('shows resolved state label for a resolved request', async () => {
     vi.spyOn(helpApi, 'listHelpRequests').mockResolvedValue({
       kind: 'ok',

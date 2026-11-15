@@ -58,7 +58,7 @@ const app = buildApp(
     content,
     help: new Help(helpRepository),
     staffHelp: new StaffHelp(helpRepository),
-    sharing: new Sharing(sharingRepository, helpRequestLookup),
+    sharing: new Sharing(sharingRepository, helpRequestLookup, config.relay),
     accommodation: new Accommodation(new PostgresAccommodationRepository(pool)),
     jobRepository: new PostgresJobRepository(pool),
     jobPreferences,

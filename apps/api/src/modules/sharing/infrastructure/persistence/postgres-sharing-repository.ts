@@ -1,8 +1,13 @@
-// PostgreSQL adapter for sharing session persistence (T3-018-A).
+// PostgreSQL adapter for sharing session persistence (T3-018-A / T3-018-B).
 // All writes enforce state-transition constraints to prevent invalid transitions.
 import type pg from 'pg';
 import type { SharingRepository } from '../../application/ports/sharing-repository.ts';
-import type { SharingSession, SharingSessionState } from '../../domain/sharing-session.ts';
+import type {
+  SharingSession,
+  SharingSessionState,
+  SharingSignal,
+  SignalType,
+} from '../../domain/sharing-session.ts';
 
 interface SharingSessionRow {
   id: string;
@@ -15,6 +20,15 @@ interface SharingSessionRow {
   revoked_at: Date | null;
 }
 
+interface SharingSignalRow {
+  id: string;
+  session_id: string;
+  sender_id: string;
+  type: SignalType;
+  payload: unknown;
+  created_at: Date;
+}
+
 function toSession(row: SharingSessionRow): SharingSession {
   return {
     id: row.id,
@@ -25,6 +39,17 @@ function toSession(row: SharingSessionRow): SharingSession {
     createdAt: row.created_at.toISOString(),
     expiresAt: row.expires_at.toISOString(),
     revokedAt: row.revoked_at ? row.revoked_at.toISOString() : null,
+  };
+}
+
+function toSignal(row: SharingSignalRow): SharingSignal {
+  return {
+    id: String(row.id),
+    sessionId: row.session_id,
+    senderId: row.sender_id,
+    type: row.type,
+    payload: row.payload,
+    createdAt: row.created_at.toISOString(),
   };
 }
 
@@ -49,6 +74,13 @@ export class PostgresSharingRepository implements SharingRepository {
     const result = await this.#pool.query<SharingSessionRow>(
       `INSERT INTO sharing_sessions (help_request_id, learner_id, support_id)
        VALUES ($1, $2, $3)
+       ON CONFLICT (help_request_id) DO UPDATE
+         SET state = 'pending',
+             learner_id = EXCLUDED.learner_id,
+             support_id = EXCLUDED.support_id,
+             created_at = now(),
+             expires_at = (now() + interval '1 hour'),
+             revoked_at = NULL
        RETURNING id, help_request_id, learner_id, support_id, state,
                  created_at, expires_at, revoked_at`,
       [helpRequestId, learnerId, supportId],
@@ -106,5 +138,40 @@ export class PostgresSharingRepository implements SharingRepository {
     );
     const row = result.rows[0];
     return row ? toSession(row) : null;
+  }
+
+  async createSignal(
+    sessionId: string,
+    senderId: string,
+    type: SignalType,
+    payload: unknown,
+  ): Promise<SharingSignal> {
+    const result = await this.#pool.query<SharingSignalRow>(
+      `INSERT INTO sharing_signals (session_id, sender_id, type, payload)
+       VALUES ($1, $2, $3, $4::jsonb)
+       RETURNING id, session_id, sender_id, type, payload, created_at`,
+      [sessionId, senderId, type, JSON.stringify(payload)],
+    );
+    const row = result.rows[0];
+    if (!row) throw new Error('sharing_signals: insert returned no row');
+    return toSignal(row);
+  }
+
+  async findSignals(
+    sessionId: string,
+    excludeSenderId: string,
+    afterId?: string,
+  ): Promise<readonly SharingSignal[]> {
+    const after = afterId ? BigInt(afterId) : 0n;
+    const result = await this.#pool.query<SharingSignalRow>(
+      `SELECT id, session_id, sender_id, type, payload, created_at
+       FROM sharing_signals
+       WHERE session_id = $1
+         AND sender_id <> $2
+         AND id > $3
+       ORDER BY id ASC`,
+      [sessionId, excludeSenderId, after.toString()],
+    );
+    return result.rows.map(toSignal);
   }
 }

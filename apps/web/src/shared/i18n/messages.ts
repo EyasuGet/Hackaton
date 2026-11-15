@@ -171,6 +171,22 @@ export const en = {
   'inbox.meetingNote':
     'To arrange a meeting, propose a time in Addis Ababa timezone (EAT, UTC+3) in your message.',
   'inbox.markRead': 'Mark as read',
+  // Screen sharing (T3-018-B)
+  'sharing.heading': 'Screen sharing',
+  'sharing.startSharing': 'Share chosen screen',
+  'sharing.stopSharing': 'Stop screen sharing',
+  'sharing.activeStatus': 'You are sharing your screen with support. Click stop at any time.',
+  'sharing.stoppedStatus': 'Screen sharing has stopped.',
+  'sharing.unsupportedMobile':
+    'Screen sharing is not supported on this mobile browser. Please continue using text help below.',
+  'sharing.starting': 'Opening screen picker…',
+  'sharing.error': 'Screen sharing could not start. Please try again.',
+  'sharing.revoked': 'The screen sharing session was ended.',
+  'sharing.viewerHeading': 'Learner shared screen',
+  'sharing.viewerLabel': 'Live screen shared by learner',
+  'sharing.viewerConnected': 'Viewing shared screen.',
+  'sharing.viewerWaiting': 'Waiting for learner to share screen…',
+  'sharing.disconnect': 'Disconnect and close stream',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -316,4 +332,20 @@ export const am: Partial<Record<MessageKey, string>> = {
   'inbox.replyTerminal': 'ይህ ጥያቄ ተዘግቷል። ተጨማሪ ምላሽ ማከል አይቻልም።',
   'inbox.meetingNote': 'ስብሰባ ለማቀናጀት፣ የአዲስ አበባ ሰዓት (EAT፣ UTC+3) ተጠቅሞ ሰዓት ሀሳብ ያቅርቡ።',
   'inbox.markRead': 'እንደተነበበ ምልክት አድርግ',
+  // Screen sharing (T3-018-B) — draft; competent-speaker review required.
+  'sharing.heading': 'ስክሪን ማጋራት',
+  'sharing.startSharing': 'የተመረጠውን ስክሪን አጋራ',
+  'sharing.stopSharing': 'ስክሪን ማጋራትን አቁም',
+  'sharing.activeStatus': 'ስክሪንዎን ለድጋፍ ሰራተኛ እያጋሩ ነው። በማንኛውም ጊዜ ማቆም ይችላሉ።',
+  'sharing.stoppedStatus': 'ስክሪን ማጋራት ቆሟል።',
+  'sharing.unsupportedMobile':
+    'በዚህ ተንቀሳቃሽ ስልክ አሳሽ ላይ ስክሪን ማጋራት አይደገፍም። እባክዎ ከታች ያለውን የጽሑፍ እርዳታ ይጠቀሙ።',
+  'sharing.starting': 'የስክሪን መራጭ እየተከፈተ ነው…',
+  'sharing.error': 'ስክሪን ማጋራት ሊጀመር አልቻለም። እባክዎ እንደገና ይሞክሩ።',
+  'sharing.revoked': 'የስክሪን ማጋራት ክፍለ ጊዜ ተዘግቷል።',
+  'sharing.viewerHeading': 'በተማሪው የተጋራ ስክሪን',
+  'sharing.viewerLabel': 'በተማሪው በቀጥታ የተጋራ ስክሪን',
+  'sharing.viewerConnected': 'የተጋራውን ስክሪን እያዩ ነው።',
+  'sharing.viewerWaiting': 'ተማሪው ስክሪን እስኪያጋራ ድረስ በመጠበቅ ላይ…',
+  'sharing.disconnect': 'ግንኙነቱን አቋርጥ እና ዝጋ',
 };

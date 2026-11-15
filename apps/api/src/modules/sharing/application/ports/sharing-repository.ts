@@ -1,6 +1,6 @@
 // Storage port for sharing sessions. Implementations must enforce session
 // ownership and state constraints so the use-case layer can trust the results.
-import type { SharingSession } from '../../domain/sharing-session.ts';
+import type { SharingSession, SharingSignal, SignalType } from '../../domain/sharing-session.ts';
 
 export interface SharingRepository {
   /**
@@ -37,4 +37,23 @@ export interface SharingRepository {
    * (session not found, wrong state, or already active).
    */
   activateSession(id: string): Promise<SharingSession | null>;
+
+  /**
+   * Appends an ephemeral WebRTC signalling message to the session.
+   */
+  createSignal(
+    sessionId: string,
+    senderId: string,
+    type: SignalType,
+    payload: unknown,
+  ): Promise<SharingSignal>;
+
+  /**
+   * Lists signals for a session sent by the other participant, optionally after a cursor id.
+   */
+  findSignals(
+    sessionId: string,
+    excludeSenderId: string,
+    afterId?: string,
+  ): Promise<readonly SharingSignal[]>;
 }
