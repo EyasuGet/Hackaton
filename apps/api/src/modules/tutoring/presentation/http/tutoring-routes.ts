@@ -282,4 +282,41 @@ export function registerTutoringRoutes(
       return reply.code(200).send({ purged });
     },
   );
+  // Aggregated frequently asked topics for authorized teachers and support staff (T3-030).
+  // Enforces low-count k-anonymity suppression (k >= 3) to protect learner privacy.
+  // Learners receive 403 Forbidden; unauthenticated requests receive 401 Unauthorized.
+  app.get<{ Querystring: { courseId?: string; groupByOther?: string } }>(
+    '/api/tutoring/teacher/topics',
+    { preHandler: [authenticated, requireRole('teacher', 'support')] },
+    async (request, reply) => {
+      const { courseId, groupByOther } = request.query;
+
+      if (!courseId || typeof courseId !== 'string' || courseId.trim() === '') {
+        return reply.code(400).send({ error: 'invalid_course_id' });
+      }
+
+      const principal = principalOf(request);
+
+      if (principal.role === 'teacher' && !principal.courseIds.includes(courseId.trim())) {
+        return reply.code(403).send({ error: 'forbidden' });
+      }
+      if (
+        principal.role === 'support' &&
+        principal.courseIds.length > 0 &&
+        !principal.courseIds.includes(courseId.trim())
+      ) {
+        return reply.code(403).send({ error: 'forbidden' });
+      }
+
+      const topics = await tutoring.getTeacherTopics(principal, courseId.trim(), {
+        groupByOther: groupByOther === 'true',
+      });
+
+      if (!topics) {
+        return reply.code(403).send({ error: 'forbidden' });
+      }
+
+      return reply.code(200).send(topics);
+    },
+  );
 }

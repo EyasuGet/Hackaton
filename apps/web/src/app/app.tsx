@@ -8,6 +8,7 @@ import { DemoSession } from '../features/demo-session/demo-session.tsx';
 import { AccommodationPanel } from '../features/accommodation/accommodation.tsx';
 import { HelpInbox } from '../features/human-help/help-inbox.tsx';
 import { HumanHelp } from '../features/human-help/human-help.tsx';
+import { TeacherTopics } from '../features/teacher/teacher-topics.tsx';
 import { createAnswerClient } from '../features/assistant/faq-client.ts';
 import {
   createFixtureClient,
@@ -211,6 +212,7 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
         {sessionToken && <HumanHelp token={sessionToken} />}
         {sessionToken && <HelpInbox token={sessionToken} />}
         {sessionToken && <AccommodationPanel token={sessionToken} />}
+        {sessionToken && <TeacherTopics token={sessionToken} />}
       </main>
       <footer>
         <p role="status" aria-label={t('status.label')}>

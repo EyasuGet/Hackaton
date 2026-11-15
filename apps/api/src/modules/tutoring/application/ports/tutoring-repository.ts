@@ -74,4 +74,11 @@ export interface TutoringRepository {
    * Idempotent across restarts. Returns the count of purged request rows.
    */
   purgeExpired(now: Date): Promise<number>;
+
+  /**
+   * Retrieves non-purged question texts asked in a course for aggregate topic analysis (T3-030).
+   * Excludes rows whose private content has been purged.
+   * Returns only questions (zero learner IDs, timestamps, or transcripts).
+   */
+  listCourseQuestionsForAnalytics?(courseId: string): Promise<readonly string[]>;
 }
