@@ -182,6 +182,14 @@ export class PostgresHelpRepository implements HelpRepository {
     }));
   }
 
+  async listAssigned(staffId: string): Promise<readonly HelpRequest[]> {
+    const result = await this.#pool.query<HelpRequestRow>(
+      `${SELECT} WHERE claimed_by = $1 AND state = 'claimed' AND expires_at > now() ORDER BY claimed_at DESC`,
+      [staffId],
+    );
+    return result.rows.map(toHelpRequest);
+  }
+
   async claimRequest(id: string, staffId: string): Promise<ClaimResult | null> {
     // Atomic claim: succeeds only when the request is currently waiting.
     const result = await this.#pool.query<HelpRequestRow>(

@@ -162,6 +162,9 @@ class MockHelpRepository implements HelpRepository {
   listQueue(): Promise<readonly QueueItem[]> {
     return Promise.resolve([]);
   }
+  listAssigned(): Promise<readonly HelpRequest[]> {
+    return Promise.resolve([]);
+  }
   claimRequest(): Promise<ClaimResult | null> {
     return Promise.resolve(null);
   }

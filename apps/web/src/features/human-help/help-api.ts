@@ -44,6 +44,26 @@ export type ListRepliesResult =
   | { readonly kind: 'ok'; readonly replies: readonly HelpReply[] }
   | { readonly kind: 'not_found' | 'denied' | 'failed' };
 
+export interface QueueItem {
+  readonly id: string;
+  readonly createdAt: string;
+  readonly expiresAt: string;
+  readonly state: 'waiting';
+}
+
+export type ListQueueResult =
+  | { readonly kind: 'ok'; readonly queue: readonly QueueItem[] }
+  | { readonly kind: 'denied' | 'failed' };
+
+export type ClaimHelpRequestResult =
+  | { readonly kind: 'claimed'; readonly request: HelpRequest }
+  | { readonly kind: 'already_claimed'; readonly claimedBy?: string | null }
+  | { readonly kind: 'not_found' | 'denied' | 'failed' };
+
+export type ResolveHelpRequestResult =
+  | { readonly kind: 'resolved'; readonly request: HelpRequest }
+  | { readonly kind: 'not_found' | 'denied' | 'failed' };
+
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
@@ -270,5 +290,111 @@ export async function removeScreenshot(token: string, id: string): Promise<boole
     return response.ok;
   } catch {
     return false;
+  }
+}
+
+function parseQueueItem(raw: unknown): QueueItem | null {
+  const r = isRecord(raw) ? raw : null;
+  if (
+    !r ||
+    typeof r.id !== 'string' ||
+    typeof r.createdAt !== 'string' ||
+    typeof r.expiresAt !== 'string' ||
+    r.state !== 'waiting'
+  ) {
+    return null;
+  }
+  return {
+    id: r.id,
+    createdAt: r.createdAt,
+    expiresAt: r.expiresAt,
+    state: 'waiting',
+  };
+}
+
+/** Lists waiting help requests in the support queue (support role only). */
+export async function listQueue(token: string): Promise<ListQueueResult> {
+  try {
+    const response = await fetch('/api/help/queue', {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (response.status === 401 || response.status === 403) return { kind: 'denied' };
+    if (!response.ok) return { kind: 'failed' };
+    const body: unknown = await response.json();
+    if (!isRecord(body) || !Array.isArray(body.queue)) return { kind: 'failed' };
+    const queue = (body.queue as unknown[])
+      .map(parseQueueItem)
+      .filter((q): q is QueueItem => q !== null);
+    return { kind: 'ok', queue };
+  } catch {
+    return { kind: 'failed' };
+  }
+}
+
+/** Claims a waiting help request for the support caller. */
+export async function claimHelpRequest(token: string, id: string): Promise<ClaimHelpRequestResult> {
+  try {
+    const response = await fetch(`/api/help/requests/${id}/claim`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (response.status === 401 || response.status === 403) return { kind: 'denied' };
+    if (response.status === 409) {
+      const body: unknown = await response.json().catch(() => null);
+      const claimedBy =
+        isRecord(body) && typeof body.claimedBy === 'string' ? body.claimedBy : null;
+      return { kind: 'already_claimed', claimedBy };
+    }
+    if (response.status === 404) return { kind: 'not_found' };
+    if (!response.ok) return { kind: 'failed' };
+    const body: unknown = await response.json();
+    if (!isRecord(body)) return { kind: 'failed' };
+    const request = parseRequest(body.request);
+    if (!request) return { kind: 'failed' };
+    return { kind: 'claimed', request };
+  } catch {
+    return { kind: 'failed' };
+  }
+}
+
+/** Lists non-expired claimed help requests assigned to the support caller. */
+export async function listAssignedRequests(token: string): Promise<ListResult> {
+  try {
+    const response = await fetch('/api/help/assigned', {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (response.status === 401 || response.status === 403) return { kind: 'denied' };
+    if (!response.ok) return { kind: 'failed' };
+    const body: unknown = await response.json();
+    if (!isRecord(body) || !Array.isArray(body.requests)) return { kind: 'failed' };
+    const requests = (body.requests as unknown[])
+      .map(parseRequest)
+      .filter((r): r is HelpRequest => r !== null);
+    return { kind: 'ok', requests };
+  } catch {
+    return { kind: 'failed' };
+  }
+}
+
+/** Resolves a claimed help request (support role only). */
+export async function resolveHelpRequest(
+  token: string,
+  id: string,
+): Promise<ResolveHelpRequestResult> {
+  try {
+    const response = await fetch(`/api/help/requests/${id}/resolve`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (response.status === 401 || response.status === 403) return { kind: 'denied' };
+    if (response.status === 404) return { kind: 'not_found' };
+    if (!response.ok) return { kind: 'failed' };
+    const body: unknown = await response.json();
+    if (!isRecord(body)) return { kind: 'failed' };
+    const request = parseRequest(body.request);
+    if (!request) return { kind: 'failed' };
+    return { kind: 'resolved', request };
+  } catch {
+    return { kind: 'failed' };
   }
 }

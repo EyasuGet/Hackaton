@@ -485,6 +485,18 @@ export class AuditedHelpRepository implements HelpRepository {
     );
   }
 
+  listAssigned(staffId: string): Promise<readonly HelpRequest[]> {
+    const nowTime = this.#clock.now().getTime();
+    return Promise.resolve(
+      this.requests.filter(
+        (r) =>
+          r.claimedBy === staffId &&
+          r.state === 'claimed' &&
+          new Date(r.expiresAt).getTime() > nowTime,
+      ),
+    );
+  }
+
   claimRequest(id: string, staffId: string): Promise<HelpClaimResult | null> {
     const nowTime = this.#clock.now().getTime();
     const nowIso = this.#clock.nowIso();
