@@ -193,6 +193,29 @@ class InMemoryHelpRepository implements HelpRepository {
     this.requests.set(helpRequestId, resolved);
     return Promise.resolve(resolved);
   }
+
+  readonly notificationPrefs = new Map<string, boolean>();
+
+  getNotificationPreference(scope: OwnedScope, channel: string): Promise<boolean> {
+    return Promise.resolve(this.notificationPrefs.get(`${scope.ownerId}:${channel}`) ?? false);
+  }
+
+  setNotificationPreference(
+    scope: OwnedScope,
+    channel: string,
+    optedIn: boolean,
+  ): Promise<boolean> {
+    this.notificationPrefs.set(`${scope.ownerId}:${channel}`, optedIn);
+    return Promise.resolve(optedIn);
+  }
+
+  cancelPendingIntentsForHelpRequest(_helpRequestId: string): Promise<number> {
+    return Promise.resolve(0);
+  }
+
+  cancelPendingIntentsForLearner(_learnerId: string, _channel: string): Promise<number> {
+    return Promise.resolve(0);
+  }
 }
 
 describe('Help Application - Replies & Resolution (T3-017-B)', () => {
