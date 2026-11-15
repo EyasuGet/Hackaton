@@ -254,6 +254,20 @@ export const en = {
   'sharing.error': 'Screen sharing connection failed. Check your connection and try again.',
   'sharing.sessionEnded': 'The screen sharing session has ended.',
   'sharing.viewerVideoLabel': 'Live screen share from learner',
+  // Teacher analytics (T3-030)
+  'teacher.topicsHeading': 'Frequently asked topics',
+  'teacher.topicsDescription':
+    'Aggregated questions grouped by topic. Rare or sensitive questions with fewer than 3 occurrences are suppressed to protect learner privacy.',
+  'teacher.courseLabel': 'Course',
+  'teacher.topicColumn': 'Topic',
+  'teacher.countColumn': 'Questions asked',
+  'teacher.totalQuestions': 'Total questions',
+  'teacher.suppressionNotice':
+    'Topics with fewer than 3 questions are suppressed to protect learner privacy.',
+  'teacher.empty': 'No frequently asked topics recorded for this course yet.',
+  'teacher.loading': 'Loading aggregate topics…',
+  'teacher.error': 'Could not load course topics. Check your connection and try again.',
+  'teacher.forbidden': 'You do not have permission to view topics for this course.',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -476,4 +490,17 @@ export const am: Partial<Record<MessageKey, string>> = {
   'sharing.error': 'የማያ ማጋራት ግንኙነት አልተሳካም። ግንኙነትዎን ያረጋግጡ እና እንደገና ይሞክሩ።',
   'sharing.sessionEnded': 'የማያ ማጋራት ክፍለ ጊዜ አብቅቷል።',
   'sharing.viewerVideoLabel': 'ከተማሪው የቀጥታ ማያ ማጋራት',
+  // Teacher analytics (T3-030)
+  'teacher.topicsHeading': 'ተደጋግመው የሚጠየቁ ርዕሶች',
+  'teacher.topicsDescription':
+    'በርዕስ የተደራጁ የተማሪዎች ጥያቄዎች ድምር። የተማሪዎችን ግላዊነት ለመጠበቅ ከ3 ያነሱ ድግግሞሽ ያላቸው ጥያቄዎች ተደብቀዋል።',
+  'teacher.courseLabel': 'የትምህርት ኮርስ',
+  'teacher.topicColumn': 'ርዕስ',
+  'teacher.countColumn': 'የተጠየቁ ጥያቄዎች ብዛት',
+  'teacher.totalQuestions': 'ጠቅላላ ጥያቄዎች',
+  'teacher.suppressionNotice': 'የተማሪዎችን ግላዊነት ለመጠበቅ ከ3 ያነሱ ጥያቄዎች ያሏቸው ርዕሶች ተደብቀዋል።',
+  'teacher.empty': 'ለዚህ ትምህርት እስካሁን የተመዘገቡ ተደጋጋሚ ርዕሶች የሉም።',
+  'teacher.loading': 'ርዕሶችን በመጫን ላይ…',
+  'teacher.error': 'የትምህርቱን ርዕሶች መጫን አልተቻለም። ግንኙነትዎን ፈትሸው እንደገና ይሞክሩ።',
+  'teacher.forbidden': 'ይህን የትምህርት ርዕሶች የማየት ፈቃድ የለዎትም።',
 };

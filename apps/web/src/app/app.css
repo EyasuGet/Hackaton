@@ -493,3 +493,63 @@ button[aria-disabled='true'] {
     border-inline-start: 4px solid Highlight;
   }
 }
+
+/* Teacher topics analytics (T3-030) */
+.teacher-topics {
+  border-top: 2px solid var(--panel);
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+}
+
+.teacher-topics-desc {
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+.teacher-topics-meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+  font-size: 0.9375rem;
+}
+
+.teacher-topics-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+}
+
+.teacher-topics-table th,
+.teacher-topics-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: start;
+  border-bottom: 1px solid var(--panel);
+}
+
+.teacher-topics-table th.count-col,
+.teacher-topics-table td.count-col {
+  text-align: end;
+  width: 8rem;
+}
+
+.suppression-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--panel);
+  border-inline-start: 4px solid var(--muted);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.suppression-text {
+  margin: 0;
+}
+
+.suppressed-badge {
+  font-weight: 600;
+}
