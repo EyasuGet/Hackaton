@@ -172,100 +172,147 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
   // The Assistant is never remounted on a language switch, so an unsent question survives it.
   return (
     <LocaleContext value={locale}>
-      <main>
-        <div className="languages" role="group" aria-label={t('app.languageLabel')}>
-          {LANGUAGES.map(({ locale: option, name }) => (
-            <button
-              key={option}
-              type="button"
-              lang={option}
-              aria-pressed={locale === option}
-              onClick={() => setLocale(option)}
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-        <h1>
-          <T k="app.title" />
-        </h1>
-        {LOCALE_REVIEW[locale] === 'draft' && (
-          <p className="translation-draft-notice" role="note">
-            <T k="app.translationDraft" />
-          </p>
-        )}
-        {isOffline && (
-          <p role="status" aria-live="polite" className="offline-banner">
-            <T k="app.offline" />
-          </p>
-        )}
-        {updateAvailable && (
-          <div
-            role="status"
-            aria-live="polite"
-            aria-label={t('app.updateAvailable')}
-            className="update-banner"
-          >
-            <p>
-              <T k="app.updateAvailable" />
-            </p>
-            <button type="button" onClick={applyUpdate}>
-              <T k="app.refresh" />
-            </button>
-          </div>
-        )}
-        <DemoSession handoffCode={handoffCode} onSession={setSessionToken} />
-        <CourseContent token={sessionToken} />
-        {!sessionToken && (
-          <section className="demo-notice" aria-labelledby="demo-heading">
-            <h2 id="demo-heading">
-              <T k="demo.heading" />
-            </h2>
-            <p>
-              <T k="demo.notice" />
-            </p>
-            <label htmlFor="demo-scenario">
-              <T k="demo.scenarioLabel" />
-            </label>
-            <select
-              id="demo-scenario"
-              value={scenario}
-              onChange={(event) => {
-                if (isFixtureScenario(event.target.value)) setScenario(event.target.value);
-              }}
-            >
-              {/* An option holds plain text only, so these use the untagged lookup. */}
-              {Object.entries(FIXTURE_SCENARIOS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {t(label)}
-                </option>
+      <div className="app-shell">
+        <header className="app-header">
+          <div className="header-inner">
+            <div className="brand-group">
+              <span className="brand-icon" aria-hidden="true">
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                </svg>
+              </span>
+              <div className="brand-text">
+                <h1>
+                  <T k="app.title" />
+                </h1>
+                <p className="app-subtitle">Multilingual Learning &amp; Assistance Platform</p>
+              </div>
+            </div>
+            <div className="languages" role="group" aria-label={t('app.languageLabel')}>
+              {LANGUAGES.map(({ locale: option, name }) => (
+                <button
+                  key={option}
+                  type="button"
+                  lang={option}
+                  aria-pressed={locale === option}
+                  onClick={() => setLocale(option)}
+                >
+                  {name}
+                </button>
               ))}
-            </select>
-          </section>
-        )}
-        <Assistant
-          client={client}
-          researchClient={researchClient}
-          mode={sessionToken ? (localMode ? 'local' : externalConsent ? 'online' : 'faq') : 'demo'}
-          consent={externalConsent}
-          simpleLanguage={simpleLanguage}
-          onSimpleLanguageChange={setSimpleLanguage}
-          {...(sessionToken
-            ? { onConsentChange: (consented: boolean) => setExternalConsent(consented) }
-            : {})}
-        />
-        {sessionToken && <HumanHelp token={sessionToken} />}
-        {sessionToken && <HelpInbox token={sessionToken} />}
-        {sessionToken && <AccommodationPanel token={sessionToken} />}
-        {sessionToken && <TeacherTopics token={sessionToken} />}
-        {sessionToken && <EmployerDashboard sessionToken={sessionToken} />}
-        {sessionToken && <SupportQueue token={sessionToken} />}
-      </main>
-      <footer>
-        <p role="status" aria-label={t('status.label')}>
-          <T k={STATUS_TEXT[status]} />
-        </p>
-      </footer>
+            </div>
+          </div>
+        </header>
+
+        <main className="main-content">
+          {LOCALE_REVIEW[locale] === 'draft' && (
+            <p className="translation-draft-notice" role="note">
+              <T k="app.translationDraft" />
+            </p>
+          )}
+          {isOffline && (
+            <p role="status" aria-live="polite" className="offline-banner">
+              <T k="app.offline" />
+            </p>
+          )}
+          {updateAvailable && (
+            <div
+              role="status"
+              aria-live="polite"
+              aria-label={t('app.updateAvailable')}
+              className="update-banner"
+            >
+              <p>
+                <T k="app.updateAvailable" />
+              </p>
+              <button type="button" onClick={applyUpdate}>
+                <T k="app.refresh" />
+              </button>
+            </div>
+          )}
+
+          <DemoSession handoffCode={handoffCode} onSession={setSessionToken} />
+
+          {!sessionToken && (
+            <section className="demo-notice" aria-labelledby="demo-heading">
+              <h2 id="demo-heading">
+                <T k="demo.heading" />
+              </h2>
+              <p>
+                <T k="demo.notice" />
+              </p>
+              <label htmlFor="demo-scenario">
+                <T k="demo.scenarioLabel" />
+              </label>
+              <select
+                id="demo-scenario"
+                value={scenario}
+                onChange={(event) => {
+                  if (isFixtureScenario(event.target.value)) setScenario(event.target.value);
+                }}
+              >
+                {/* An option holds plain text only, so these use the untagged lookup. */}
+                {Object.entries(FIXTURE_SCENARIOS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {t(label)}
+                  </option>
+                ))}
+              </select>
+            </section>
+          )}
+
+          <div
+            className={`workspace-grid ${sessionToken ? 'workspace-grid--authenticated' : 'workspace-grid--demo'}`}
+          >
+            <div className="workspace-column workspace-column--primary">
+              <CourseContent token={sessionToken} />
+              <Assistant
+                client={client}
+                researchClient={researchClient}
+                mode={
+                  sessionToken ? (localMode ? 'local' : externalConsent ? 'online' : 'faq') : 'demo'
+                }
+                consent={externalConsent}
+                simpleLanguage={simpleLanguage}
+                onSimpleLanguageChange={setSimpleLanguage}
+                {...(sessionToken
+                  ? { onConsentChange: (consented: boolean) => setExternalConsent(consented) }
+                  : {})}
+              />
+            </div>
+            {sessionToken && (
+              <div className="workspace-column workspace-column--secondary">
+                <HumanHelp token={sessionToken} />
+                <HelpInbox token={sessionToken} />
+                <AccommodationPanel token={sessionToken} />
+                <TeacherTopics token={sessionToken} />
+                <EmployerDashboard sessionToken={sessionToken} />
+                <SupportQueue token={sessionToken} />
+              </div>
+            )}
+          </div>
+        </main>
+
+        <footer className="app-footer">
+          <div className="footer-inner">
+            <p role="status" aria-label={t('status.label')}>
+              <T k={STATUS_TEXT[status]} />
+            </p>
+            <p className="footer-meta">
+              Savanna Multilingual Learning Assistant · WCAG 2.2 AA Conforming
+            </p>
+          </div>
+        </footer>
+      </div>
     </LocaleContext>
   );
 }
