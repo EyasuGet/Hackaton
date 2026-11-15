@@ -61,9 +61,13 @@ function MessageDate({
 export function Assistant({
   client,
   mode = 'demo',
+  consent,
+  onConsentChange,
 }: {
   readonly client: ConversationClient;
-  readonly mode?: 'demo' | 'faq';
+  readonly mode?: 'demo' | 'faq' | 'online' | undefined;
+  readonly consent?: boolean | undefined;
+  readonly onConsentChange?: ((consented: boolean) => void) | undefined;
 }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [draft, setDraft] = useState('');
@@ -78,7 +82,14 @@ export function Assistant({
   }>({ text: '' });
   // State updates are asynchronous, so a ref blocks a second send in the same tick.
   const inFlight = useRef(false);
-  const ids = { question: useId(), hint: useId(), problem: useId(), heading: useId() };
+  const ids = {
+    question: useId(),
+    hint: useId(),
+    problem: useId(),
+    heading: useId(),
+    consent: useId(),
+    consentHint: useId(),
+  };
   const t = useT();
   const locale = useContext(LocaleContext);
   // A reply can arrive after a language switch; announce it in the language shown then.
@@ -162,6 +173,30 @@ export function Assistant({
         </p>
       )}
 
+      {mode === 'online' && (
+        <p className="assistant-mode-notice" role="note">
+          <T k="assistant.onlineModeNotice" />
+        </p>
+      )}
+
+      {onConsentChange && (
+        <div className="assistant-consent-control">
+          <label htmlFor={ids.consent}>
+            <input
+              id={ids.consent}
+              type="checkbox"
+              checked={consent ?? false}
+              aria-describedby={ids.consentHint}
+              onChange={(e) => onConsentChange(e.target.checked)}
+            />
+            <T k="assistant.consentLabel" />
+          </label>
+          <p id={ids.consentHint} className="hint">
+            <T k="assistant.consentHint" />
+          </p>
+        </div>
+      )}
+
       {entries.length === 0 ? (
         <p className="empty">
           <T k="assistant.empty" />
@@ -175,9 +210,11 @@ export function Assistant({
                   k={
                     entry.speaker === 'learner'
                       ? 'assistant.speakerLearner'
-                      : mode === 'faq'
-                        ? 'assistant.speakerFaq'
-                        : 'assistant.speakerAssistant'
+                      : mode === 'online'
+                        ? 'assistant.speakerOnline'
+                        : mode === 'faq'
+                          ? 'assistant.speakerFaq'
+                          : 'assistant.speakerAssistant'
                   }
                 />
               </p>

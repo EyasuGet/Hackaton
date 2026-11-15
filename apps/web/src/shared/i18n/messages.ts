@@ -39,10 +39,16 @@ export const en = {
   'assistant.heading': 'Conversation',
   'assistant.modeNotice':
     'Operating in approved course FAQ mode. Answers are grounded in course materials with explicit citations without cloud processing.',
+  'assistant.onlineModeNotice':
+    'Operating in consented online answer mode. Answers are generated using authorized course materials and external AI processing.',
   'assistant.empty': 'No messages yet. Ask a question about your course below.',
   'assistant.speakerLearner': 'You',
   'assistant.speakerAssistant': 'Assistant (demo)',
   'assistant.speakerFaq': 'Assistant (course FAQ)',
+  'assistant.speakerOnline': 'Assistant (online AI)',
+  'assistant.consentLabel': 'Allow external AI processing for course questions',
+  'assistant.consentHint':
+    'When enabled, your questions and relevant course passages are processed by an external AI provider. When disabled, only local approved course FAQs are used.',
   'assistant.questionLabel': 'Your question',
   'assistant.hint': 'Press Enter to send, or Shift+Enter for a new line.',
   'assistant.send': 'Send',
@@ -172,10 +178,16 @@ export const am: Partial<Record<MessageKey, string>> = {
   'assistant.heading': 'ውይይት',
   'assistant.modeNotice':
     'በተረጋገጠ የትምህርት ተደጋጋሚ ጥያቄዎች (FAQ) ሁኔታ ላይ ይገኛል። መልሶች ያለ ደመና ማቀነባበሪያ ከትምህርት ክፍሎች የተገኙ ናቸው።',
+  'assistant.onlineModeNotice':
+    'በተፈቀደ የመስመር ላይ AI ሁነታ ላይ ይገኛል። መልሶች ከተፈቀዱ የትምህርት ክፍሎች እና ውጫዊ AI ማቀነባበሪያ የተገኙ ናቸው።',
   'assistant.empty': 'እስካሁን ምንም መልእክት የለም። ስለ ትምህርትዎ ጥያቄ ከታች ይጠይቁ።',
   'assistant.speakerLearner': 'እርስዎ',
   'assistant.speakerAssistant': 'ረዳት (ሙከራ)',
   'assistant.speakerFaq': 'ረዳት (የትምህርት FAQ)',
+  'assistant.speakerOnline': 'ረዳት (የመስመር ላይ AI)',
+  'assistant.consentLabel': 'ለትምህርት ጥያቄዎች ውጫዊ AI ማቀነባበሪያ ይፈቀድ',
+  'assistant.consentHint':
+    'ሲፈቀድ ጥያቄዎ እና አግባብነት ያላቸው የትምህርት ክፍሎች በውጫዊ AI ይዘጋጃሉ። ሳይፈቀድ ሲቀር የተረጋገጠው የትምህርት FAQ ብቻ ጥቅም ላይ ይውላል።',
   'assistant.questionLabel': 'ጥያቄዎ',
   'assistant.hint': 'ለመላክ Enter ይጫኑ፤ ለአዲስ መስመር Shift+Enter ይጫኑ።',
   'assistant.send': 'ላክ',

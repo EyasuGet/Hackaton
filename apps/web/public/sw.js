@@ -1,3 +1,4 @@
+/* global self, caches, fetch, URL */
 // Service worker for offline FAQ support (T3-008-A).
 // Caches the app shell (HTML + static assets) so the demo/FAQ mode works after
 // preparation. Authenticated API responses are never cached: private data must

@@ -1,6 +1,7 @@
-// Real HTTP ConversationClient connecting to the backend tutoring FAQ endpoint (T3-007-A).
-// Retains atomic client-side requestId claims, session authorization, and maps
-// citations into the accessible Reply model.
+// Real HTTP ConversationClient connecting to the backend tutoring answers and FAQ endpoint
+// (T3-007-A & T3-007-C).
+// Retains atomic client-side requestId claims, session authorization, explicit external consent,
+// and maps citations and provider provenance into the accessible Reply model.
 import type { AskResult, Citation, ConversationClient, Reply } from './conversation.ts';
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -30,13 +31,17 @@ function parseCitations(raw: unknown): Citation[] {
   return citations;
 }
 
-export function createFaqClient({
-  courseId,
-  getToken,
-}: {
+export interface AnswerClientOptions {
   readonly courseId: string;
   readonly getToken: () => string | null;
-}): ConversationClient {
+  readonly getConsent?: () => boolean;
+}
+
+export function createAnswerClient({
+  courseId,
+  getToken,
+  getConsent,
+}: AnswerClientOptions): ConversationClient {
   let counter = 1;
 
   return {
@@ -47,9 +52,10 @@ export function createFaqClient({
       }
 
       const requestId = `req-${Date.now()}-${counter++}`;
+      const externalConsent = getConsent ? getConsent() : false;
 
       try {
-        const response = await fetch('/api/tutoring/faq', {
+        const response = await fetch('/api/tutoring/answers', {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
@@ -59,6 +65,7 @@ export function createFaqClient({
             courseId,
             requestId,
             question,
+            externalConsent,
           }),
         });
 
@@ -76,13 +83,15 @@ export function createFaqClient({
         }
 
         const requestObj = record(data.request);
-        const id = typeof requestObj?.id === 'string' ? requestObj.id : `faq-${Date.now()}`;
+        const id = typeof requestObj?.id === 'string' ? requestObj.id : `ans-${Date.now()}`;
         const createdAt =
           typeof requestObj?.createdAt === 'string'
             ? requestObj.createdAt
             : new Date().toISOString();
         const lang = typeof data.lang === 'string' ? data.lang : 'en';
         const citations = parseCitations(data.citations);
+        const provider =
+          data.provider === 'online' || data.provider === 'faq' ? data.provider : undefined;
 
         const reply: Reply = {
           id,
@@ -90,6 +99,7 @@ export function createFaqClient({
           lang,
           createdAt,
           ...(citations.length > 0 ? { citations } : {}),
+          ...(provider ? { provider } : {}),
         };
 
         return { kind: 'answer', reply };
@@ -98,4 +108,11 @@ export function createFaqClient({
       }
     },
   };
+}
+
+export function createFaqClient(options: {
+  readonly courseId: string;
+  readonly getToken: () => string | null;
+}): ConversationClient {
+  return createAnswerClient({ ...options, getConsent: () => false });
 }

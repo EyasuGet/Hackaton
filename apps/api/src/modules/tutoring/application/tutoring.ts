@@ -1,30 +1,73 @@
 // Tutoring use cases enforcing the learner-owned access rule.
 // Non-learner principals have no scope and receive null or empty results.
-// Integrates FaqProvider for deterministic cited answers (T3-007-A).
-import { ownedScope, type Principal } from '../../identity/domain/principal.ts';
-import type { FaqAnswerResult } from '../domain/faq.ts';
+// Integrates FaqProvider and OnlineAnswerProvider with explicit consent,
+// authorized retrieval, and truthful failure/limitation states (T3-007-A & T3-007-C).
+import type { ContentAccess } from '../../content/application/content-access.ts';
+import { ownedScope, type OwnedScope, type Principal } from '../../identity/domain/principal.ts';
+import type { TutoringConversation } from '../domain/conversation.ts';
+import type { FaqAnswerResult, FaqCitation } from '../domain/faq.ts';
+import type { TutoringRequest } from '../domain/tutoring-request.ts';
+import type { FaqProvider } from './faq-provider.ts';
+import type { OnlineAnswerProvider, OnlineAnswerResponse } from './ports/online-answer-provider.ts';
 import type {
   ClaimRequestInput,
   ClaimResult,
   RecordOutcomeInput,
   TutoringRepository,
 } from './ports/tutoring-repository.ts';
-import type { FaqProvider } from './faq-provider.ts';
-import type { TutoringConversation } from '../domain/conversation.ts';
-import type { TutoringRequest } from '../domain/tutoring-request.ts';
+
+export type TutoringErrorCode =
+  'invented_citation' | 'unsupported_output' | 'timeout' | 'provider_error' | 'unverified_citation';
+
+export class TutoringError extends Error {
+  readonly code: TutoringErrorCode;
+
+  constructor(code: TutoringErrorCode, message: string) {
+    super(message);
+    this.name = 'TutoringError';
+    this.code = code;
+  }
+}
+
+export interface AskAnswerInput extends ClaimRequestInput {
+  readonly externalConsent?: boolean;
+}
+
+export interface AnswerResult {
+  readonly request: TutoringRequest;
+  readonly answerText: string;
+  readonly answerLang: 'en' | 'am';
+  readonly kind: 'answered' | 'insufficient_evidence';
+  readonly provider: 'online' | 'faq';
+  readonly citations: readonly FaqCitation[];
+}
 
 export interface AskFaqResult {
   readonly request: TutoringRequest;
   readonly faqResult: FaqAnswerResult;
 }
 
+const HONEST_LIMITATIONS = {
+  en: 'I do not have an approved course answer for that question in the materials.',
+  am: 'በተሰጠው የትምህርት መረጃ ውስጥ ለቀረበው ጥያቄ የተረጋገጠ መልስ አልተገኘም።',
+} as const;
+
 export class Tutoring {
   readonly #repository: TutoringRepository;
   readonly #faqProvider: FaqProvider | undefined;
+  readonly #onlineProvider: OnlineAnswerProvider | undefined;
+  readonly #content: ContentAccess | undefined;
 
-  constructor(repository: TutoringRepository, faqProvider?: FaqProvider) {
+  constructor(
+    repository: TutoringRepository,
+    faqProvider?: FaqProvider,
+    onlineProvider?: OnlineAnswerProvider,
+    content?: ContentAccess,
+  ) {
     this.#repository = repository;
     this.#faqProvider = faqProvider;
+    this.#onlineProvider = onlineProvider;
+    this.#content = content;
   }
 
   async claim(principal: Principal, input: ClaimRequestInput): Promise<ClaimResult | null> {
@@ -33,7 +76,11 @@ export class Tutoring {
     return this.#repository.claimRequest(scope, input);
   }
 
-  async askFaq(principal: Principal, input: ClaimRequestInput): Promise<AskFaqResult | null> {
+  /**
+   * Primary answer endpoint enforcing authorized retrieval and external-processing consent.
+   * If consent is declined or provider is unavailable, falls back safely to the labelled FAQ path.
+   */
+  async ask(principal: Principal, input: AskAnswerInput): Promise<AnswerResult | null> {
     const scope = ownedScope(principal);
     if (!scope || !scope.courseIds.includes(input.courseId)) return null;
 
@@ -47,16 +94,50 @@ export class Tutoring {
     if (request.state === 'completed' && request.answerText !== null) {
       return {
         request,
-        faqResult: {
-          kind: 'answered',
-          answerText: request.answerText,
-          answerLang: (request.answerLang as 'en' | 'am') ?? 'en',
-          citations: [],
-        },
+        answerText: request.answerText,
+        answerLang: (request.answerLang as 'en' | 'am') ?? 'en',
+        kind: 'answered',
+        provider: 'faq',
+        citations: [],
       };
     }
 
-    // 2. Query FAQ provider if available
+    // 2. Determine whether online processing is consented and available
+    const consented = input.externalConsent === true;
+    const useOnline =
+      consented && this.#onlineProvider !== undefined && this.#onlineProvider.isAvailable();
+
+    if (!useOnline) {
+      return this.#executeFaqAnswer(scope, request, principal, input);
+    }
+
+    // 3. Online path with permission-filtered retrieval
+    return this.#executeOnlineAnswer(scope, request, principal, input);
+  }
+
+  /**
+   * Deterministic FAQ answer helper for backward compatibility (T3-007-A).
+   */
+  async askFaq(principal: Principal, input: ClaimRequestInput): Promise<AskFaqResult | null> {
+    const res = await this.ask(principal, { ...input, externalConsent: false });
+    if (!res) return null;
+    return {
+      request: res.request,
+      faqResult: {
+        kind: res.kind,
+        answerText: res.answerText,
+        answerLang: res.answerLang,
+        citations: res.citations,
+      },
+    };
+  }
+
+  async #executeFaqAnswer(
+    scope: OwnedScope,
+    request: TutoringRequest,
+    principal: Principal,
+    input: ClaimRequestInput,
+  ): Promise<AnswerResult> {
     let faqResult: FaqAnswerResult;
     if (this.#faqProvider) {
       faqResult = await this.#faqProvider.answer(principal, input.courseId, input.question);
@@ -69,7 +150,6 @@ export class Tutoring {
       };
     }
 
-    // 3. Persist outcome
     const updated = await this.#repository.recordOutcome(scope, request.id, {
       state: 'completed',
       answerText: faqResult.answerText,
@@ -78,7 +158,154 @@ export class Tutoring {
 
     return {
       request: updated ?? request,
-      faqResult,
+      answerText: faqResult.answerText,
+      answerLang: faqResult.answerLang,
+      kind: faqResult.kind,
+      provider: 'faq',
+      citations: faqResult.citations,
+    };
+  }
+
+  async #executeOnlineAnswer(
+    scope: OwnedScope,
+    request: TutoringRequest,
+    principal: Principal,
+    input: ClaimRequestInput,
+  ): Promise<AnswerResult> {
+    const isAmharic = /[\u1200-\u137F]/.test(input.question);
+    const lang: 'en' | 'am' = isAmharic ? 'am' : 'en';
+
+    // Retrieve authorized course passages via ContentAccess
+    const passages = this.#content ? await this.#content.search(principal, input.question) : [];
+    const coursePassages = passages.filter((p) => p.courseId === input.courseId);
+
+    // If no course passages match, honest refusal (missing evidence)
+    if (coursePassages.length === 0) {
+      const refusalText = HONEST_LIMITATIONS[lang];
+      const updated = await this.#repository.recordOutcome(scope, request.id, {
+        state: 'completed',
+        answerText: refusalText,
+        answerLang: lang,
+      });
+
+      return {
+        request: updated ?? request,
+        answerText: refusalText,
+        answerLang: lang,
+        kind: 'insufficient_evidence',
+        provider: 'online',
+        citations: [],
+      };
+    }
+
+    // Query online provider with timeout protection
+    let onlineResponse: OnlineAnswerResponse;
+    try {
+      if (!this.#onlineProvider) {
+        throw new TutoringError('provider_error', 'Online provider not available');
+      }
+      onlineResponse = await this.#onlineProvider.generateAnswer({
+        question: input.question,
+        language: lang,
+        passages: coursePassages.map((p) => ({
+          id: p.sectionId,
+          heading: p.heading,
+          text: p.text,
+        })),
+      });
+    } catch (err: unknown) {
+      const isTimeout =
+        (err instanceof Error &&
+          (err.name === 'TimeoutError' || err.message.toLowerCase().includes('timeout'))) ||
+        (typeof err === 'object' && err !== null && 'code' in err && err.code === 'ETIMEDOUT');
+      const errorCode: TutoringErrorCode = isTimeout ? 'timeout' : 'provider_error';
+      await this.#repository.recordOutcome(scope, request.id, {
+        state: 'recoverable_failure',
+        errorReason: errorCode,
+      });
+      throw new TutoringError(
+        errorCode,
+        isTimeout ? 'Online answer provider timed out' : 'Online answer provider failed',
+      );
+    }
+
+    // 1. Reject invented citation IDs
+    const validSectionIds = new Set(coursePassages.map((p) => p.sectionId));
+    const invented = onlineResponse.citedPassageIds.filter((id) => !validSectionIds.has(id));
+    if (invented.length > 0) {
+      await this.#repository.recordOutcome(scope, request.id, {
+        state: 'recoverable_failure',
+        errorReason: 'invented_citation',
+      });
+      throw new TutoringError(
+        'invented_citation',
+        `Online provider produced fabricated citation IDs: [${invented.join(', ')}]`,
+      );
+    }
+
+    // 2. Reject unsupported output (citations on honest limitation)
+    if (
+      onlineResponse.outcome === 'honest_limitation' &&
+      onlineResponse.citedPassageIds.length > 0
+    ) {
+      await this.#repository.recordOutcome(scope, request.id, {
+        state: 'recoverable_failure',
+        errorReason: 'unsupported_output',
+      });
+      throw new TutoringError(
+        'unsupported_output',
+        'Online provider attached citations to an honest limitation',
+      );
+    }
+
+    // 3. Verify citations against ContentAccess
+    const verifiedCitations: FaqCitation[] = [];
+    if (this.#content) {
+      for (const citedId of onlineResponse.citedPassageIds) {
+        const passage = coursePassages.find((p) => p.sectionId === citedId);
+        if (!passage) continue;
+        const resolved = await this.#content.resolve(
+          principal,
+          passage.sourceId,
+          passage.sectionId,
+        );
+        if (resolved.kind === 'section') {
+          verifiedCitations.push({
+            sourceId: passage.sourceId,
+            sectionId: passage.sectionId,
+            sourceTitle: passage.sourceTitle,
+            heading: passage.heading,
+          });
+        }
+      }
+    }
+
+    if (onlineResponse.citedPassageIds.length > 0 && verifiedCitations.length === 0) {
+      await this.#repository.recordOutcome(scope, request.id, {
+        state: 'recoverable_failure',
+        errorReason: 'unverified_citation',
+      });
+      throw new TutoringError(
+        'unverified_citation',
+        'None of the cited sections could be verified',
+      );
+    }
+
+    const kind =
+      onlineResponse.outcome === 'honest_limitation' ? 'insufficient_evidence' : 'answered';
+    const updated = await this.#repository.recordOutcome(scope, request.id, {
+      state: 'completed',
+      answerText: onlineResponse.answer,
+      answerLang: lang,
+    });
+
+    return {
+      request: updated ?? request,
+      answerText: onlineResponse.answer,
+      answerLang: lang,
+      kind,
+      provider: 'online',
+      citations: verifiedCitations,
     };
   }
 

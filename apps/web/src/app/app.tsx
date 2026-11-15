@@ -8,7 +8,7 @@ import { DemoSession } from '../features/demo-session/demo-session.tsx';
 import { AccommodationPanel } from '../features/accommodation/accommodation.tsx';
 import { HelpInbox } from '../features/human-help/help-inbox.tsx';
 import { HumanHelp } from '../features/human-help/human-help.tsx';
-import { createFaqClient } from '../features/assistant/faq-client.ts';
+import { createAnswerClient } from '../features/assistant/faq-client.ts';
 import {
   createFixtureClient,
   FIXTURE_SCENARIOS,
@@ -63,18 +63,20 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   // The demo session token lives only in memory and is shared with features that call the API.
   const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [externalConsent, setExternalConsent] = useState(false);
 
-  // When a valid learner session token is present, connect the Assistant to real course FAQ
+  // When a valid learner session token is present, connect the Assistant to real course answers
   // using course-1 (Savanna Virtual Assistant) by default, while supporting fixture override.
   const client = useMemo(() => {
     if (sessionToken) {
-      return createFaqClient({
+      return createAnswerClient({
         courseId: 'course-1',
         getToken: () => sessionToken,
+        getConsent: () => externalConsent,
       });
     }
     return createFixtureClient(scenario);
-  }, [sessionToken, scenario]);
+  }, [sessionToken, scenario, externalConsent]);
 
   const t = (key: MessageKey) => lookup(locale, key).text;
 
@@ -156,7 +158,12 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
             </select>
           </section>
         )}
-        <Assistant client={client} mode={sessionToken ? 'faq' : 'demo'} />
+        <Assistant
+          client={client}
+          mode={sessionToken ? (externalConsent ? 'online' : 'faq') : 'demo'}
+          consent={externalConsent}
+          onConsentChange={sessionToken ? (consented) => setExternalConsent(consented) : undefined}
+        />
         {sessionToken && <HumanHelp token={sessionToken} />}
         {sessionToken && <HelpInbox token={sessionToken} />}
         {sessionToken && <AccommodationPanel token={sessionToken} />}
