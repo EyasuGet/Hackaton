@@ -45,6 +45,15 @@ export interface TelegramLinkRepository {
   findIdentityByLearnerId(learnerId: string): Promise<TelegramIdentity | null>;
 
   /**
+   * Updates learner preferences (external AI consent, active course choice) for an active link.
+   * Returns the updated TelegramIdentity, or null if no active link exists.
+   */
+  setPreferences(
+    learnerId: string,
+    preferences: { readonly externalConsent?: boolean; readonly activeCourseId?: string },
+  ): Promise<TelegramIdentity | null>;
+
+  /**
    * Resolves the authenticated Principal (with course grants) for an actively linked
    * Telegram user. Returns null if unlinked, revoked, or non-existent.
    */

@@ -4523,6 +4523,101 @@
         }
       }
     },
+    "/api/telegram/preferences": {
+      "patch": {
+        "tags": ["Telegram Channel"],
+        "summary": "Update Telegram tutoring preferences",
+        "description": "Updates active course or external AI tutoring consent preferences for the authenticated learner's linked Telegram channel.",
+        "operationId": "updateTelegramPreferences",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "externalConsent": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "activeCourseId": {
+                    "type": "string",
+                    "example": "savanna-va1-future-of-va-industry"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preferences updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "externalConsent": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "activeCourseId": {
+                      "type": "string",
+                      "example": "savanna-va1-future-of-va-industry"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid course ID or not granted to learner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Learner is not linked to Telegram",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/help/notifications/preference": {
       "get": {
         "tags": ["Human Help"],

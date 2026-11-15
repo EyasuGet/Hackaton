@@ -10,6 +10,7 @@ import {
   MAX_CLAIM_BATCH_SIZE,
   dedupDigest,
   dedupExpiry,
+  type CancelLeasedOutcome,
   type ClaimOptions,
   type ClaimedDeliveryIntent,
   type CompleteOutcome,
@@ -241,6 +242,33 @@ export class PostgresDeliveryIntents {
 
     if ((result.rowCount ?? 0) > 0) {
       return { status: 'uncertain' };
+    }
+
+    const existing = await this.#pool.query<{ id: string }>(
+      'SELECT id FROM delivery_intents WHERE id = $1',
+      [id],
+    );
+    return existing.rows.length === 0 ? { status: 'not_found' } : { status: 'lost_lease' };
+  }
+
+  /**
+   * Cancels a leased intent (e.g. pre-send check detected that recipient unsubscribed,
+   * unlinked their channel identity, or the referenced content expired).
+   * Fencing check: only succeeds if the lease is still held by the caller.
+   */
+  async cancel(id: string, workerId: string): Promise<CancelLeasedOutcome> {
+    const result = await this.#pool.query(
+      `UPDATE delivery_intents
+       SET status = 'cancelled',
+           content_ref = NULL,
+           claimed_by = NULL,
+           lease_expires_at = NULL
+       WHERE id = $1 AND status = 'leased' AND claimed_by = $2`,
+      [id, workerId],
+    );
+
+    if ((result.rowCount ?? 0) > 0) {
+      return { status: 'cancelled' };
     }
 
     const existing = await this.#pool.query<{ id: string }>(

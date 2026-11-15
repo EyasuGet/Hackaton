@@ -93,6 +93,21 @@ export const en = {
     'Spoken audio is not available for this language on the selected speech provider. The complete written answer and citations remain available below.',
   'assistant.speechErrorConsentRequired':
     'Cloud speech synthesis requires your explicit consent before audio can be generated. The complete written answer and citations remain available below.',
+  // Voice question capture & review (T3-010-B)
+  'assistant.voiceRecord': 'Record question',
+  'assistant.voiceStop': 'Stop recording',
+  'assistant.voiceRecording': 'Recording audio… Click stop when finished.',
+  'assistant.voiceTranscribing': 'Transcribing audio…',
+  'assistant.voiceReviewHint': 'Review and edit your transcribed question before sending.',
+  'assistant.voiceDiscard': 'Discard recording',
+  'assistant.voiceMicDenied':
+    'Microphone access was denied. You can continue typing your question.',
+  'assistant.voiceUnsupported': 'Audio recording is not supported in this browser.',
+  'assistant.voiceError': 'Could not transcribe audio. Please try again or type your question.',
+  'assistant.voiceTooLarge':
+    'Audio recording is too large. Please record a shorter question or type it.',
+  'assistant.voiceUnavailable':
+    'Transcription service is currently unavailable. Please type your question.',
   // Labels around a displayed date; the date values follow the reply language.
   'date.ethiopianCalendar': 'Ethiopian calendar',
   'date.gregorianCalendar': 'Gregorian',
@@ -319,6 +334,18 @@ export const am: Partial<Record<MessageKey, string>> = {
     'በተመረጠው የድምፅ አቅራቢ ላይ ለዚህ ቋንቋ የተነገረ ድምፅ አይገኝም። ሙሉው የተፃፈ መልስ እና ጥቅሶች ከታች ይገኛሉ።',
   'assistant.speechErrorConsentRequired':
     'ድምፅ ከመመንጨቱ በፊት የደመና ድምፅ ውህደት የእርስዎን ግልጽ ስምምነት ይፈልጋል። ሙሉው የተፃፈ መልስ እና ጥቅሶች ከታች ይገኛሉ።',
+  // Voice question capture & review (T3-010-B) — draft; competent-speaker review required
+  'assistant.voiceRecord': 'ጥያቄ በድምጽ ቅረጽ',
+  'assistant.voiceStop': 'መቅረጽ አቁም',
+  'assistant.voiceRecording': 'ድምጽ በመቅረጽ ላይ… ሲጨርሱ ማቆሚያውን ይጫኑ።',
+  'assistant.voiceTranscribing': 'ድምጹን ወደ ጽሑፍ በመቀየር ላይ…',
+  'assistant.voiceReviewHint': 'ከመላክዎ በፊት የተቀረጸውን ጥያቄዎን ይገምግሙና ያርትዑ።',
+  'assistant.voiceDiscard': 'ቅጂውን ሰርዝ',
+  'assistant.voiceMicDenied': 'የማይክሮፎን ፈቃድ ተከልክሏል። ጥያቄዎን በጽሑፍ መቀጠል ይችላሉ።',
+  'assistant.voiceUnsupported': 'በዚህ አሳሽ ውስጥ የድምጽ ቀረጻ አይደገፍም።',
+  'assistant.voiceError': 'ድምጹን መተርጎም አልተቻለም። እባክዎ እንደገና ይሞክሩ ወይም ጥያቄዎን ይተይቡ።',
+  'assistant.voiceTooLarge': 'የተቀረጸው ድምጽ በጣም ትልቅ ነው። እባክዎ አጭር ጥያቄ ይቅረጹ ወይም ይተይቡ።',
+  'assistant.voiceUnavailable': 'የድምጽ መተርጎሚያ አገልግሎት በአሁኑ ጊዜ አይገኝም። እባክዎ ጥያቄዎን ይተይቡ።',
   'date.ethiopianCalendar': 'የኢትዮጵያ አቆጣጠር',
   'date.gregorianCalendar': 'የግሪጎሪያን አቆጣጠር',
   'date.addisAbabaTime': 'የአዲስ አበባ ሰዓት',

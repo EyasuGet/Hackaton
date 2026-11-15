@@ -44,6 +44,26 @@ interface WebhookUpdatePayload {
     readonly date: number;
     readonly text?: string;
   };
+  readonly callback_query?: {
+    readonly id: string;
+    readonly from: {
+      readonly id: number | string;
+      readonly is_bot?: boolean;
+      readonly first_name?: string;
+      readonly last_name?: string;
+      readonly username?: string;
+    };
+    readonly message?: {
+      readonly message_id: number;
+      readonly chat: {
+        readonly id: number | string;
+        readonly type: string;
+      };
+      readonly date: number;
+      readonly text?: string;
+    };
+    readonly data?: string;
+  };
 }
 
 export function registerTelegramRoutes(
@@ -185,6 +205,31 @@ export function registerTelegramRoutes(
               text: payload.message.text,
             }
           : undefined,
+        callbackQuery: payload?.callback_query
+          ? {
+              id: payload.callback_query.id,
+              from: {
+                id: String(payload.callback_query.from.id),
+                isBot: Boolean(payload.callback_query.from.is_bot),
+                firstName: payload.callback_query.from.first_name,
+                lastName: payload.callback_query.from.last_name,
+                username: payload.callback_query.from.username,
+              },
+              message: payload.callback_query.message
+                ? {
+                    messageId: payload.callback_query.message.message_id,
+                    chat: {
+                      id: String(payload.callback_query.message.chat.id),
+                      type:
+                        (payload.callback_query.message.chat.type as TelegramChatType) || 'private',
+                    },
+                    date: payload.callback_query.message.date,
+                    text: payload.callback_query.message.text,
+                  }
+                : undefined,
+              data: payload.callback_query.data,
+            }
+          : undefined,
       };
 
       const result = await telegramService.handleWebhookUpdate(update, secretToken);
@@ -219,9 +264,13 @@ export function registerTelegramRoutes(
           ok: true,
           status: 'answered',
           answer: result.answer,
+          rawAnswer: result.rawAnswer,
           citations: result.citations,
           kind: result.kind,
-          answerLang: result.answerLang,
+          lang: result.lang ?? result.answerLang,
+          answerLang: result.answerLang ?? result.lang,
+          provider: result.provider,
+          requestId: result.requestId,
           matchedJobId: result.matchedJobId,
           replayed: result.replayed ?? false,
           method: 'sendMessage',
@@ -230,7 +279,66 @@ export function registerTelegramRoutes(
         });
       }
 
+      if (result.status === 'citation') {
+        return reply.code(200).send({
+          ok: true,
+          status: 'citation',
+          sourceId: result.sourceId,
+          sectionId: result.sectionId,
+          text: result.text,
+          heading: result.heading,
+          sourceTitle: result.sourceTitle,
+        });
+      }
+
+      if (result.status === 'preference_updated') {
+        return reply.code(200).send({
+          ok: true,
+          status: 'preference_updated',
+          externalConsent: result.externalConsent,
+          activeCourseId: result.activeCourseId,
+        });
+      }
+
+      if (result.status === 'error') {
+        return reply.code(200).send({
+          ok: false,
+          status: 'error',
+          error: result.error,
+          message: result.message,
+        });
+      }
+
       return reply.code(200).send({ ok: true, status: result.status });
     },
   );
+
+  // 6. Authenticated learner updates preferences (external consent, active course)
+  app.patch<{
+    Body: {
+      readonly externalConsent?: boolean;
+      readonly activeCourseId?: string;
+    };
+  }>('/api/telegram/preferences', { preHandler: learnerOnly }, async (request, reply) => {
+    const principal = principalOf(request);
+    const { externalConsent, activeCourseId } = request.body ?? {};
+
+    if (activeCourseId !== undefined && !principal.courseIds.includes(activeCourseId)) {
+      return reply.code(400).send({ error: 'course_not_granted' });
+    }
+
+    const updated = await telegramService.setPreferences(principal, {
+      ...(externalConsent !== undefined ? { externalConsent } : {}),
+      ...(activeCourseId !== undefined ? { activeCourseId } : {}),
+    });
+
+    if (!updated) {
+      return reply.code(404).send({ error: 'not_linked' });
+    }
+
+    return reply.code(200).send({
+      externalConsent: updated.externalConsent,
+      activeCourseId: updated.activeCourseId,
+    });
+  });
 }

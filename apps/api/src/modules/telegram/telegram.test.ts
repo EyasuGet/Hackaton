@@ -1,9 +1,23 @@
 import { createHmac } from 'node:crypto';
+import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import type { JobRepository } from '../careers/application/import-jobs.ts';
 import { JobAnswers } from '../careers/application/job-answers.ts';
 import type { JobRecord } from '../careers/domain/job.ts';
-import type { Principal } from '../identity/domain/principal.ts';
+import type { OwnedScope, Principal } from '../identity/domain/principal.ts';
+import type { ResolvePrincipal } from '../identity/application/resolve-principal.ts';
+import { ContentAccess } from '../content/application/content-access.ts';
+import type { CitationResult, CitedSection } from '../content/domain/retrieval.ts';
+import { Tutoring } from '../tutoring/application/tutoring.ts';
+import { FaqProvider } from '../tutoring/application/faq-provider.ts';
+import type {
+  ClaimRequestInput,
+  ClaimResult,
+  RecordOutcomeInput,
+  TutoringRepository,
+} from '../tutoring/application/ports/tutoring-repository.ts';
+import type { TutoringConversation } from '../tutoring/domain/conversation.ts';
+import type { TutoringRequest } from '../tutoring/domain/tutoring-request.ts';
 import type {
   ConsumeLinkParams,
   ConsumeLinkResult,
@@ -11,6 +25,10 @@ import type {
   RecordProcessedUpdateParams,
   TelegramLinkRepository,
 } from './application/ports/telegram-link-repository.ts';
+import type {
+  TelegramMessenger,
+  TelegramOutboundMessage,
+} from './application/ports/telegram-messenger.ts';
 import { SlidingWindowRateLimiter } from './application/rate-limiter.ts';
 import {
   verifyTelegramInitData,
@@ -22,7 +40,12 @@ import {
   TELEGRAM_LINK_CODE_TTL_MS,
   type TelegramSender,
 } from './application/telegram-link-service.ts';
-import type { TelegramIdentity, TelegramUpdate } from './domain/telegram-identity.ts';
+import {
+  formatTelegramTutorResponse,
+  type TelegramIdentity,
+  type TelegramUpdate,
+} from './domain/telegram-identity.ts';
+import { registerTelegramRoutes } from './presentation/http/telegram-routes.ts';
 
 const learnerA: Principal = {
   id: '11111111-1111-1111-1111-111111111111',
@@ -121,6 +144,28 @@ class InMemoryTelegramLinkRepository implements TelegramLinkRepository {
   findIdentityByLearnerId(learnerId: string): Promise<TelegramIdentity | null> {
     for (const id of this.identities.values()) {
       if (id.learnerId === learnerId && !id.revokedAt) return Promise.resolve(id);
+    }
+    return Promise.resolve(null);
+  }
+
+  setPreferences(
+    learnerId: string,
+    preferences: { readonly externalConsent?: boolean; readonly activeCourseId?: string },
+  ): Promise<TelegramIdentity | null> {
+    for (const [idKey, id] of this.identities.entries()) {
+      if (id.learnerId === learnerId && !id.revokedAt) {
+        const updated: TelegramIdentity = {
+          ...id,
+          ...(preferences.externalConsent !== undefined
+            ? { externalConsent: preferences.externalConsent }
+            : {}),
+          ...(preferences.activeCourseId !== undefined
+            ? { activeCourseId: preferences.activeCourseId }
+            : {}),
+        };
+        this.identities.set(idKey, updated);
+        return Promise.resolve(updated);
+      }
     }
     return Promise.resolve(null);
   }
@@ -953,5 +998,704 @@ describe('TelegramLinkService Unit Tests (T3-012-A)', () => {
       );
       expect(after.status).toBe('unauthenticated');
     });
+  });
+});
+
+class MockTelegramMessenger implements TelegramMessenger {
+  readonly sentMessages: TelegramOutboundMessage[] = [];
+
+  sendMessage(message: TelegramOutboundMessage): Promise<{ messageId?: number }> {
+    this.sentMessages.push(message);
+    return Promise.resolve({ messageId: this.sentMessages.length });
+  }
+}
+
+class TestTutoringRepository implements TutoringRepository {
+  readonly conversations: TutoringConversation[] = [];
+  readonly requests: TutoringRequest[] = [];
+  #counter = 1;
+
+  createConversation(scope: OwnedScope, courseId: string): Promise<TutoringConversation | null> {
+    if (!scope.courseIds.includes(courseId)) return Promise.resolve(null);
+    const now = new Date();
+    const expires = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const conv: TutoringConversation = {
+      id: `00000000-0000-0000-0000-${String(this.#counter++).padStart(12, '0')}`,
+      ownerId: scope.ownerId,
+      courseId,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      expiresAt: expires.toISOString(),
+      purgedAt: null,
+    };
+    this.conversations.push(conv);
+    return Promise.resolve(conv);
+  }
+
+  findConversation(
+    scope: OwnedScope,
+    conversationId: string,
+  ): Promise<TutoringConversation | null> {
+    const conv = this.conversations.find((c) => c.id === conversationId);
+    if (!conv || conv.ownerId !== scope.ownerId || !scope.courseIds.includes(conv.courseId)) {
+      return Promise.resolve(null);
+    }
+    return Promise.resolve(conv);
+  }
+
+  async claimRequest(scope: OwnedScope, input: ClaimRequestInput): Promise<ClaimResult | null> {
+    if (!scope.courseIds.includes(input.courseId)) return null;
+
+    const existing = this.requests.find(
+      (r) => r.ownerId === scope.ownerId && r.requestId === input.requestId,
+    );
+    if (existing) {
+      return { kind: 'existing', request: existing };
+    }
+
+    let convId = input.conversationId;
+    if (!convId) {
+      const conv = await this.createConversation(scope, input.courseId);
+      if (!conv) return null;
+      convId = conv.id;
+    }
+
+    const now = new Date();
+    const req: TutoringRequest = {
+      id: `00000000-0000-0000-0000-${String(this.#counter++).padStart(12, '0')}`,
+      conversationId: convId,
+      ownerId: scope.ownerId,
+      courseId: input.courseId,
+      requestId: input.requestId,
+      question: input.question,
+      state: 'pending',
+      answerText: null,
+      answerLang: null,
+      errorReason: null,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      completedAt: null,
+      expiresAt: new Date(now.getTime() + 7 * 86400000).toISOString(),
+      purgedAt: null,
+    };
+    this.requests.push(req);
+    return { kind: 'claimed', request: req };
+  }
+
+  findRequestById(scope: OwnedScope, id: string): Promise<TutoringRequest | null> {
+    const req = this.requests.find((r) => r.id === id);
+    if (!req || req.ownerId !== scope.ownerId || !scope.courseIds.includes(req.courseId)) {
+      return Promise.resolve(null);
+    }
+    return Promise.resolve(req);
+  }
+
+  findRequestByRequestId(scope: OwnedScope, requestId: string): Promise<TutoringRequest | null> {
+    const req = this.requests.find((r) => r.requestId === requestId);
+    if (!req || req.ownerId !== scope.ownerId || !scope.courseIds.includes(req.courseId)) {
+      return Promise.resolve(null);
+    }
+    return Promise.resolve(req);
+  }
+
+  listHistory(scope: OwnedScope, courseId?: string): Promise<readonly TutoringRequest[]> {
+    return Promise.resolve(
+      this.requests.filter(
+        (r) => r.ownerId === scope.ownerId && (!courseId || r.courseId === courseId),
+      ),
+    );
+  }
+
+  recordOutcome(
+    scope: OwnedScope,
+    requestId: string,
+    outcome: RecordOutcomeInput,
+  ): Promise<TutoringRequest | null> {
+    const req = this.requests.find((r) => r.id === requestId);
+    if (!req || req.ownerId !== scope.ownerId || !scope.courseIds.includes(req.courseId)) {
+      return Promise.resolve(null);
+    }
+    const updated: TutoringRequest = {
+      ...req,
+      state: outcome.state,
+      answerText: outcome.answerText ?? req.answerText,
+      answerLang: outcome.answerLang ?? req.answerLang,
+      errorReason: outcome.errorReason ?? req.errorReason,
+      completedAt: outcome.state === 'completed' ? new Date().toISOString() : req.completedAt,
+      updatedAt: new Date().toISOString(),
+    };
+    const index = this.requests.indexOf(req);
+    this.requests[index] = updated;
+    return Promise.resolve(updated);
+  }
+
+  clearHistory(scope: OwnedScope): Promise<void> {
+    for (let i = this.requests.length - 1; i >= 0; i--) {
+      if (this.requests[i]?.ownerId === scope.ownerId) {
+        this.requests.splice(i, 1);
+      }
+    }
+    return Promise.resolve();
+  }
+
+  purgeExpired(): Promise<number> {
+    return Promise.resolve(0);
+  }
+}
+
+function createTestContentAccess(): ContentAccess {
+  return new ContentAccess(
+    {
+      search: () => Promise.resolve([]),
+      resolve: (courseIds, sourceId, sectionId): Promise<CitationResult> => {
+        if (sourceId === 'savanna-va1-future-of-va-industry' && courseIds.includes('course-1')) {
+          const sec: CitedSection = {
+            sourceId,
+            sectionId,
+            sourceTitle: 'The Future of the VA Industry',
+            heading:
+              sectionId === 'introduction'
+                ? 'Introduction'
+                : 'Artificial Intelligence and the Future of VA Work',
+            text: 'Virtual assistants support businesses with routine tasks and customer support.',
+            language: 'en',
+            courseId: 'course-1',
+            version: 'starter-9e83ac7',
+            anchor: sectionId,
+            provenance: {
+              kind: 'organiser',
+              repository: 'alx-africa/Savanna-static-pages',
+              commit: '9e83ac7',
+              path: 'pages/concept-with-navigation.html',
+            },
+          };
+          return Promise.resolve({ kind: 'section', section: sec });
+        }
+        if (sourceId === 'demo-time-management-am' && courseIds.includes('course-2')) {
+          const sec: CitedSection = {
+            sourceId,
+            sectionId,
+            sourceTitle: 'የጊዜ አጠቃቀም መመሪያ',
+            heading: sectionId === 'planning' ? 'እቅድ ማውጣት' : 'እረፍት መውሰድ',
+            text: 'እቅድ ማውጣት የቀን ስራዎችን በቅደም ተከተል ለማከናወን ይረዳል።',
+            language: 'am',
+            courseId: 'course-2',
+            version: 'demo-1',
+            anchor: null,
+            provenance: { kind: 'demo', note: 'test' },
+          };
+          return Promise.resolve({ kind: 'section', section: sec });
+        }
+        return Promise.resolve({ kind: 'not_found' });
+      },
+    },
+    [],
+  );
+}
+
+describe('formatTelegramTutorResponse (T3-012-B)', () => {
+  it('returns raw answer text when citations array is empty', () => {
+    const raw = 'I do not have an approved course answer for that question in the materials.';
+    expect(formatTelegramTutorResponse(raw, [], 'en')).toBe(raw);
+  });
+
+  it('formats English citations with source, section title, and reference', () => {
+    const answer = 'In some reports, a "virtual assistant" refers to AI software assistants.';
+    const citations = [
+      {
+        sourceId: 'savanna-va1-future-of-va-industry',
+        sectionId: 'introduction',
+        sourceTitle: 'The Future of the VA Industry',
+        heading: 'Introduction',
+      },
+    ];
+
+    const formatted = formatTelegramTutorResponse(answer, citations, 'en');
+    expect(formatted).toContain(answer);
+    expect(formatted).toContain('Sources & Citations:');
+    expect(formatted).toContain(
+      '• The Future of the VA Industry — Introduction (savanna-va1-future-of-va-industry#introduction)',
+    );
+  });
+
+  it('formats Amharic citations with Amharic header and reference', () => {
+    const answer = 'እቅድ ማውጣት የቀን ስራዎችን በቅደም ተከተል ለማከናወን ይረዳል።';
+    const citations = [
+      {
+        sourceId: 'demo-time-management-am',
+        sectionId: 'planning',
+        sourceTitle: 'የጊዜ አጠቃቀም መመሪያ',
+        heading: 'እቅድ ማውጣት',
+      },
+    ];
+
+    const formatted = formatTelegramTutorResponse(answer, citations, 'am');
+    expect(formatted).toContain(answer);
+    expect(formatted).toContain('ምንጮች እና ጥቅሶች፡');
+    expect(formatted).toContain('• የጊዜ አጠቃቀም መመሪያ — እቅድ ማውጣት (demo-time-management-am#planning)');
+  });
+});
+
+describe('Telegram Tutoring Answers Use Case (T3-012-B)', () => {
+  let linkRepo: InMemoryTelegramLinkRepository;
+  let tutoringRepo: TestTutoringRepository;
+  let messenger: MockTelegramMessenger;
+  let content: ContentAccess;
+  let faq: FaqProvider;
+  let tutoring: Tutoring;
+  let service: TelegramLinkService;
+  const webhookSecret = 'test-webhook-secret-token-123456';
+  let clock: Date;
+
+  beforeEach(async () => {
+    clock = new Date('2026-11-15T10:00:00Z');
+    linkRepo = new InMemoryTelegramLinkRepository();
+    tutoringRepo = new TestTutoringRepository();
+    messenger = new MockTelegramMessenger();
+    content = createTestContentAccess();
+    faq = new FaqProvider(content);
+    tutoring = new Tutoring(tutoringRepo, faq, undefined, content);
+
+    service = new TelegramLinkService(linkRepo, {
+      webhookSecret,
+      botToken: '123456:fake-token',
+      now: () => clock,
+      tutoring,
+      content,
+      messenger,
+    });
+
+    // Link learnerA to Telegram user 987654321
+    const { code } = await service.issueLinkCode(learnerA);
+    await service.linkAccount({
+      code,
+      telegramUserId: '987654321',
+      telegramChatId: '987654321',
+      chatType: 'private',
+      telegramUsername: 'learner_alice',
+    });
+  });
+
+  it('translates authenticated Telegram question into tutoring answer with citations', async () => {
+    const update: TelegramUpdate = {
+      updateId: 201,
+      message: {
+        messageId: 10,
+        chat: { id: '987654321', type: 'private' },
+        from: { id: '987654321', isBot: false, username: 'learner_alice' },
+        date: Math.floor(clock.getTime() / 1000),
+        text: 'What is a virtual assistant?',
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(update, webhookSecret);
+    expect(result.status).toBe('answered');
+    if (result.status === 'answered') {
+      expect(result.kind).toBe('answered');
+      expect(result.lang).toBe('en');
+      expect(result.answer).toContain('Sources & Citations:');
+      expect(result.answer).toContain('savanna-va1-future-of-va-industry#introduction');
+      expect(result.citations).toHaveLength(1);
+      expect(result.requestId).toBe('telegram-update-201');
+    }
+
+    // Verify outbound message was delivered to chat
+    expect(messenger.sentMessages).toHaveLength(1);
+    expect(messenger.sentMessages[0]?.chatId).toBe('987654321');
+    expect(messenger.sentMessages[0]?.text).toContain(
+      'savanna-va1-future-of-va-industry#introduction',
+    );
+    expect(tutoringRepo.requests).toHaveLength(1);
+  });
+
+  it('handles duplicate updates idempotently causing only one logical question', async () => {
+    const update: TelegramUpdate = {
+      updateId: 202,
+      message: {
+        messageId: 11,
+        chat: { id: '987654321', type: 'private' },
+        from: { id: '987654321', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: 'What is a virtual assistant?',
+      },
+    };
+
+    // First arrival
+    const first = await service.handleWebhookUpdate(update, webhookSecret);
+    expect(first.status).toBe('answered');
+    expect(tutoringRepo.requests).toHaveLength(1);
+    const initialRequestId = tutoringRepo.requests[0]?.id;
+
+    // Second arrival (replay of same update_id)
+    const second = await service.handleWebhookUpdate(update, webhookSecret);
+    expect(second.status).toBe('answered');
+    if (first.status === 'answered' && second.status === 'answered') {
+      expect(second.rawAnswer).toBe(first.rawAnswer);
+      expect(second.requestId).toBe(first.requestId);
+    }
+
+    // Still exactly 1 row in tutoring repository - no duplicate logical question!
+    expect(tutoringRepo.requests).toHaveLength(1);
+    expect(tutoringRepo.requests[0]?.id).toBe(initialRequestId);
+  });
+
+  it('returns honest refusal without citations for unsupported question matching web flow', async () => {
+    const update: TelegramUpdate = {
+      updateId: 203,
+      message: {
+        messageId: 12,
+        chat: { id: '987654321', type: 'private' },
+        from: { id: '987654321', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: 'What is the capital of France?',
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(update, webhookSecret);
+    expect(result.status).toBe('answered');
+    if (result.status === 'answered') {
+      expect(result.kind).toBe('insufficient_evidence');
+      expect(result.citations).toHaveLength(0);
+      expect(result.answer).toBe(
+        'I do not have an approved course answer for that question in the materials.',
+      );
+    }
+
+    const lastMsg = messenger.sentMessages[messenger.sentMessages.length - 1];
+    expect(lastMsg?.text).toBe(
+      'I do not have an approved course answer for that question in the materials.',
+    );
+  });
+
+  it('matches web flow for Amharic question and refusal', async () => {
+    // Unsupported Amharic question
+    const update: TelegramUpdate = {
+      updateId: 204,
+      message: {
+        messageId: 13,
+        chat: { id: '987654321', type: 'private' },
+        from: { id: '987654321', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: 'የኢትዮጵያ ዋና ከተማ ማን ናት?',
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(update, webhookSecret);
+    expect(result.status).toBe('answered');
+    if (result.status === 'answered') {
+      expect(result.kind).toBe('insufficient_evidence');
+      expect(result.lang).toBe('am');
+      expect(result.citations).toHaveLength(0);
+      expect(result.answer).toBe('በተሰጠው የትምህርት መረጃ ውስጥ ለቀረበው ጥያቄ የተረጋገጠ መልስ አልተገኘም።');
+    }
+  });
+
+  it('allows learner to follow an authorised citation via /cite', async () => {
+    const update: TelegramUpdate = {
+      updateId: 205,
+      message: {
+        messageId: 14,
+        chat: { id: '987654321', type: 'private' },
+        from: { id: '987654321', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: '/cite savanna-va1-future-of-va-industry introduction',
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(update, webhookSecret);
+    expect(result.status).toBe('citation');
+    if (result.status === 'citation') {
+      expect(result.sourceId).toBe('savanna-va1-future-of-va-industry');
+      expect(result.sectionId).toBe('introduction');
+      expect(result.heading).toBe('Introduction');
+      expect(result.text).toContain('Virtual assistants support businesses');
+    }
+
+    const lastMsg = messenger.sentMessages[messenger.sentMessages.length - 1];
+    expect(lastMsg?.text).toContain('The Future of the VA Industry');
+    expect(lastMsg?.text).toContain('Introduction');
+  });
+
+  it('rejects /cite for citations outside learner course grants', async () => {
+    // learnerA only has course-1, not course-2
+    const update: TelegramUpdate = {
+      updateId: 206,
+      message: {
+        messageId: 15,
+        chat: { id: '987654321', type: 'private' },
+        from: { id: '987654321', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: '/cite demo-time-management-am planning',
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(update, webhookSecret);
+    expect(result.status).toBe('citation');
+    if (result.status === 'citation') {
+      expect(result.text).toContain('not accessible');
+    }
+  });
+
+  it('supports /consent on and /consent off matching web consent flow', async () => {
+    // 1. Toggle consent on
+    const updateOn: TelegramUpdate = {
+      updateId: 207,
+      message: {
+        messageId: 16,
+        chat: { id: '987654321', type: 'private' },
+        from: { id: '987654321', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: '/consent on',
+      },
+    };
+
+    const resOn = await service.handleWebhookUpdate(updateOn, webhookSecret);
+    expect(resOn.status).toBe('preference_updated');
+    if (resOn.status === 'preference_updated') {
+      expect(resOn.externalConsent).toBe(true);
+    }
+
+    const statusAfterOn = await service.getStatus(learnerA);
+    expect(statusAfterOn.externalConsent).toBe(true);
+
+    // 2. Toggle consent off
+    const updateOff: TelegramUpdate = {
+      updateId: 208,
+      message: {
+        messageId: 17,
+        chat: { id: '987654321', type: 'private' },
+        from: { id: '987654321', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: '/consent off',
+      },
+    };
+
+    const resOff = await service.handleWebhookUpdate(updateOff, webhookSecret);
+    expect(resOff.status).toBe('preference_updated');
+    if (resOff.status === 'preference_updated') {
+      expect(resOff.externalConsent).toBe(false);
+    }
+  });
+
+  it('rejects /course when switching to an ungranted course', async () => {
+    const update: TelegramUpdate = {
+      updateId: 209,
+      message: {
+        messageId: 18,
+        chat: { id: '987654321', type: 'private' },
+        from: { id: '987654321', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: '/course course-3', // Learner A only has course-1
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(update, webhookSecret);
+    expect(result.status).toBe('rejected');
+    if (result.status === 'rejected') {
+      expect(result.reason).toBe('course_not_granted');
+    }
+  });
+
+  it('sends unlinked guidance notice when unlinked Telegram user asks a question', async () => {
+    const unlinkedUpdate: TelegramUpdate = {
+      updateId: 210,
+      message: {
+        messageId: 19,
+        chat: { id: '999999999', type: 'private' },
+        from: { id: '999999999', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: 'What is a virtual assistant?',
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(unlinkedUpdate, webhookSecret);
+    expect(result.status).toBe('unauthenticated');
+
+    const lastMsg = messenger.sentMessages[messenger.sentMessages.length - 1];
+    expect(lastMsg?.chatId).toBe('999999999');
+    expect(lastMsg?.text).toContain('/start <code>');
+  });
+
+  it('keeps tokens and secrets out of messages and results', async () => {
+    const update: TelegramUpdate = {
+      updateId: 211,
+      message: {
+        messageId: 20,
+        chat: { id: '987654321', type: 'private' },
+        from: { id: '987654321', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: 'What is a virtual assistant?',
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(update, webhookSecret);
+    expect(result.status).toBe('answered');
+    if (result.status === 'answered') {
+      expect(result.answer).not.toContain(webhookSecret);
+      expect(result.answer).not.toContain('fake-token');
+    }
+
+    for (const msg of messenger.sentMessages) {
+      expect(msg.text).not.toContain(webhookSecret);
+      expect(msg.text).not.toContain('fake-token');
+    }
+  });
+});
+
+describe('Telegram Routes HTTP Integration (T3-012-B)', () => {
+  let linkRepo: InMemoryTelegramLinkRepository;
+  let tutoringRepo: TestTutoringRepository;
+  let messenger: MockTelegramMessenger;
+  let content: ContentAccess;
+  let faq: FaqProvider;
+  let tutoring: Tutoring;
+  let service: TelegramLinkService;
+  const webhookSecret = 'route-test-secret-456';
+  const clock = new Date('2026-11-15T10:00:00Z');
+
+  const tokenA = 'bearer-token-a-1234567890123456';
+  const tokenB = 'bearer-token-b-1234567890123456';
+  const tokenSupport = 'bearer-token-support-1234567890';
+
+  function buildRouteApp() {
+    const app = Fastify();
+    const resolvePrincipal = {
+      execute: (token: string) => {
+        if (token === tokenA) return Promise.resolve(learnerA);
+        if (token === tokenB) return Promise.resolve(learnerB);
+        if (token === tokenSupport) return Promise.resolve(supportStaff);
+        return Promise.resolve(null);
+      },
+    } as unknown as ResolvePrincipal;
+
+    registerTelegramRoutes(app, resolvePrincipal, service);
+    return app;
+  }
+
+  beforeEach(async () => {
+    linkRepo = new InMemoryTelegramLinkRepository();
+    tutoringRepo = new TestTutoringRepository();
+    messenger = new MockTelegramMessenger();
+    content = createTestContentAccess();
+    faq = new FaqProvider(content);
+    tutoring = new Tutoring(tutoringRepo, faq, undefined, content);
+
+    service = new TelegramLinkService(linkRepo, {
+      webhookSecret,
+      botToken: '123456:route-token',
+      now: () => clock,
+      tutoring,
+      content,
+      messenger,
+    });
+
+    // Link learnerA
+    const { code } = await service.issueLinkCode(learnerA);
+    await service.linkAccount({
+      code,
+      telegramUserId: '12345678',
+      telegramChatId: '12345678',
+      chatType: 'private',
+    });
+  });
+
+  it('POST /api/telegram/webhook answers question with 200 and citations', async () => {
+    const app = buildRouteApp();
+    try {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/telegram/webhook',
+        headers: { 'x-telegram-bot-api-secret-token': webhookSecret },
+        payload: {
+          update_id: 301,
+          message: {
+            message_id: 1,
+            from: { id: 12345678, is_bot: false },
+            chat: { id: 12345678, type: 'private' },
+            date: Math.floor(clock.getTime() / 1000),
+            text: 'What is a virtual assistant?',
+          },
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json<{
+        ok: boolean;
+        status: string;
+        answer: string;
+        citations: Array<{ sourceId: string; sectionId: string }>;
+        requestId: string;
+      }>();
+      expect(body.ok).toBe(true);
+      expect(body.status).toBe('answered');
+      expect(body.answer).toContain('Sources & Citations:');
+      expect(body.citations.length).toBeGreaterThan(0);
+      expect(body.requestId).toBe('telegram-update-301');
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('POST /api/telegram/webhook returns honest refusal on unsupported question', async () => {
+    const app = buildRouteApp();
+    try {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/telegram/webhook',
+        headers: { 'x-telegram-bot-api-secret-token': webhookSecret },
+        payload: {
+          update_id: 302,
+          message: {
+            message_id: 2,
+            from: { id: 12345678, is_bot: false },
+            chat: { id: 12345678, type: 'private' },
+            date: Math.floor(clock.getTime() / 1000),
+            text: 'What is the capital of France?',
+          },
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json<{
+        ok: boolean;
+        status: string;
+        answer: string;
+        citations: unknown[];
+      }>();
+      expect(body.ok).toBe(true);
+      expect(body.status).toBe('answered');
+      expect(body.citations).toHaveLength(0);
+      expect(body.answer).toBe(
+        'I do not have an approved course answer for that question in the materials.',
+      );
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('PATCH /api/telegram/preferences updates externalConsent and activeCourseId', async () => {
+    const app = buildRouteApp();
+    try {
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/telegram/preferences',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: { externalConsent: true, activeCourseId: 'course-1' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ externalConsent: true, activeCourseId: 'course-1' });
+
+      // Reject course not granted
+      const reject = await app.inject({
+        method: 'PATCH',
+        url: '/api/telegram/preferences',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: { activeCourseId: 'ungranted-course' },
+      });
+      expect(reject.statusCode).toBe(400);
+    } finally {
+      await app.close();
+    }
   });
 });

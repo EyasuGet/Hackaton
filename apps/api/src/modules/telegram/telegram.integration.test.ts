@@ -2,6 +2,7 @@
 // Verifies schema migration 0014, atomic transactions, concurrency race conditions,
 // cross-user link prevention, unlinking, and Fastify HTTP endpoints end-to-end.
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../../bootstrap/app.ts';
@@ -13,7 +14,9 @@ import {
   MIGRATIONS_DIR,
 } from '../../infrastructure/database/migrations.ts';
 import { ContentAccess } from '../content/application/content-access.ts';
+import { ImportLessonSource } from '../content/application/import-lesson-source.ts';
 import { PostgresLessonReader } from '../content/infrastructure/postgres-lesson-reader.ts';
+import { PostgresLessonRepository } from '../content/infrastructure/postgres-lesson-repository.ts';
 import { DemoRecords } from '../demo-records/demo-records.ts';
 import {
   PostgresDemoRecordRepository,
@@ -28,10 +31,10 @@ import {
   type DemoCredential,
   type DemoPrincipalKey,
 } from '../identity/infrastructure/postgres-principal-repository.ts';
-import { readFile } from 'node:fs/promises';
 import { ImportJobs } from '../careers/application/import-jobs.ts';
 import { JobAnswers } from '../careers/application/job-answers.ts';
 import { PostgresJobRepository } from '../careers/infrastructure/postgres-job-repository.ts';
+import { FaqProvider } from '../tutoring/application/faq-provider.ts';
 import { Tutoring } from '../tutoring/application/tutoring.ts';
 import { PostgresTutoringRepository } from '../tutoring/infrastructure/persistence/postgres-tutoring-repository.ts';
 import { SlidingWindowRateLimiter } from './application/rate-limiter.ts';
@@ -72,6 +75,23 @@ async function provision(): Promise<Record<DemoPrincipalKey, string>> {
   }
 }
 
+const fixture = (path: string) => new URL(`../../../../../fixtures/${path}`, import.meta.url);
+let content: ContentAccess;
+let tutoring: Tutoring;
+
+async function seedLessons() {
+  const repo = new PostgresLessonRepository(pool);
+  const importer = new ImportLessonSource(repo);
+  const va: unknown = JSON.parse(
+    await readFile(fixture('courses/savanna-va1-future-of-va-industry.json'), 'utf8'),
+  );
+  await importer.execute(va);
+  const am: unknown = JSON.parse(
+    await readFile(fixture('courses/demo-time-management-am.json'), 'utf8'),
+  );
+  await importer.execute(am);
+}
+
 function makeApp(serviceOverride?: TelegramLinkService) {
   const resolvePrincipal = new ResolvePrincipal(new PostgresPrincipalRepository(pool), true, now);
   return buildApp({
@@ -80,8 +100,8 @@ function makeApp(serviceOverride?: TelegramLinkService) {
     demoRecords: new DemoRecords(new PostgresDemoRecordRepository(pool)),
     demoSessions: new DemoSessions(new PostgresDemoSessionRepository(pool), true, now),
     demoAllowedOrigins: ['http://localhost:5173'],
-    tutoring: new Tutoring(new PostgresTutoringRepository(pool)),
-    content: new ContentAccess(new PostgresLessonReader(pool), []),
+    tutoring,
+    content,
     jobRepository: jobRepo,
     jobAnswers,
     telegramService: serviceOverride ?? telegramService,
@@ -94,6 +114,11 @@ beforeAll(async () => {
   pool = createPool({ ...config, database: testDatabase }, () => {});
   await migrate(pool, await loadMigrations(MIGRATIONS_DIR));
   tokens = await provision();
+  await seedLessons();
+
+  content = new ContentAccess(new PostgresLessonReader(pool), []);
+  const faqProvider = new FaqProvider(content);
+  tutoring = new Tutoring(new PostgresTutoringRepository(pool), faqProvider, undefined, content);
 
   jobRepo = new PostgresJobRepository(pool);
   jobAnswers = new JobAnswers(jobRepo);
@@ -102,6 +127,8 @@ beforeAll(async () => {
     webhookSecret: WEBHOOK_SECRET,
     jobAnswers,
     now,
+    tutoring,
+    content,
   });
 
   const importJobs = new ImportJobs(jobRepo);
