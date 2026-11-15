@@ -18,7 +18,12 @@ export interface Reply {
   /** Stored ISO 8601 instant; presentation must not rewrite it. */
   readonly createdAt: string;
   readonly citations?: readonly Citation[];
-  readonly provider?: 'online' | 'faq' | 'job';
+  readonly provider?: 'online' | 'faq' | 'job' | 'external_web_research';
+  readonly provenance?: {
+    readonly kind: 'external_web_research' | 'demo' | 'faq' | 'course' | 'job';
+    readonly disclaimer?: string;
+  };
+  readonly simpleLanguage?: boolean;
 }
 
 /**
@@ -43,9 +48,13 @@ export type TranscriptionResult =
   | { readonly kind: 'unavailable' }
   | { readonly kind: 'failed' };
 
+export interface AskOptions {
+  readonly simpleLanguage?: boolean;
+}
+
 export interface ConversationClient {
   /** Must not reject: report failures as `{ kind: 'failed' }`. */
-  ask(question: string): Promise<AskResult>;
+  ask(question: string, options?: AskOptions): Promise<AskResult>;
   /** Optional audio transcription endpoint (T3-010-B). */
   transcribe?(audioBase64: string, mimeType: string): Promise<TranscriptionResult>;
 }

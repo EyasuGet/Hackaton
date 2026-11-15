@@ -908,6 +908,10 @@
                   "externalConsent": {
                     "type": "boolean",
                     "example": false
+                  },
+                  "simpleLanguage": {
+                    "type": "boolean",
+                    "example": false
                   }
                 }
               }
@@ -5385,6 +5389,10 @@
             "type": "string",
             "enum": ["online", "faq"],
             "example": "faq"
+          },
+          "simpleLanguage": {
+            "type": "boolean",
+            "example": false
           },
           "citations": {
             "type": "array",

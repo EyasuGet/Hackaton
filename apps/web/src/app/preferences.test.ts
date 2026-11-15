@@ -49,12 +49,23 @@ describe('User preferences persistence (T3-008-B)', () => {
 
   it('preserves existing settings when updating a single preference', () => {
     const storage = new MemoryStorage();
-    saveStoredPreferences({ locale: 'am', scenario: 'faqCited' }, storage);
+    saveStoredPreferences({ locale: 'am', scenario: 'faqCited', simpleLanguage: true }, storage);
     saveStoredPreferences({ locale: 'en' }, storage);
 
     const loaded = loadStoredPreferences(storage);
     expect(loaded.locale).toBe('en');
     expect(loaded.scenario).toBe('faqCited');
+    expect(loaded.simpleLanguage).toBe(true);
+  });
+
+  it('persists and reloads the simpleLanguage preference (T3-029)', () => {
+    const storage = new MemoryStorage();
+    saveStoredPreferences({ simpleLanguage: true }, storage);
+
+    expect(loadStoredPreferences(storage).simpleLanguage).toBe(true);
+
+    saveStoredPreferences({ simpleLanguage: false }, storage);
+    expect(loadStoredPreferences(storage).simpleLanguage).toBe(false);
   });
 
   it('recovers gracefully from malformed stored data', () => {

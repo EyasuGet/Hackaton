@@ -9,7 +9,11 @@ import { AccommodationPanel } from '../features/accommodation/accommodation.tsx'
 import { HelpInbox } from '../features/human-help/help-inbox.tsx';
 import { HumanHelp } from '../features/human-help/human-help.tsx';
 import { TeacherTopics } from '../features/teacher/teacher-topics.tsx';
-import { createAnswerClient } from '../features/assistant/faq-client.ts';
+import { EmployerDashboard } from '../features/employer/employer-dashboard.tsx';
+import {
+  createAnswerClient,
+  createCareerResearchClient,
+} from '../features/assistant/faq-client.ts';
 import {
   createFixtureClient,
   FIXTURE_SCENARIOS,
@@ -65,6 +69,9 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
     () => loadStoredPreferences().scenario ?? 'english',
   );
   const [locale, setLocaleState] = useState<Locale>(() => loadStoredPreferences().locale ?? 'en');
+  const [simpleLanguage, setSimpleLanguageState] = useState<boolean>(
+    () => loadStoredPreferences().simpleLanguage ?? false,
+  );
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   // The demo session token lives only in memory and is shared with features that call the API.
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -82,6 +89,11 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
     saveStoredPreferences({ scenario: newScenario });
   };
 
+  const setSimpleLanguage = (enabled: boolean) => {
+    setSimpleLanguageState(enabled);
+    saveStoredPreferences({ simpleLanguage: enabled });
+  };
+
   // When a valid learner session token is present, connect the Assistant to real course answers
   // using course-1 (Savanna Virtual Assistant) by default, while supporting fixture override.
   const client = useMemo(() => {
@@ -90,10 +102,22 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
         courseId: 'course-1',
         getToken: () => sessionToken,
         getConsent: () => externalConsent,
+        getSimpleLanguage: () => simpleLanguage,
       });
     }
     return createFixtureClient(scenario);
-  }, [sessionToken, scenario, externalConsent]);
+  }, [sessionToken, scenario, externalConsent, simpleLanguage]);
+
+  const researchClient = useMemo(() => {
+    if (sessionToken) {
+      return createCareerResearchClient({
+        getToken: () => sessionToken,
+      });
+    }
+    return createFixtureClient(
+      scenario === 'researchLimitation' ? 'researchLimitation' : 'researchSuccess',
+    );
+  }, [sessionToken, scenario]);
 
   const t = (key: MessageKey) => lookup(locale, key).text;
 
@@ -192,8 +216,11 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
         )}
         <Assistant
           client={client}
+          researchClient={researchClient}
           mode={sessionToken ? (externalConsent ? 'online' : 'faq') : 'demo'}
           consent={externalConsent}
+          simpleLanguage={simpleLanguage}
+          onSimpleLanguageChange={setSimpleLanguage}
           {...(sessionToken
             ? { onConsentChange: (consented: boolean) => setExternalConsent(consented) }
             : {})}
@@ -202,6 +229,7 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
         {sessionToken && <HelpInbox token={sessionToken} />}
         {sessionToken && <AccommodationPanel token={sessionToken} />}
         {sessionToken && <TeacherTopics token={sessionToken} />}
+        {sessionToken && <EmployerDashboard sessionToken={sessionToken} />}
       </main>
       <footer>
         <p role="status" aria-label={t('status.label')}>

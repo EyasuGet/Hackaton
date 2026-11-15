@@ -10,6 +10,7 @@ export interface OnlineAnswerRequest {
   readonly question: string;
   readonly language: 'en' | 'am';
   readonly passages: readonly EvaluationPassage[];
+  readonly simpleLanguage?: boolean;
 }
 
 export interface OnlineAnswerResponse {

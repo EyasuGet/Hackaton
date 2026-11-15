@@ -29,7 +29,12 @@ interface Entry {
   readonly lang?: string;
   readonly createdAt?: string;
   readonly citations?: readonly Citation[];
-  readonly provider?: 'online' | 'faq' | 'job';
+  readonly provider?: 'online' | 'faq' | 'job' | 'external_web_research';
+  readonly provenance?: {
+    readonly kind: string;
+    readonly disclaimer?: string;
+  };
+  readonly simpleLanguage?: boolean;
 }
 
 type Problem = 'empty' | 'denied' | 'failed';
@@ -89,6 +94,7 @@ function MessageDate({
 
 export interface AssistantProps {
   readonly client: ConversationClient;
+  readonly researchClient?: ConversationClient;
   readonly mode?: 'demo' | 'faq' | 'online';
   readonly speechSynthesizer?: SpeechSynthesizer;
   readonly cloudSynthesizer?: SpeechSynthesizer;
@@ -97,11 +103,17 @@ export interface AssistantProps {
   readonly onCloudConsentChange?: (consented: boolean) => void;
   readonly consent?: boolean;
   readonly onConsentChange?: (consented: boolean) => void;
+  readonly simpleLanguage?: boolean;
+  readonly onSimpleLanguageChange?: (enabled: boolean) => void;
+  readonly defaultSimpleLanguage?: boolean;
   readonly audioRecorder?: AudioRecorder;
+  readonly researchMode?: boolean;
+  readonly onResearchModeChange?: (enabled: boolean) => void;
 }
 
 export function Assistant({
   client,
+  researchClient,
   mode = 'demo',
   speechSynthesizer,
   cloudSynthesizer,
@@ -110,12 +122,23 @@ export function Assistant({
   onCloudConsentChange,
   consent,
   onConsentChange,
+  simpleLanguage,
+  onSimpleLanguageChange,
+  defaultSimpleLanguage = false,
   audioRecorder,
+  researchMode,
+  onResearchModeChange,
 }: AssistantProps) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
+  const [internalSimpleLanguage, setInternalSimpleLanguage] = useState(defaultSimpleLanguage);
+  const isSimpleLanguage = simpleLanguage ?? internalSimpleLanguage;
+  const handleSimpleLanguageChange = (checked: boolean) => {
+    setInternalSimpleLanguage(checked);
+    onSimpleLanguageChange?.(checked);
+  };
 
   // Voice recording & review state (T3-010-B)
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
@@ -126,6 +149,14 @@ export function Assistant({
   }
   const recorder = audioRecorder ?? recorderRef.current;
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Career web research mode state (T3-028-B, disabled by default)
+  const [internalResearchMode, setInternalResearchMode] = useState(false);
+  const isResearchMode = researchMode ?? internalResearchMode;
+  const setResearchMode = (enabled: boolean) => {
+    setInternalResearchMode(enabled);
+    onResearchModeChange?.(enabled);
+  };
 
   // Speech playback and consented cloud synthesis state (T3-011)
   const [speechEngine, setSpeechEngine] = useState<'client' | 'cloud'>(defaultSpeechEngine);
@@ -154,9 +185,13 @@ export function Assistant({
     heading: useId(),
     consent: useId(),
     consentHint: useId(),
+    simpleLanguage: useId(),
+    simpleLanguageHint: useId(),
     speechEngine: useId(),
     voiceRegion: useId(),
     voiceProblem: useId(),
+    researchMode: useId(),
+    researchModeHint: useId(),
   };
   const t = useT();
   const locale = useContext(LocaleContext);
@@ -404,7 +439,10 @@ export function Assistant({
 
     let result: AskResult;
     try {
-      result = await client.ask(question);
+      const activeClient = isResearchMode && researchClient ? researchClient : client;
+      result = isSimpleLanguage
+        ? await activeClient.ask(question, { simpleLanguage: true })
+        : await activeClient.ask(question);
     } catch {
       // The contract says ask() must not reject; if one does, never leave the form stuck.
       result = { kind: 'failed' };
@@ -434,6 +472,8 @@ export function Assistant({
         createdAt: reply.createdAt,
         ...(reply.citations ? { citations: reply.citations } : {}),
         ...(reply.provider ? { provider: reply.provider } : {}),
+        ...((reply.simpleLanguage ?? isSimpleLanguage) ? { simpleLanguage: true } : {}),
+        ...(reply.provenance ? { provenance: reply.provenance } : {}),
       },
     ]);
     setDraft('');
@@ -502,15 +542,29 @@ export function Assistant({
         <T k="assistant.heading" />
       </h2>
 
-      {mode === 'faq' && (
-        <p className="assistant-mode-notice" role="note">
-          <T k="assistant.modeNotice" />
+      {isResearchMode ? (
+        <p className="assistant-mode-notice assistant-research-notice" role="note">
+          <T k="assistant.researchModeNotice" />
         </p>
+      ) : (
+        <>
+          {mode === 'faq' && (
+            <p className="assistant-mode-notice" role="note">
+              <T k="assistant.modeNotice" />
+            </p>
+          )}
+
+          {mode === 'online' && (
+            <p className="assistant-mode-notice" role="note">
+              <T k="assistant.onlineModeNotice" />
+            </p>
+          )}
+        </>
       )}
 
-      {mode === 'online' && (
-        <p className="assistant-mode-notice" role="note">
-          <T k="assistant.onlineModeNotice" />
+      {isSimpleLanguage && (
+        <p className="assistant-simple-language-notice" role="note">
+          <T k="assistant.simpleLanguageNotice" />
         </p>
       )}
 
@@ -608,19 +662,26 @@ export function Assistant({
                     k={
                       entry.speaker === 'learner'
                         ? 'assistant.speakerLearner'
-                        : entry.provider === 'job'
-                          ? 'assistant.speakerJob'
-                          : mode === 'online'
-                            ? 'assistant.speakerOnline'
-                            : mode === 'faq'
-                              ? 'assistant.speakerFaq'
-                              : 'assistant.speakerAssistant'
+                        : entry.provider === 'external_web_research'
+                          ? 'assistant.speakerResearch'
+                          : entry.provider === 'job'
+                            ? 'assistant.speakerJob'
+                            : mode === 'online'
+                              ? 'assistant.speakerOnline'
+                              : mode === 'faq'
+                                ? 'assistant.speakerFaq'
+                                : 'assistant.speakerAssistant'
                     }
                   />
                 </p>
                 <p className="message-text" dir="auto" lang={entry.lang}>
                   {entry.text}
                 </p>
+                {entry.provider === 'external_web_research' && (
+                  <p className="research-provenance-disclaimer" role="note">
+                    <T k="assistant.researchProvenanceNote" />
+                  </p>
+                )}
                 {entry.citations && entry.citations.length > 0 && (
                   <div
                     className="citations"
@@ -836,6 +897,36 @@ export function Assistant({
               <T k={VOICE_PROBLEM_TEXT[voiceProblem]} />
             </p>
           )}
+        </div>
+        <div className="assistant-simple-language-control">
+          <label htmlFor={ids.simpleLanguage}>
+            <input
+              id={ids.simpleLanguage}
+              type="checkbox"
+              checked={isSimpleLanguage}
+              aria-describedby={ids.simpleLanguageHint}
+              onChange={(e) => handleSimpleLanguageChange(e.target.checked)}
+            />
+            <T k="assistant.simpleLanguageLabel" />
+          </label>
+          <p id={ids.simpleLanguageHint} className="hint">
+            <T k="assistant.simpleLanguageHint" />
+          </p>
+        </div>
+        <div className="assistant-research-control">
+          <label htmlFor={ids.researchMode}>
+            <input
+              id={ids.researchMode}
+              type="checkbox"
+              checked={isResearchMode}
+              aria-describedby={ids.researchModeHint}
+              onChange={(e) => setResearchMode(e.target.checked)}
+            />
+            <T k="assistant.researchModeLabel" />
+          </label>
+          <p id={ids.researchModeHint} className="hint">
+            <T k="assistant.researchModeHint" />
+          </p>
         </div>
         <div className="actions">
           {/* aria-disabled keeps the button focusable, so keyboard focus is not lost while sending. */}

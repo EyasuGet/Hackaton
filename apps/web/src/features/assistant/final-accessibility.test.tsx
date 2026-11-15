@@ -352,6 +352,39 @@ describe('Final Automated Accessibility & Desktop Task Checks (T3-025-A)', () =>
       expect(results).toHaveNoViolations();
     });
 
+    it('passes axe audit in simple-language mode in English and Amharic', async () => {
+      const { client } = controllableClient();
+      const { container, rerender } = render(
+        <LocaleContext value="en">
+          <main>
+            <Assistant client={client} defaultSimpleLanguage={true} />
+          </main>
+        </LocaleContext>,
+      );
+
+      const checkbox = screen.getByLabelText<HTMLInputElement>('Use simple, direct language');
+      expect(checkbox.checked).toBe(true);
+      expect(screen.getByText(/Operating in simple-language mode/)).toBeDefined();
+
+      let results = await axe(container);
+      expect(results).toHaveNoViolations();
+
+      rerender(
+        <LocaleContext value="am">
+          <main>
+            <Assistant client={client} defaultSimpleLanguage={true} />
+          </main>
+        </LocaleContext>,
+      );
+
+      const amharicCheckbox = screen.getByLabelText<HTMLInputElement>('ቀላል እና ግልጽ ቋንቋ ተጠቀም');
+      expect(amharicCheckbox.checked).toBe(true);
+      expect(screen.getByText(/በቀላል ቋንቋ ሁነታ ላይ ይሰራል/)).toBeDefined();
+
+      results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+
     it('passes axe audit during active sending state', async () => {
       const { client } = controllableClient();
       const { container } = render(
@@ -815,6 +848,59 @@ describe('Final Automated Accessibility & Desktop Task Checks (T3-025-A)', () =>
       expect(screen.getAllByText(/external web search is not used/i).length).toBeGreaterThan(0);
       // No citations generated
       expect(screen.queryByRole('region', { name: 'Sources & Citations:' })).toBeNull();
+
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+
+    it('passes axe audit on career web research mode with external provenance and cited links', async () => {
+      const { client, respond } = controllableClient();
+      const { container } = render(
+        <LocaleContext value="en">
+          <main>
+            <Assistant client={client} mode="faq" />
+          </main>
+        </LocaleContext>,
+      );
+
+      // Verify toggle is present and accessible
+      const toggle = screen.getByLabelText<HTMLInputElement>(
+        /Enable supplementary career web research/i,
+      );
+      expect(toggle.checked).toBe(false);
+      fireEvent.click(toggle);
+      expect(toggle.checked).toBe(true);
+
+      const input = screen.getByLabelText('Your question');
+      fireEvent.change(input, { target: { value: 'What are VA salary rates in Addis Ababa?' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+      await respond({
+        kind: 'answer',
+        reply: {
+          id: 'res-a11y-1',
+          text: 'Entry-level VA compensation in Addis Ababa averages 20,000 ETB.',
+          lang: 'en',
+          createdAt: '2026-09-11T12:00:00.000Z',
+          provider: 'external_web_research',
+          citations: [
+            {
+              sourceId: 'web-1',
+              sectionId: 'salary',
+              sourceTitle: 'Addis Ababa Remote Work Trends 2026',
+              heading: 'Compensation Survey',
+              url: 'https://digitalbridge.et/research/va-2026',
+            },
+          ],
+        },
+      });
+
+      expect(screen.getByText('Assistant (external web research)')).toBeDefined();
+      expect(
+        screen.getByText(
+          /Source: External web research. Information from external web sources is unverified/i,
+        ),
+      ).toBeDefined();
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();

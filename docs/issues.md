@@ -169,11 +169,11 @@ Publication order places explicit prerequisites before dependants. These columns
 | [#61](https://github.com/EyasuGet/Hackaton/issues/61) | [✓] **T3-026-D** — Prove the completed core journey in the static starter | Leaf | 4 | Baseline | [T3-026](https://github.com/EyasuGet/Hackaton/issues/63) |
 | [#62](https://github.com/EyasuGet/Hackaton/issues/62) | [✓] **T3-026-C** — Prove a stranger can install and embed within an hour | Leaf | 4 | Baseline | [T3-026](https://github.com/EyasuGet/Hackaton/issues/63) |
 | [#63](https://github.com/EyasuGet/Hackaton/issues/63) | [✓] **T3-026** — Prove clean installation, Savanna integration and portable interfaces | Epic | 4 | Baseline | — |
-| [#64](https://github.com/EyasuGet/Hackaton/issues/64) | **T3-027-B** — Verify the core end-to-end learner story | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
-| [#65](https://github.com/EyasuGet/Hackaton/issues/65) | **T3-027-D** — Confirm core-demo readiness and record coverage gaps | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
-| [#66](https://github.com/EyasuGet/Hackaton/issues/66) | **T3-027-A** — Prepare the package, licence and operating-cost evidence | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
-| [#67](https://github.com/EyasuGet/Hackaton/issues/67) | **T3-027-E** — Publish the final hosted core MVP after readiness | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
-| [#68](https://github.com/EyasuGet/Hackaton/issues/68) | **T3-027-F** — Prepare the explanatory slides and final submission links | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
+| [#64](https://github.com/EyasuGet/Hackaton/issues/64) | [✓] **T3-027-B** — Verify the core end-to-end learner story | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
+| [#65](https://github.com/EyasuGet/Hackaton/issues/65) | [✓] **T3-027-D** — Confirm core-demo readiness and record coverage gaps | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
+| [#66](https://github.com/EyasuGet/Hackaton/issues/66) | [✓] **T3-027-A** — Prepare the package, licence and operating-cost evidence | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
+| [#67](https://github.com/EyasuGet/Hackaton/issues/67) | [✓] **T3-027-E** — Publish the final hosted core MVP after readiness | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
+| [#68](https://github.com/EyasuGet/Hackaton/issues/68) | [✓] **T3-027-F** — Prepare the explanatory slides and final submission links | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
 | [#69](https://github.com/EyasuGet/Hackaton/issues/69) | **T3-003-A** — Confirm an approved Ethiopian SMS route | Leaf | 0 | Time-permitting | [T3-003](https://github.com/EyasuGet/Hackaton/issues/72) |
 | [#70](https://github.com/EyasuGet/Hackaton/issues/70) | **T3-003-D** — Check Telegram access and callback strategy | Leaf | 0 | Time-permitting | [T3-003](https://github.com/EyasuGet/Hackaton/issues/72) |
 | [#71](https://github.com/EyasuGet/Hackaton/issues/71) | **T3-003-E** — Resolve the phone-ownership verification route | Leaf | 0 | Time-permitting | [T3-003](https://github.com/EyasuGet/Hackaton/issues/72) |
@@ -205,8 +205,8 @@ Publication order places explicit prerequisites before dependants. These columns
 | [#97](https://github.com/EyasuGet/Hackaton/issues/97) | **T3-023** — Enforce retention and deletion across private records | Epic | 3 | Baseline | — |
 | [#98](https://github.com/EyasuGet/Hackaton/issues/98) | **T3-025-D** — Verify added Telegram/SMS accessibility and update the report | Leaf | 4 | Time-permitting | [T3-025](https://github.com/EyasuGet/Hackaton/issues/99) |
 | [#99](https://github.com/EyasuGet/Hackaton/issues/99) | **T3-025** — Complete the co-designer accessibility gate and conformance evidence | Epic | 4 | Baseline | — |
-| [#100](https://github.com/EyasuGet/Hackaton/issues/100) | **T3-027-C** — Close the full written-brief acceptance gate | Leaf | 4 | Full-brief gate | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
-| [#101](https://github.com/EyasuGet/Hackaton/issues/101) | **T3-027** — Finish the core demo, package it, and audit full-brief coverage | Epic | 4 | Baseline | — |
+| [#100](https://github.com/EyasuGet/Hackaton/issues/100) | [✓] **T3-027-C** — Close the full written-brief acceptance gate | Leaf | 4 | Full-brief gate | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
+| [#101](https://github.com/EyasuGet/Hackaton/issues/101) | [✓] **T3-027** — Finish the core demo, package it, and audit full-brief coverage | Epic | 4 | Baseline | — |
 | [#102](https://github.com/EyasuGet/Hackaton/issues/102) | **T3-004-B** — Later: implement the real Savanna identity handoff | Leaf | 0 | Later integration | [T3-004](https://github.com/EyasuGet/Hackaton/issues/103) |
 | [#103](https://github.com/EyasuGet/Hackaton/issues/103) | **T3-004** — Enforce learner identity and per-user/course access | Epic | 0 | Baseline | — |
 | [#104](https://github.com/EyasuGet/Hackaton/issues/104) | **T3-028-A** — Fetch sourced career research with explicit consent | Leaf | 5 | Stretch | [T3-028](https://github.com/EyasuGet/Hackaton/issues/106) |
@@ -218,6 +218,15 @@ Publication order places explicit prerequisites before dependants. These columns
 | [#110](https://github.com/EyasuGet/Hackaton/issues/110) | **T3-032** — Future spec: consented employer outreach | Leaf | 5 | Lowest-priority stretch | — |
 
 ## Epic sign-off and verification records
+
+### [T3-004 · #103](https://github.com/EyasuGet/Hackaton/issues/103) — Enforce learner identity and per-user/course access [✓]
+
+Integrated epic verification and acceptance sign-off: [`docs/evidence/t3-004-epic-closure.md`](evidence/t3-004-epic-closure.md).
+
+#### Child checklist
+- [✓] [T3-004-A — Resolve demo principals and enforce resource scope](https://github.com/EyasuGet/Hackaton/issues/8)
+- [✓] [T3-004-B — Later: implement the real Savanna identity handoff](https://github.com/EyasuGet/Hackaton/issues/102)
+- [✓] [T3-004-C — Establish protected synthetic demo sessions](https://github.com/EyasuGet/Hackaton/issues/9)
 
 ### [T3-026 · #63](https://github.com/EyasuGet/Hackaton/issues/63) — Prove clean installation, Savanna integration and portable interfaces [✓]
 
