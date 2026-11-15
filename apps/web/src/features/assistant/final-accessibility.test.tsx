@@ -364,9 +364,7 @@ describe('Final Automated Accessibility & Desktop Task Checks (T3-025-A)', () =>
 
       const checkbox = screen.getByLabelText<HTMLInputElement>('Use simple, direct language');
       expect(checkbox.checked).toBe(true);
-      expect(
-        screen.getByText(/Operating in simple-language mode/),
-      ).toBeDefined();
+      expect(screen.getByText(/Operating in simple-language mode/)).toBeDefined();
 
       let results = await axe(container);
       expect(results).toHaveNoViolations();
@@ -381,9 +379,7 @@ describe('Final Automated Accessibility & Desktop Task Checks (T3-025-A)', () =>
 
       const amharicCheckbox = screen.getByLabelText<HTMLInputElement>('ቀላል እና ግልጽ ቋንቋ ተጠቀም');
       expect(amharicCheckbox.checked).toBe(true);
-      expect(
-        screen.getByText(/በቀላል ቋንቋ ሁነታ ላይ ይሰራል/),
-      ).toBeDefined();
+      expect(screen.getByText(/በቀላል ቋንቋ ሁነታ ላይ ይሰራል/)).toBeDefined();
 
       results = await axe(container);
       expect(results).toHaveNoViolations();

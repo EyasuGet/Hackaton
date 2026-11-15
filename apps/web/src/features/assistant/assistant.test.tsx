@@ -833,9 +833,7 @@ describe('Assistant', () => {
       render(<Assistant client={client} />);
       const checkbox = screen.getByLabelText<HTMLInputElement>('Use simple, direct language');
       expect(checkbox.checked).toBe(false);
-      expect(
-        screen.queryByText(/Operating in simple-language mode/),
-      ).toBeNull();
+      expect(screen.queryByText(/Operating in simple-language mode/)).toBeNull();
     });
 
     it('toggles simple-language mode and invokes onSimpleLanguageChange callback', () => {
@@ -847,16 +845,12 @@ describe('Assistant', () => {
       fireEvent.click(checkbox);
       expect(checkbox.checked).toBe(true);
       expect(onChange).toHaveBeenCalledWith(true);
-      expect(
-        screen.getByText(/Operating in simple-language mode/),
-      ).toBeDefined();
+      expect(screen.getByText(/Operating in simple-language mode/)).toBeDefined();
 
       fireEvent.click(checkbox);
       expect(checkbox.checked).toBe(false);
       expect(onChange).toHaveBeenCalledWith(false);
-      expect(
-        screen.queryByText(/Operating in simple-language mode/),
-      ).toBeNull();
+      expect(screen.queryByText(/Operating in simple-language mode/)).toBeNull();
     });
 
     it('passes simpleLanguage option to client.ask when enabled', async () => {
@@ -904,9 +898,7 @@ describe('Assistant', () => {
 
       const checkbox = screen.getByLabelText<HTMLInputElement>('ቀላል እና ግልጽ ቋንቋ ተጠቀም');
       expect(checkbox.checked).toBe(true);
-      expect(
-        screen.getByText(/በቀላል ቋንቋ ሁነታ ላይ ይሰራል/),
-      ).toBeDefined();
+      expect(screen.getByText(/በቀላል ቋንቋ ሁነታ ላይ ይሰራል/)).toBeDefined();
     });
   });
 });
