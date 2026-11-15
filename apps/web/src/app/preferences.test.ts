@@ -75,6 +75,13 @@ describe('User preferences persistence (T3-008-B)', () => {
     expect(loadStoredPreferences(storage)).toEqual({});
   });
 
+  it('reloads a draft locale such as Arabic', () => {
+    const storage = new MemoryStorage();
+    saveStoredPreferences({ locale: 'ar' }, storage);
+
+    expect(loadStoredPreferences(storage).locale).toBe('ar');
+  });
+
   it('ignores unsupported locale values in storage', () => {
     const storage = new MemoryStorage();
     storage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify({ locale: 'invalid-lang' }));
