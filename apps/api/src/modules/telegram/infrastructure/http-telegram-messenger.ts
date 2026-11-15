@@ -29,6 +29,7 @@ export class HttpTelegramMessenger implements TelegramMessenger {
           ...(message.replyToMessageId !== undefined
             ? { reply_to_message_id: message.replyToMessageId }
             : {}),
+          ...(message.replyMarkup !== undefined ? { reply_markup: message.replyMarkup } : {}),
         }),
       });
 

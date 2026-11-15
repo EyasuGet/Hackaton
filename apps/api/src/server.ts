@@ -41,6 +41,7 @@ import { PostgresEmployerRepository } from './modules/careers/infrastructure/pos
 import { EmployerService } from './modules/careers/application/employer-service.ts';
 import { Tutoring } from './modules/tutoring/application/tutoring.ts';
 import { GeminiTranscriptionAdapter } from './modules/tutoring/infrastructure/gemini-transcription-adapter.ts';
+import { DefaultSpeechSynthesizerProvider } from './modules/tutoring/infrastructure/default-speech-provider.ts';
 import { ProviderAdmissionController } from './modules/tutoring/application/provider-admission.ts';
 import { PostgresTutoringRepository } from './modules/tutoring/infrastructure/persistence/postgres-tutoring-repository.ts';
 
@@ -77,6 +78,7 @@ const telegramLinkRepository = new PostgresTelegramLinkRepository(pool);
 const telegramClient = new HttpTelegramClient({ botToken: config.telegram.botToken });
 const jobPreferences = new JobPreferences(jobPreferencesRepo, telegramLinkRepository);
 const jobAnswers = new JobAnswers(jobRepository);
+const speechProvider = new DefaultSpeechSynthesizerProvider();
 const telegramService = new TelegramLinkService(telegramLinkRepository, {
   webhookSecret: config.telegram.webhookSecret,
   botToken: config.telegram.botToken,
@@ -86,6 +88,9 @@ const telegramService = new TelegramLinkService(telegramLinkRepository, {
   tutoring,
   content,
   messenger: telegramMessenger,
+  transcription,
+  speechProvider,
+  admissionController,
 });
 
 const app = buildApp(
@@ -104,6 +109,7 @@ const app = buildApp(
       jobAnswers,
     ),
     transcription,
+    speechProvider,
     content,
     help: new Help(helpRepository),
     staffHelp: new StaffHelp(helpRepository),

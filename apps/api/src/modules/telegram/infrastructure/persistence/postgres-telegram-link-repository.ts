@@ -4,7 +4,11 @@
 // and atomic link revocation.
 import type pg from 'pg';
 import type { Principal, Role } from '../../../identity/domain/principal.ts';
-import type { TelegramIdentity } from '../../domain/telegram-identity.ts';
+import type {
+  PendingVoiceReview,
+  TelegramIdentity,
+  VoiceReviewStatus,
+} from '../../domain/telegram-identity.ts';
 import type {
   ConsumeLinkParams,
   ConsumeLinkResult,
@@ -205,8 +209,9 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       revoked_at: Date | null;
       external_consent: boolean;
       active_course_id: string | null;
+      speech_enabled?: boolean;
     }>(
-      `SELECT id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id
+      `SELECT id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id, speech_enabled
        FROM telegram_identities
        WHERE telegram_user_id = $1 AND revoked_at IS NULL`,
       [telegramUserId],
@@ -223,6 +228,7 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       revokedAt: row.revoked_at ?? undefined,
       externalConsent: row.external_consent,
       activeCourseId: row.active_course_id ?? undefined,
+      speechEnabled: row.speech_enabled ?? false,
     };
   }
 
@@ -237,8 +243,9 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       revoked_at: Date | null;
       external_consent: boolean;
       active_course_id: string | null;
+      speech_enabled?: boolean;
     }>(
-      `SELECT id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id
+      `SELECT id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id, speech_enabled
        FROM telegram_identities
        WHERE learner_id = $1 AND revoked_at IS NULL`,
       [learnerId],
@@ -255,12 +262,17 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       revokedAt: row.revoked_at ?? undefined,
       externalConsent: row.external_consent,
       activeCourseId: row.active_course_id ?? undefined,
+      speechEnabled: row.speech_enabled ?? false,
     };
   }
 
   async setPreferences(
     learnerId: string,
-    preferences: { readonly externalConsent?: boolean; readonly activeCourseId?: string },
+    preferences: {
+      readonly externalConsent?: boolean;
+      readonly activeCourseId?: string;
+      readonly speechEnabled?: boolean;
+    },
   ): Promise<TelegramIdentity | null> {
     const existing = await this.findIdentityByLearnerId(learnerId);
     if (!existing) return null;
@@ -273,6 +285,10 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       preferences.activeCourseId !== undefined
         ? preferences.activeCourseId
         : existing.activeCourseId;
+    const newSpeechEnabled =
+      preferences.speechEnabled !== undefined
+        ? preferences.speechEnabled
+        : (existing.speechEnabled ?? false);
 
     const result = await this.#pool.query<{
       id: string;
@@ -284,12 +300,13 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       revoked_at: Date | null;
       external_consent: boolean;
       active_course_id: string | null;
+      speech_enabled?: boolean;
     }>(
       `UPDATE telegram_identities
-       SET external_consent = $1, active_course_id = $2
-       WHERE learner_id = $3 AND revoked_at IS NULL
-       RETURNING id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id`,
-      [newConsent, newCourseId ?? null, learnerId],
+       SET external_consent = $1, active_course_id = $2, speech_enabled = $3
+       WHERE learner_id = $4 AND revoked_at IS NULL
+       RETURNING id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id, speech_enabled`,
+      [newConsent, newCourseId ?? null, newSpeechEnabled, learnerId],
     );
     const row = result.rows[0];
     if (!row) return null;
@@ -303,6 +320,7 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       revokedAt: row.revoked_at ?? undefined,
       externalConsent: row.external_consent,
       activeCourseId: row.active_course_id ?? undefined,
+      speechEnabled: row.speech_enabled ?? false,
     };
   }
 
@@ -372,5 +390,113 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
         params.now,
       ],
     );
+  }
+
+  async createVoiceReview(review: PendingVoiceReview): Promise<void> {
+    await this.#pool.query(
+      `INSERT INTO telegram_voice_reviews (
+        id, learner_id, telegram_user_id, telegram_chat_id, course_id, transcript, status, expires_at, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        review.id,
+        review.learnerId,
+        review.telegramUserId,
+        review.telegramChatId,
+        review.courseId,
+        review.transcript,
+        review.status,
+        review.expiresAt,
+        review.createdAt,
+      ],
+    );
+  }
+
+  async findVoiceReview(id: string): Promise<PendingVoiceReview | null> {
+    const result = await this.#pool.query<{
+      id: string;
+      learner_id: string;
+      telegram_user_id: string;
+      telegram_chat_id: string;
+      course_id: string;
+      transcript: string;
+      status: VoiceReviewStatus;
+      expires_at: Date;
+      resolved_at: Date | null;
+      created_at: Date;
+    }>(
+      `SELECT id, learner_id, telegram_user_id, telegram_chat_id, course_id, transcript, status, expires_at, resolved_at, created_at
+       FROM telegram_voice_reviews
+       WHERE id = $1`,
+      [id],
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      learnerId: row.learner_id,
+      telegramUserId: row.telegram_user_id,
+      telegramChatId: row.telegram_chat_id,
+      courseId: row.course_id,
+      transcript: row.transcript,
+      status: row.status,
+      expiresAt: row.expires_at,
+      resolvedAt: row.resolved_at ?? undefined,
+      createdAt: row.created_at,
+    };
+  }
+
+  async findAwaitingEditReview(telegramUserId: string): Promise<PendingVoiceReview | null> {
+    const result = await this.#pool.query<{
+      id: string;
+      learner_id: string;
+      telegram_user_id: string;
+      telegram_chat_id: string;
+      course_id: string;
+      transcript: string;
+      status: VoiceReviewStatus;
+      expires_at: Date;
+      resolved_at: Date | null;
+      created_at: Date;
+    }>(
+      `SELECT id, learner_id, telegram_user_id, telegram_chat_id, course_id, transcript, status, expires_at, resolved_at, created_at
+       FROM telegram_voice_reviews
+       WHERE telegram_user_id = $1 AND status = 'awaiting_edit' AND expires_at > now()
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [telegramUserId],
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      learnerId: row.learner_id,
+      telegramUserId: row.telegram_user_id,
+      telegramChatId: row.telegram_chat_id,
+      courseId: row.course_id,
+      transcript: row.transcript,
+      status: row.status,
+      expiresAt: row.expires_at,
+      resolvedAt: row.resolved_at ?? undefined,
+      createdAt: row.created_at,
+    };
+  }
+
+  async resolveVoiceReview(
+    id: string,
+    status: VoiceReviewStatus,
+    now: Date,
+    transcript?: string,
+  ): Promise<boolean> {
+    const query =
+      transcript !== undefined
+        ? `UPDATE telegram_voice_reviews
+           SET status = $1, resolved_at = $2, transcript = $3
+           WHERE id = $4 AND expires_at > $2 AND status IN ('pending', 'awaiting_edit')`
+        : `UPDATE telegram_voice_reviews
+           SET status = $1, resolved_at = $2
+           WHERE id = $3 AND expires_at > $2 AND status IN ('pending', 'awaiting_edit')`;
+    const params = transcript !== undefined ? [status, now, transcript, id] : [status, now, id];
+    const res = await this.#pool.query(query, params);
+    return (res.rowCount ?? 0) > 0;
   }
 }

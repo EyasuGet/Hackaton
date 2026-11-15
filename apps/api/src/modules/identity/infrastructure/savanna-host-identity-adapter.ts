@@ -39,9 +39,14 @@ export interface ReplayCache {
 
 export class MemoryReplayCache implements ReplayCache {
   readonly #seen = new Map<string, number>();
+  readonly #now: () => Date;
+
+  constructor(now: () => Date = () => new Date()) {
+    this.#now = now;
+  }
 
   checkAndRecord(jti: string, expiresAt: Date): boolean {
-    const now = Date.now();
+    const now = this.#now().getTime();
     this.#prune(now);
     const existing = this.#seen.get(jti);
     if (existing !== undefined && existing > now) {
@@ -154,9 +159,9 @@ export class SavannaHostIdentityAdapter implements HostIdentityAdapter {
     this.#allowedAudiences = config.allowedAudiences ?? [];
     this.#clockToleranceMs = config.clockToleranceMs ?? 60_000;
     this.#sessionTtlMs = config.sessionTtlMs ?? 2 * 60 * 60 * 1000; // 2 hours
-    this.#replayCache = options.replayCache ?? new MemoryReplayCache();
-    this.#sessionStore = options.sessionStore ?? new MemoryHostSessionStore();
     this.#now = options.now ?? (() => new Date());
+    this.#replayCache = options.replayCache ?? new MemoryReplayCache(this.#now);
+    this.#sessionStore = options.sessionStore ?? new MemoryHostSessionStore();
   }
 
   async validateHandoff(
