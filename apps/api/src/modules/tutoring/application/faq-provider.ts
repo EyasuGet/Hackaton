@@ -223,9 +223,12 @@ export class FaqProvider {
     }
     if (!best) return undefined;
     const { passage } = best;
+    const answerText = excerpt(passage.text, words);
+    // A heading with an empty body is not evidence to quote.
+    if (!answerText) return undefined;
     return {
       kind: 'answered',
-      answerText: excerpt(passage.text, words),
+      answerText,
       answerLang: passage.language === 'am' ? 'am' : 'en',
       citations: [
         {
