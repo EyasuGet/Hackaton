@@ -29,6 +29,8 @@ import { Sharing } from './modules/sharing/application/sharing.ts';
 import { PostgresHelpRequestLookup } from './modules/sharing/infrastructure/persistence/postgres-help-request-lookup.ts';
 import { PostgresSharingRepository } from './modules/sharing/infrastructure/persistence/postgres-sharing-repository.ts';
 import { GeminiGroundedAnswerProvider } from './evaluations/grounding/provider-adapter.ts';
+import { TelegramLinkService } from './modules/telegram/application/telegram-link-service.ts';
+import { PostgresTelegramLinkRepository } from './modules/telegram/infrastructure/persistence/postgres-telegram-link-repository.ts';
 import { FaqProvider } from './modules/tutoring/application/faq-provider.ts';
 import { Tutoring } from './modules/tutoring/application/tutoring.ts';
 import { PostgresTutoringRepository } from './modules/tutoring/infrastructure/persistence/postgres-tutoring-repository.ts';
@@ -48,6 +50,11 @@ const helpRepository = new PostgresHelpRepository(pool);
 const sharingRepository = new PostgresSharingRepository(pool);
 const helpRequestLookup = new PostgresHelpRequestLookup(pool);
 const jobPreferences = new JobPreferences(new PostgresJobPreferencesRepository(pool));
+const telegramLinkRepository = new PostgresTelegramLinkRepository(pool);
+const telegramService = new TelegramLinkService(telegramLinkRepository, {
+  webhookSecret: config.telegram.webhookSecret,
+  botToken: config.telegram.botToken,
+});
 
 const app = buildApp(
   {
@@ -69,6 +76,7 @@ const app = buildApp(
     accommodation: new Accommodation(new PostgresAccommodationRepository(pool)),
     jobRepository: new PostgresJobRepository(pool),
     jobPreferences,
+    telegramService,
   },
   { logger: true },
 );
