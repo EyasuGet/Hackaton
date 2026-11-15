@@ -43,6 +43,12 @@ export function registerTutoringRoutes(
     if (!question || typeof question !== 'string' || question.trim() === '') {
       return reply.code(400).send({ error: 'invalid_question' });
     }
+    if (question.length > tutoring.admissionController.limits.maxQuestionLength) {
+      return reply.code(400).send({
+        error: 'input_too_large',
+        message: `Question exceeds maximum allowed length of ${tutoring.admissionController.limits.maxQuestionLength} characters`,
+      });
+    }
     if (conversationId !== undefined && !UUID.test(conversationId)) {
       return reply.code(404).send({ error: 'not_found' });
     }
@@ -50,13 +56,17 @@ export function registerTutoringRoutes(
     const principal = principalOf(request);
 
     try {
-      const result = await tutoring.ask(principal, {
-        courseId: courseId.trim(),
-        requestId: requestId.trim(),
-        question: question.trim(),
-        ...(conversationId !== undefined ? { conversationId } : {}),
-        externalConsent: externalConsent === true,
-      });
+      const result = await tutoring.ask(
+        principal,
+        {
+          courseId: courseId.trim(),
+          requestId: requestId.trim(),
+          question: question.trim(),
+          ...(conversationId !== undefined ? { conversationId } : {}),
+          externalConsent: externalConsent === true,
+        },
+        { signal: request.signal },
+      );
 
       if (!result) {
         return reply.code(404).send({ error: 'not_found' });
@@ -72,6 +82,28 @@ export function registerTutoringRoutes(
       });
     } catch (err: unknown) {
       if (err instanceof TutoringError) {
+        if (err.code === 'busy') {
+          const retryAfter = err.retryAfterSeconds ?? 3;
+          return reply.code(503).header('Retry-After', String(retryAfter)).send({
+            error: 'busy',
+            message: err.message,
+            retryAfterSeconds: retryAfter,
+          });
+        }
+        if (err.code === 'rate_limited') {
+          const retryAfter = err.retryAfterSeconds ?? 5;
+          return reply.code(429).header('Retry-After', String(retryAfter)).send({
+            error: 'rate_limited',
+            message: err.message,
+            retryAfterSeconds: retryAfter,
+          });
+        }
+        if (err.code === 'input_too_large') {
+          return reply.code(400).send({
+            error: 'input_too_large',
+            message: err.message,
+          });
+        }
         if (err.code === 'timeout') {
           return reply.code(504).send({ error: 'timeout', message: err.message });
         }
@@ -107,6 +139,12 @@ export function registerTutoringRoutes(
       }
       if (!question || typeof question !== 'string' || question.trim() === '') {
         return reply.code(400).send({ error: 'invalid_question' });
+      }
+      if (question.length > tutoring.admissionController.limits.maxQuestionLength) {
+        return reply.code(400).send({
+          error: 'input_too_large',
+          message: `Question exceeds maximum allowed length of ${tutoring.admissionController.limits.maxQuestionLength} characters`,
+        });
       }
       if (conversationId !== undefined && !UUID.test(conversationId)) {
         return reply.code(404).send({ error: 'not_found' });
