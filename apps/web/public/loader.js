@@ -110,6 +110,10 @@
       'z-index: 999999',
     ].join('; ');
     iframe.title = 'Learning assistant';
+    iframe.allow = config.allow !== undefined ? config.allow : 'microphone; display-capture';
+    if (config.sandbox !== undefined) {
+      iframe.setAttribute('sandbox', config.sandbox);
+    }
 
     document.body.appendChild(iframe);
 
