@@ -94,7 +94,15 @@ describe('dispatch outcomes', () => {
 
     const result = await worker.dispatchBatch(T0, sentPort());
 
-    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0, uncertain: 0, exceeded: 0 });
+    expect(result).toEqual({
+      claimed: 1,
+      sent: 1,
+      failed: 0,
+      uncertain: 0,
+      retried: 0,
+      cancelled: 0,
+      exceeded: 0,
+    });
     const record = await intents.findById(id);
     expect(record?.status).toBe('completed');
     expect(record?.completedAt).toEqual(T0);
@@ -108,7 +116,15 @@ describe('dispatch outcomes', () => {
 
     const result = await worker.dispatchBatch(T0, failedPort());
 
-    expect(result).toEqual({ claimed: 1, sent: 0, failed: 1, uncertain: 0, exceeded: 0 });
+    expect(result).toEqual({
+      claimed: 1,
+      sent: 0,
+      failed: 1,
+      uncertain: 0,
+      retried: 0,
+      cancelled: 0,
+      exceeded: 0,
+    });
     const record = await intents.findById(id);
     expect(record?.status).toBe('failed');
     expect(record?.completedAt).toEqual(T0);
@@ -121,7 +137,15 @@ describe('dispatch outcomes', () => {
 
     const result = await worker.dispatchBatch(T0, uncertainPort());
 
-    expect(result).toEqual({ claimed: 1, sent: 0, failed: 0, uncertain: 1, exceeded: 0 });
+    expect(result).toEqual({
+      claimed: 1,
+      sent: 0,
+      failed: 0,
+      uncertain: 1,
+      retried: 0,
+      cancelled: 0,
+      exceeded: 0,
+    });
     const record = await intents.findById(id);
     expect(record?.status).toBe('uncertain');
     expect(record?.completedAt).toBeNull();
@@ -134,7 +158,15 @@ describe('dispatch outcomes', () => {
 
     const result = await worker.dispatchBatch(T0, throwingPort());
 
-    expect(result).toEqual({ claimed: 1, sent: 0, failed: 0, uncertain: 1, exceeded: 0 });
+    expect(result).toEqual({
+      claimed: 1,
+      sent: 0,
+      failed: 0,
+      uncertain: 1,
+      retried: 0,
+      cancelled: 0,
+      exceeded: 0,
+    });
     const record = await intents.findById(id);
     expect(record?.status).toBe('uncertain');
   });
@@ -169,7 +201,15 @@ describe('bounded retries', () => {
       port,
     );
 
-    expect(result).toEqual({ claimed: 1, sent: 0, failed: 0, uncertain: 0, exceeded: 1 });
+    expect(result).toEqual({
+      claimed: 1,
+      sent: 0,
+      failed: 0,
+      uncertain: 0,
+      retried: 0,
+      cancelled: 0,
+      exceeded: 1,
+    });
     expect(dispatchFn).not.toHaveBeenCalled();
 
     const record = await intents.findById(id);
@@ -254,7 +294,15 @@ describe('dispatch batch with multiple intents', () => {
     };
 
     const result = await worker.dispatchBatch(T0, mixedPort);
-    expect(result).toEqual({ claimed: 3, sent: 1, failed: 1, uncertain: 1, exceeded: 0 });
+    expect(result).toEqual({
+      claimed: 3,
+      sent: 1,
+      failed: 1,
+      uncertain: 1,
+      retried: 0,
+      cancelled: 0,
+      exceeded: 0,
+    });
 
     const rows = await pool.query<{ status: string }>(
       'SELECT status FROM delivery_intents ORDER BY created_at',
