@@ -189,7 +189,7 @@ function RequestItem({ req, token }: { readonly req: HelpRequest; readonly token
                 {formatDate(r.createdAt)}
               </time>
               {r.readAt === null && r.authorId !== req.ownerId && (
-                <span className="help-inbox-reply-unread" aria-label="Unread" />
+                <span className="help-inbox-reply-unread" role="status" aria-label="Unread" />
               )}
             </li>
           ))}
