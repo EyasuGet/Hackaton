@@ -29,7 +29,12 @@ const FAKE_REQUEST: HelpRequest = {
   resolvedBy: null,
 };
 
-afterEach(cleanup);
+import { clearAllDrafts } from '../../shared/drafts/drafts.tsx';
+
+afterEach(() => {
+  cleanup();
+  clearAllDrafts();
+});
 
 describe('HumanHelp component (T3-016-A)', () => {
   it('shows the request button in idle state', () => {
