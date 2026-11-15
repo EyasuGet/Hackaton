@@ -1,12 +1,23 @@
 // The interface language for the learner shell: a React context holding the
-// chosen locale, a lookup that falls back to English for an untranslated key,
-// and <T> for visible text, which tags such a fallback lang="en".
+// chosen locale, its writing direction, a lookup that falls back to English for an
+// untranslated key, and <T> for visible text, which tags such a fallback lang="en".
 import { createContext, useContext } from 'react';
-import { am, en, type Locale, type MessageKey } from './messages.ts';
+import { am, ar, en, om, so, ti, type Locale, type MessageKey } from './messages.ts';
 
 export type { Locale, MessageKey };
 
-const DICTIONARIES: Record<Locale, Partial<Record<MessageKey, string>>> = { en, am };
+const DICTIONARIES: Record<Locale, Partial<Record<MessageKey, string>>> = {
+  en,
+  am,
+  om,
+  ti,
+  so,
+  ar,
+};
+
+export function localeDirection(locale: Locale): 'ltr' | 'rtl' {
+  return locale === 'ar' ? 'rtl' : 'ltr';
+}
 
 /** The text for `key` in `locale`, and the language that text is actually in. */
 export function lookup(locale: Locale, key: MessageKey): { text: string; lang: Locale } {
@@ -22,9 +33,19 @@ export function useT(): (key: MessageKey) => string {
   return (key) => lookup(locale, key).text;
 }
 
-/** Visible interface text; an English fallback inside Amharic is tagged so it is read correctly. */
+/**
+ * Visible interface text; an English fallback inside another locale is tagged so it is
+ * read correctly, and isolated left-to-right inside a right-to-left page.
+ */
 export function T({ k }: { k: MessageKey }) {
   const locale = useContext(LocaleContext);
   const { text, lang } = lookup(locale, k);
-  return lang === locale ? text : <span lang={lang}>{text}</span>;
+  if (lang === locale) return text;
+  return localeDirection(locale) === 'rtl' ? (
+    <span lang={lang} dir="ltr">
+      {text}
+    </span>
+  ) : (
+    <span lang={lang}>{text}</span>
+  );
 }

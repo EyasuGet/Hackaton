@@ -23,11 +23,10 @@ async function ask(page: Page, scenario: string, question: string) {
 test('a keyboard user can ask and hear the reply without losing focus', async ({ page }) => {
   await page.goto('/');
 
-  // Tab order: the two language buttons, the scenario selector, speech engine selector, then the question box.
+  // Tab order: the six language buttons, the scenario selector, speech engine selector, then the question box.
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'English' })).toBeFocused();
-  await page.keyboard.press('Tab');
-  await page.keyboard.press('Tab');
+  for (let i = 0; i < 6; i++) await page.keyboard.press('Tab');
   await expect(page.getByLabel('Demo reply scenario')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByLabel('Speech output engine')).toBeFocused();
@@ -148,6 +147,35 @@ test('the conversation reflows without horizontal scrolling at 320 CSS pixels', 
   await ask(page, 'mixed', 'A long question that needs to wrap onto several lines here');
 
   await expect(page.getByRole('listitem')).toHaveCount(2);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
+for (const name of ['Afaan Oromoo', 'ትግርኛ', 'Soomaali', 'العربية']) {
+  test(`the ${name} interface has no serious accessibility violations`, async ({ page }) => {
+    await page.goto('/');
+    await ask(page, 'english', 'Question');
+    await expect(page.getByRole('listitem').last()).toContainText('not a tutor answer');
+
+    await page.getByRole('button', { name }).click();
+    await expect(page.locator('.reply-language-note')).toBeVisible();
+    expect(await seriousAccessibilityViolations(page)).toEqual([]);
+  });
+}
+
+test('the Arabic interface mirrors and reflows without horizontal scrolling at 320 CSS pixels', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'العربية' }).click();
+
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  // Mirrored: the first language button starts at the right edge, not the left.
+  const english = await page.getByRole('button', { name: 'English' }).boundingBox();
+  expect((english?.x ?? 0) + (english?.width ?? 0)).toBeGreaterThan(320 / 2);
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
