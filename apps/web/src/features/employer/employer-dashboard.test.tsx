@@ -111,7 +111,7 @@ describe('EmployerDashboard', () => {
       expect(screen.getByText('Junior QA Engineer')).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByLabelText(/job title \*/i), {
+    fireEvent.change(screen.getByLabelText(/role title \*/i), {
       target: { value: 'Frontend React Specialist' },
     });
     fireEvent.change(screen.getByLabelText(/description \*/i), {

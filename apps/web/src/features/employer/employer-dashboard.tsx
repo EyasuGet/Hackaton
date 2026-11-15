@@ -113,7 +113,7 @@ export function EmployerDashboard({ sessionToken }: EmployerDashboardProps) {
             className="vacancy-form"
           >
             <div className="form-group">
-              <label htmlFor="vacancy-title">Job Title *</label>
+              <label htmlFor="vacancy-title">Role Title *</label>
               <input
                 id="vacancy-title"
                 type="text"
