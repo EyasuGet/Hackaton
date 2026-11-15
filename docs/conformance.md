@@ -4,11 +4,11 @@
 **Standard:** [WCAG 2.2](https://www.w3.org/TR/WCAG22/), Levels A and AA (55 success criteria; 4.1.1 Parsing is obsolete in 2.2 and not listed)
 **Format:** Based on the ITI VPAT® 2.5 INT "WCAG 2.2 Report" table
 **Issue:** [#206 — T3-034](https://github.com/EyasuGet/Hackaton/issues/206) · automated evidence [#207 — T3-035](https://github.com/EyasuGet/Hackaton/issues/207) · human session [#205 — T3-033](https://github.com/EyasuGet/Hackaton/issues/205)
-**Evaluated revision:** `main` @ `ff610ef` (includes #234 axe gate, #235 embed focus fix and #240 employer portal fix) · **axe results:** `axe-results` artefact of [CI run 43748530469](https://github.com/EyasuGet/Hackaton/actions/runs/43748530469) on that commit · **Date:** 2026-11-15
+**Evaluated revision:** `main` @ `ff610ef` (includes #234 axe gate, #237 embed focus fix and #240 employer portal fix) · **axe results:** `axe-results` artefact of [CI run 43748530469](https://github.com/EyasuGet/Hackaton/actions/runs/43748530469) on that commit · **Date:** 2026-11-15
 
 ## Conformance claim
 
-**On automated, measured and code-review evidence, every applicable WCAG 2.2 A and AA criterion is supported.** The three criteria earlier reported as partially supported (1.4.11, 2.4.11 and 3.1.2) were fixed in #235 and #240; see [Resolved issues](#resolved-issues). **A full conformance claim is not made yet**, because the human assistive-technology checks below are still pending.
+**On automated, measured and code-review evidence, every applicable WCAG 2.2 A and AA criterion is supported.** The three criteria earlier reported as partially supported (1.4.11, 2.4.11 and 3.1.2) were fixed in #237 and #240; see [Resolved issues](#resolved-issues). **A full conformance claim is not made yet**, because the human assistive-technology checks below are still pending.
 
 This revision is based on automated testing, measurement and code review. The gate's human test (a co-designer completing the main task unaided with NVDA, TalkBack, keyboard only, 200 % zoom and sound off) is tracked in #205. Its results fill the **Human check** column. Until that column is complete, nothing in this report should be read as a statement about the experience with a screen reader.
 
@@ -107,13 +107,13 @@ Automated tools find only a subset of accessibility barriers. A clean axe result
 | 1.4.4 Resize Text | Supports | No horizontal overflow at 320 px (equivalent to 400 % zoom at 1280 px), so 200 % is covered. | Pending #205 (200 % zoom) |
 | 1.4.5 Images of Text | Not applicable | No images of text. | — |
 | 1.4.10 Reflow | Supports | Measured 0 px horizontal overflow at 320 px for learner, support and teacher views; `assistant.spec.ts` asserts it for the conversation. | Pending #205 |
-| 1.4.11 Non-text Contrast | Supports | Measured: focus ring #1d4ed8 is 6.70:1 against the page and 6.08:1 against panels; textarea border 8.74:1; search box and select borders 4.54:1 and 4.12:1; buttons use the 6.70:1 accent. Employer portal inputs now use a 2 px `var(--muted)` border, about 8.6:1 (was #cbd5e1 at 1.46:1; fixed in #240). | Pending #205 |
+| 1.4.11 Non-text Contrast | Supports | Measured: focus ring #1d4ed8 is 6.70:1 against the page and 6.08:1 against panels; textarea border 8.74:1; search box and select borders 4.54:1 and 4.12:1; buttons use the 6.70:1 accent. Employer portal inputs now use a 2 px `var(--muted)` border, 8.0–8.9:1 against the panel and page backgrounds (was #cbd5e1 at 1.46:1; fixed in #240). | Pending #205 |
 | 1.4.12 Text Spacing | Supports | With WCAG text-spacing overrides applied: 0 px overflow and no clipped text in any measured view. Ethiopic glyphs need the line height; not visually inspected yet. | Pending #205 |
 | 1.4.13 Content on Hover or Focus | Not applicable | No tooltips, popovers or `title` attributes. | — |
 | 2.4.5 Multiple Ways | Not applicable | Single-page application; there is no set of pages. | — |
 | 2.4.6 Headings and Labels | Supports | Each panel has a descriptive heading; labels describe their inputs. | Pending #205 |
 | 2.4.7 Focus Visible | Supports | A global `:focus-visible` rule draws a 3 px outline with 2 px offset (`app.css`), with high-contrast overrides. | Pending #205 (keyboard-only run) |
-| 2.4.11 Focus Not Obscured (Minimum) | Supports | Standalone app: no `fixed` or `sticky` elements (measured). Script-tag embed (#235): when keyboard focus moves to a host control behind the open panel, the panel collapses to its launcher. It also has a Minimise control and an inline placement with no overlay. `focus-not-obscured.spec.ts` proves all three. | Pending #205 |
+| 2.4.11 Focus Not Obscured (Minimum) | Supports | Standalone app: no `fixed` or `sticky` elements (measured). Script-tag embed (issue #235, PR #237): when keyboard focus moves to a host control behind the open panel, the panel collapses to its launcher. It also has a Minimise control and an inline placement with no overlay. `focus-not-obscured.spec.ts` proves all three. | Pending #205 |
 | 2.5.7 Dragging Movements | Not applicable | No drag interactions (no `draggable` elements or drag handlers). | — |
 | 2.5.8 Target Size (Minimum) | Supports | axe `target-size` passed all 22 targets. Three checkboxes are 13 × 13 px and the search box is 21 px tall; they pass through the spacing exception. Enlarging them to at least 24 px is recommended for learners with motor impairments. | Pending #205 |
 | 3.1.2 Language of Parts | Supports | Learner content carries its own `lang`, and untranslated keys fall back to English tagged `lang="en"`. The employer portal text is in the dictionary with English and **draft** Amharic, and its English API values are tagged `lang="en"`. The operator-facing demo sign-in panel, including the expiry warning, is tagged `lang="en"` (#240). The axe spec asserts the Amharic portal heading and the `lang="en"` tag. A competent speaker has not yet reviewed the new Amharic strings. | Pending #205 |
@@ -135,7 +135,7 @@ None open on the automated evidence. Open human checks: #205 (co-designer sessio
 | 1.4.3 Contrast (Minimum) | Share screen button 4.09:1 | [#234](https://github.com/EyasuGet/Hackaton/pull/234) |
 | 1.4.11 Non-text Contrast | Employer portal input borders 1.46:1 | [#240](https://github.com/EyasuGet/Hackaton/pull/240) |
 | 2.2.1 Timing Adjustable | No session-expiry warning or extension | [#230](https://github.com/EyasuGet/Hackaton/pull/230) |
-| 2.4.11 Focus Not Obscured (embed) | Open embed panel could hide focused host controls | [#235](https://github.com/EyasuGet/Hackaton/issues/235) |
+| 2.4.11 Focus Not Obscured (embed) | Open embed panel could hide focused host controls | [#237](https://github.com/EyasuGet/Hackaton/pull/237) (issue #235) |
 | 3.1.2 Language of Parts | Employer portal and sign-in messages were English without `lang="en"`; the portal was shown to every role | [#240](https://github.com/EyasuGet/Hackaton/pull/240) |
 
 ## Corrections to the previous version of this report
