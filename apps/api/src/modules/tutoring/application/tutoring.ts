@@ -46,6 +46,7 @@ export class TutoringError extends Error {
 
 export interface AskAnswerInput extends ClaimRequestInput {
   readonly externalConsent?: boolean;
+  readonly simpleLanguage?: boolean;
 }
 
 export interface TeacherTopicSummary {
@@ -68,6 +69,7 @@ export interface AnswerResult {
   readonly kind: 'answered' | 'insufficient_evidence';
   readonly provider: 'online' | 'faq' | 'job';
   readonly citations: readonly FaqCitation[];
+  readonly simpleLanguage?: boolean;
 }
 
 export interface AskFaqResult {
@@ -223,7 +225,7 @@ export class Tutoring {
     scope: OwnedScope,
     request: TutoringRequest,
     principal: Principal,
-    input: ClaimRequestInput,
+    input: AskAnswerInput,
   ): Promise<AnswerResult> {
     let faqResult: FaqAnswerResult;
     if (this.#faqProvider) {
@@ -250,6 +252,7 @@ export class Tutoring {
       kind: faqResult.kind,
       provider: 'faq',
       citations: faqResult.citations,
+      ...(input.simpleLanguage ? { simpleLanguage: true } : {}),
     };
   }
 
@@ -257,7 +260,7 @@ export class Tutoring {
     scope: OwnedScope,
     request: TutoringRequest,
     principal: Principal,
-    input: ClaimRequestInput,
+    input: AskAnswerInput,
     signal?: AbortSignal,
   ): Promise<AnswerResult> {
     const isAmharic = /[\u1200-\u137F]/.test(input.question);
@@ -283,6 +286,7 @@ export class Tutoring {
         kind: 'insufficient_evidence',
         provider: 'online',
         citations: [],
+        ...(input.simpleLanguage ? { simpleLanguage: true } : {}),
       };
     }
 
@@ -311,6 +315,7 @@ export class Tutoring {
         onlineResponse = await this.#onlineProvider.generateAnswer({
           question: input.question,
           language: lang,
+          simpleLanguage: input.simpleLanguage === true,
           passages: coursePassages.map((p) => ({
             id: p.sectionId,
             heading: p.heading,
@@ -411,6 +416,7 @@ export class Tutoring {
         kind,
         provider: 'online',
         citations: verifiedCitations,
+        ...(input.simpleLanguage ? { simpleLanguage: true } : {}),
       };
     } finally {
       lease.release();

@@ -1,12 +1,14 @@
 // Deterministic, explicitly labelled demo replies for building and testing the
 // interface before the real tutor exists. Includes cited FAQ scenarios (T3-007-A).
 import type { MessageKey } from '../../shared/i18n/i18n.tsx';
-import type { AskResult, Citation, ConversationClient } from './conversation.ts';
+import type { AskOptions, AskResult, Citation, ConversationClient } from './conversation.ts';
 
 /** Each scenario and the dictionary key of its label in the demo selector. */
 export const FIXTURE_SCENARIOS = {
   faqCited: 'demo.scenario.faqCited',
   faqLimitation: 'demo.scenario.faqLimitation',
+  simpleLanguageCited: 'demo.scenario.simpleLanguageCited',
+  simpleLanguageLimitation: 'demo.scenario.simpleLanguageLimitation',
   english: 'demo.scenario.english',
   amharic: 'demo.scenario.amharic',
   mixed: 'demo.scenario.mixed',
@@ -17,6 +19,8 @@ export const FIXTURE_SCENARIOS = {
   jobActive: 'demo.scenario.jobActive',
   jobExpired: 'demo.scenario.jobExpired',
   jobUnknown: 'demo.scenario.jobUnknown',
+  researchSuccess: 'demo.scenario.researchSuccess',
+  researchLimitation: 'demo.scenario.researchLimitation',
 } as const satisfies Record<string, MessageKey>;
 
 export type FixtureScenario = keyof typeof FIXTURE_SCENARIOS;
@@ -54,18 +58,35 @@ const DATA_CLERK_CITATION: Citation = {
   url: 'https://digitalbridge.et/jobs/job-data-clerk-02',
 };
 
+const RESEARCH_CITATION: Citation = {
+  sourceId: 'web-market-01',
+  sectionId: 'salary',
+  sourceTitle: 'Addis Ababa Remote Work Trends 2026',
+  heading: 'Virtual Assistant Compensation and Opportunities',
+  url: 'https://digitalbridge.et/research/va-2026',
+};
+
 // Amharic wording needs competent-speaker review with the translations (T3-006-C).
 const REPLY_TEXT: Record<
   | 'faqCited'
   | 'faqLimitation'
+  | 'simpleLanguageCited'
+  | 'simpleLanguageLimitation'
   | 'english'
   | 'amharic'
   | 'mixed'
   | 'markup'
   | 'jobActive'
   | 'jobExpired'
-  | 'jobUnknown',
-  [text: string, lang: string, citations?: readonly Citation[], provider?: 'online' | 'faq' | 'job']
+  | 'jobUnknown'
+  | 'researchSuccess'
+  | 'researchLimitation',
+  [
+    text: string,
+    lang: string,
+    citations?: readonly Citation[],
+    provider?: 'online' | 'faq' | 'job' | 'external_web_research',
+  ]
 > = {
   faqCited: [
     'Virtual Assistant can mean AI software assistants such as chatbots or human remote professionals providing business support online.',
@@ -79,10 +100,22 @@ const REPLY_TEXT: Record<
     [],
     'faq',
   ],
+  simpleLanguageCited: [
+    'A virtual assistant helps people with online tasks. They can be software like a chatbot or a person working from home.',
+    'en',
+    [SAVANNA_CITATION],
+    'online',
+  ],
+  simpleLanguageLimitation: [
+    'I do not have an approved answer for that question in the course lessons.',
+    'en',
+    [],
+    'online',
+  ],
   english: ['This is a demo reply from a test fixture, not a tutor answer.', 'en'],
   amharic: ['ይህ የሙከራ መልስ ነው። እውነተኛ የትምህርት መልስ አይደለም።', 'am'],
   // Starts right-to-left so dir="auto" must resolve to RTL; English and Amharic are embedded.
-  mixed: ['«مرحبا بكم» تعني “welcome” بالإنجليزية፣ و«እንኳን ደህና መጡ» بالأمهرية.', 'ar'],
+  mixed: ['«مرحبا بكم» تعني “welcome” بالإنجليزية፤ و«እንኳን ደህና መጡ» بالأمهرية.', 'ar'],
   markup: [
     'Demo text with markup that must stay inert: <img src="x" onerror="alert(1)"> <script>alert(2)</script>',
     'en',
@@ -105,6 +138,18 @@ const REPLY_TEXT: Record<
     [],
     'job',
   ],
+  researchSuccess: [
+    'Market research shows active demand for Virtual Assistants in Addis Ababa with competitive entry-level salaries and remote flexibility.',
+    'en',
+    [RESEARCH_CITATION],
+    'external_web_research',
+  ],
+  researchLimitation: [
+    'No verified external career research could be located for that specific query.',
+    'en',
+    [],
+    'external_web_research',
+  ],
 };
 
 function wait(ms: number): Promise<void> {
@@ -117,11 +162,15 @@ let nextReplyId = 1;
 
 export function createFixtureClient(scenario: FixtureScenario): ConversationClient {
   return {
-    async ask(): Promise<AskResult> {
+    async ask(_question: string, options?: AskOptions): Promise<AskResult> {
       if (scenario === 'slow') await wait(SLOW_REPLY_MS);
       if (scenario === 'denied' || scenario === 'failed') return { kind: scenario };
       const [text, lang, citations, provider] =
         REPLY_TEXT[scenario === 'slow' ? 'english' : scenario];
+      const isSimple =
+        scenario === 'simpleLanguageCited' ||
+        scenario === 'simpleLanguageLimitation' ||
+        options?.simpleLanguage === true;
       return {
         kind: 'answer',
         reply: {
@@ -131,6 +180,7 @@ export function createFixtureClient(scenario: FixtureScenario): ConversationClie
           createdAt: FIXTURE_REPLY_CREATED_AT,
           ...(citations && citations.length > 0 ? { citations } : {}),
           ...(provider ? { provider } : {}),
+          ...(isSimple ? { simpleLanguage: true } : {}),
         },
       };
     },

@@ -15,7 +15,7 @@ interface PrincipalRow {
 
 function toRole(value: string): Role {
   // The table's CHECK constraint guarantees this; fail loudly if it is ever bypassed.
-  if (value !== 'learner' && value !== 'support' && value !== 'teacher')
+  if (value !== 'learner' && value !== 'support' && value !== 'teacher' && value !== 'employer')
     throw new Error('Unknown principal role');
   return value;
 }

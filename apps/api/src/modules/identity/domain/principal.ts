@@ -2,7 +2,7 @@
 // course grants always come from server-side storage; nothing a client sends
 // can change them.
 
-export type Role = 'learner' | 'support' | 'teacher';
+export type Role = 'learner' | 'support' | 'teacher' | 'employer';
 
 export interface Principal {
   readonly id: string;
