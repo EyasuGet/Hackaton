@@ -177,6 +177,24 @@ export const en = {
   'inbox.meetingNote':
     'To arrange a meeting, propose a time in Addis Ababa timezone (EAT, UTC+3) in your message.',
   'inbox.markRead': 'Mark as read',
+  // Screen sharing (T3-018-B)
+  'sharing.heading': 'Screen sharing',
+  'sharing.startButton': 'Share screen',
+  'sharing.stopButton': 'Stop sharing screen',
+  'sharing.status.idle': 'Screen sharing is available with support staff.',
+  'sharing.status.requesting': 'Opening screen picker…',
+  'sharing.status.connecting': 'Connecting screen share…',
+  'sharing.status.active': 'You are sharing your screen with support staff.',
+  'sharing.status.viewing': 'Viewing learner screen.',
+  'sharing.status.stopped': 'Screen sharing stopped.',
+  'sharing.status.disconnected': 'Screen sharing disconnected.',
+  'sharing.unsupported':
+    'Screen sharing is not supported on this browser or mobile device. You can continue receiving text help in this conversation.',
+  'sharing.permissionDenied':
+    'Screen sharing was cancelled or denied. Click Share screen to try again.',
+  'sharing.error': 'Screen sharing connection failed. Check your connection and try again.',
+  'sharing.sessionEnded': 'The screen sharing session has ended.',
+  'sharing.viewerVideoLabel': 'Live screen share from learner',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -328,4 +346,21 @@ export const am: Partial<Record<MessageKey, string>> = {
   'inbox.replyTerminal': 'ይህ ጥያቄ ተዘግቷል። ተጨማሪ ምላሽ ማከል አይቻልም።',
   'inbox.meetingNote': 'ስብሰባ ለማቀናጀት፣ የአዲስ አበባ ሰዓት (EAT፣ UTC+3) ተጠቅሞ ሰዓት ሀሳብ ያቅርቡ።',
   'inbox.markRead': 'እንደተነበበ ምልክት አድርግ',
+  // Screen sharing (T3-018-B) — draft; competent-speaker review required.
+  'sharing.heading': 'ማያ ማጋራት',
+  'sharing.startButton': 'ማያ አጋራ',
+  'sharing.stopButton': 'ማያ ማጋራት አቁም',
+  'sharing.status.idle': 'ከድጋፍ ሰራተኞች ጋር ማያ ማጋራት ይገኛል።',
+  'sharing.status.requesting': 'የማያ መራጭ እየተከፈተ ነው…',
+  'sharing.status.connecting': 'የማያ ማጋራት እየተገናኘ ነው…',
+  'sharing.status.active': 'ማያዎን ለድጋፍ ሰራተኞች እያጋሩ ነው።',
+  'sharing.status.viewing': 'የተማሪውን ማያ በማየት ላይ።',
+  'sharing.status.stopped': 'ማያ ማጋራት ቆሟል።',
+  'sharing.status.disconnected': 'የማያ ማጋራት ተቋርጧል።',
+  'sharing.unsupported':
+    'በዚህ አሳሽ ወይም ተንቀሳቃሽ መሣሪያ ላይ ማያ ማጋራት አይደገፍም። በዚህ ውይይት ውስጥ የጽሑፍ እርዳታ መቀበል መቀጠል ይችላሉ።',
+  'sharing.permissionDenied': 'ማያ ማጋራት ተሰርዟል ወይም ተከልክሏል። እንደገና ለመሞከር «ማያ አጋራ»ን ይጫኑ።',
+  'sharing.error': 'የማያ ማጋራት ግንኙነት አልተሳካም። ግንኙነትዎን ያረጋግጡ እና እንደገና ይሞክሩ።',
+  'sharing.sessionEnded': 'የማያ ማጋራት ክፍለ ጊዜ አብቅቷል።',
+  'sharing.viewerVideoLabel': 'ከተማሪው የቀጥታ ማያ ማጋራት',
 };
