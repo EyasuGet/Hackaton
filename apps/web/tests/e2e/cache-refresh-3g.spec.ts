@@ -46,6 +46,7 @@ test.describe('3G network throttling and text path metrics (T3-008-B)', () => {
   test('measures lightweight text transfer and asserts no media downloads under throttled 3G', async ({
     page,
   }) => {
+    test.slow();
     // Emulate standard 3G profile (750 kbps download, 250 kbps upload, 100ms latency)
     const client = await page.context().newCDPSession(page);
     await client.send('Network.emulateNetworkConditions', {
@@ -64,7 +65,7 @@ test.describe('3G network throttling and text path metrics (T3-008-B)', () => {
       });
     });
 
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     // Interact with assistant
     const question = page.getByLabel('Your question');

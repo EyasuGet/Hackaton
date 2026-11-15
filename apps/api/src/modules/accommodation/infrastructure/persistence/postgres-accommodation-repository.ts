@@ -115,7 +115,7 @@ export class PostgresAccommodationRepository implements AccommodationRepository 
 
   async findById(scope: OwnedScope, id: string): Promise<AccommodationRequest | null> {
     const result = await this.#pool.query<AccommodationRequestRow>(
-      `${SELECT} WHERE id = $1 AND owner_id = $2`,
+      `${SELECT} WHERE id = $1 AND owner_id = $2 AND expires_at > now()`,
       [id, scope.ownerId],
     );
     const row = result.rows[0];
