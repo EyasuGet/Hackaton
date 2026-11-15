@@ -111,4 +111,26 @@ export interface HelpRepository {
    * exist, is not in `claimed` state, or has expired.
    */
   resolveRequest(helpRequestId: string, supportId: string): Promise<HelpRequest | null>;
+
+  /**
+   * Retrieves whether the learner has explicitly opted in to reply notifications
+   * on the given channel (defaults to false).
+   */
+  getNotificationPreference(scope: OwnedScope, channel: string): Promise<boolean>;
+
+  /**
+   * Sets the learner's notification opt-in preference for the given channel.
+   * When setting optedIn to false, suppresses/cancels any pending delivery intents.
+   */
+  setNotificationPreference(scope: OwnedScope, channel: string, optedIn: boolean): Promise<boolean>;
+
+  /**
+   * Cancels pending delivery intents for a given help request.
+   */
+  cancelPendingIntentsForHelpRequest(helpRequestId: string): Promise<number>;
+
+  /**
+   * Cancels pending delivery intents for a given learner and channel.
+   */
+  cancelPendingIntentsForLearner(learnerId: string, channel: string): Promise<number>;
 }

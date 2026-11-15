@@ -1,0 +1,5610 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Track 3 Accessible Learning & Help Assistant API",
+    "version": "1.0.0",
+    "description": "Clean Architecture REST API for the multilingual learning and help assistant.\n\n### Architecture and Security Principles\n- **Transport Independence:** Domain models and business logic remain independent of Fastify HTTP details.\n- **Identity & Least Privilege:** Role-based access control enforces learner-owned data privacy (`learner`), staff queue claim workflows (`support`), and coordinator triage (`coordinator`).\n- **Consistent Error Envelopes:** Error responses adhere to standardized JSON error envelopes (`{ error: string, message?: string, reason?: string }`).\n- **Secrets Hygiene:** Examples contain strictly synthetic tokens, test hashes, and anonymized placeholders. Real credentials, live tokens, and PII are strictly excluded.\n\n### Channel Limitations and Infrastructure\n- **Offline / Local Availability:** Course content search and FAQ answer retrieval operate fully offline and in local development without external API keys or cloud dependencies.\n- **AI Tutoring:** Online AI-grounded tutoring relies on Google Gemini API when configured and consented; fallback to approved FAQ content occurs automatically when consent is declined or offline.\n- **Screen Sharing:** Peer-to-peer WebRTC signalling is ephemeral and in-memory; public Google STUN (`stun:stun.l.google.com:19302`) and optional Coturn TURN relay handle NAT traversal without server-side media recording.\n- **SMS & Delivery Outbox:** SMS job alert delivery uses an internal transactional outbox (`delivery_intents` table) and background worker via AfroMessage, not an external HTTP API.\n- **Telegram Channel:** Telegram identity linking uses single-use expiring codes and verified webhooks (`x-telegram-bot-api-secret-token`)."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current environment API root"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health & Readiness",
+      "description": "System liveness and database readiness probes"
+    },
+    {
+      "name": "Identity & Demo Sessions",
+      "description": "Session exchange, user identity, and session termination"
+    },
+    {
+      "name": "Content Access",
+      "description": "Approved lesson content search and section retrieval"
+    },
+    {
+      "name": "Tutoring",
+      "description": "AI-grounded questions, FAQ answers, history, and expiry purges"
+    },
+    {
+      "name": "Human Help",
+      "description": "Learner support requests, support queue, claims, resolution, and replies"
+    },
+    {
+      "name": "Accommodation",
+      "description": "Workplace accommodation requests, coordinator queue, status updates, and replies"
+    },
+    {
+      "name": "Screen Sharing",
+      "description": "Ephemeral WebRTC signalling and session lifecycle management"
+    },
+    {
+      "name": "Careers",
+      "description": "Active job listings and learner-owned alert subscriptions"
+    },
+    {
+      "name": "Telegram Channel",
+      "description": "Bot identity linking tokens, unlinking, and webhook updates"
+    },
+    {
+      "name": "Demo Fixtures",
+      "description": "Test fixtures verifying identity role isolation"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": ["Health & Readiness"],
+        "summary": "Process liveness health check",
+        "description": "Returns 200 OK as long as the HTTP process is running, regardless of database or third-party status.",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Process is alive and healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthOk"
+                },
+                "example": {
+                  "status": "ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ready": {
+      "get": {
+        "tags": ["Health & Readiness"],
+        "summary": "Database readiness check",
+        "description": "Checks PostgreSQL connectivity and migration state. Returns 200 if ready to serve database-backed requests, or 503 if unavailable.",
+        "operationId": "getReadiness",
+        "responses": {
+          "200": {
+            "description": "Database is connected and migrations are up to date",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessReady"
+                },
+                "example": {
+                  "status": "ready"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "API is not ready to serve database traffic",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessNotReady"
+                },
+                "example": {
+                  "status": "not_ready",
+                  "reason": "database_unavailable"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "tags": ["Identity & Demo Sessions"],
+        "summary": "Resolve current authenticated principal",
+        "description": "Returns the identity, role, and permissions of the principal authenticated via Bearer token.",
+        "operationId": "getMe",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated principal information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Principal"
+                },
+                "example": {
+                  "id": "11111111-1111-4111-8111-111111111111",
+                  "role": "learner",
+                  "label": "Demo Learner",
+                  "isDemo": true,
+                  "demoKey": "synthetic-learner"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "unauthenticated"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/session": {
+      "post": {
+        "tags": ["Identity & Demo Sessions"],
+        "summary": "Exchange handoff code for session token",
+        "description": "Exchanges a single-use handoff code for a revocable session token. Origin header must match allowed demo origins.",
+        "operationId": "exchangeDemoSession",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoSessionExchangeRequest"
+              },
+              "example": {
+                "code": "synthetic_handoff_code_1234567890abcdef"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Session created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoSessionExchangeResponse"
+                },
+                "example": {
+                  "token": "synthetic_session_token_987654321",
+                  "expiresAt": "2026-11-15T12:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or code format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid, expired, or already-consumed handoff code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "invalid_handoff"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin not allowed to initiate demo sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "origin_not_allowed"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Identity & Demo Sessions"],
+        "summary": "Revoke demo session token (Sign Out)",
+        "description": "Immediately revokes the active demo session token presented in the Authorization header.",
+        "operationId": "signOutDemoSession",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session revoked successfully; no content"
+          },
+          "400": {
+            "description": "Presented token is not a revocable session token (e.g. provisioned operator key)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "not_a_session"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "unauthenticated"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/support-check": {
+      "get": {
+        "tags": ["Demo Fixtures"],
+        "summary": "Support staff role verification fixture",
+        "description": "Demonstrates staff role authorization guard. Learners receive 403 Forbidden.",
+        "operationId": "getDemoSupportCheck",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Principal possesses support role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["ok"],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "unauthenticated"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: caller lacks support role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "forbidden"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/records": {
+      "get": {
+        "tags": ["Demo Fixtures"],
+        "summary": "List demo records owned by caller",
+        "description": "Fixture demonstrating learner-scoped list isolation. Returns records in granted courses.",
+        "operationId": "listDemoRecords",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of owned demo records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["records"],
+                  "properties": {
+                    "records": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DemoRecord"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "unauthenticated"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "forbidden"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/records/{id}": {
+      "get": {
+        "tags": ["Demo Fixtures"],
+        "summary": "Get single demo record by ID",
+        "description": "Fixture retrieving single demo record. Returns 404 for records of another learner or outside granted courses.",
+        "operationId": "getDemoRecordById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Record UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Found demo record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoRecord"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "unauthenticated"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "forbidden"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record not found or ungranted to caller",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "not_found"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/content/search": {
+      "get": {
+        "tags": ["Content Access"],
+        "summary": "Search approved course lesson passages",
+        "description": "Performs text search across approved course sections in courses granted to the authenticated learner.",
+        "operationId": "searchContent",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "description": "Search query string",
+            "example": "computer hardware"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching passages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["passages"],
+                  "properties": {
+                    "passages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContentPassage"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or empty search query parameter q",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "unauthenticated"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "forbidden"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/content/sources/{sourceId}/sections/{sectionId}": {
+      "get": {
+        "tags": ["Content Access"],
+        "summary": "Resolve specific lesson section",
+        "description": "Retrieves full approved text of a lesson section. Returns 404 for ungranted or missing sources; returns 410 Gone for withdrawn sections.",
+        "operationId": "getContentSection",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,99}$"
+            },
+            "description": "Course source identifier",
+            "example": "course-101"
+          },
+          {
+            "name": "sectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,99}$"
+            },
+            "description": "Section identifier within the source",
+            "example": "section-01"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full approved section content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentSection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "unauthenticated"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "forbidden"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Section not found or source not in granted courses",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "not_found"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Section has been withdrawn or archived",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "unavailable",
+                  "reason": "section_withdrawn"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tutoring/requests": {
+      "post": {
+        "tags": ["Tutoring"],
+        "summary": "Atomically claim a tutoring request",
+        "description": "Claims a tutoring request idempotently with client-provided requestId. Returns 201 on new claim, 200 on duplicate retry.",
+        "operationId": "claimTutoringRequest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["courseId", "requestId", "question"],
+                "properties": {
+                  "courseId": {
+                    "type": "string",
+                    "example": "course-101"
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "example": "req-uuid-001"
+                  },
+                  "question": {
+                    "type": "string",
+                    "example": "What is the function of the ALU?"
+                  },
+                  "conversationId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "33333333-3333-4333-8333-333333333333"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request previously claimed (idempotent duplicate)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["kind", "request"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": ["duplicate"],
+                      "example": "duplicate"
+                    },
+                    "request": {
+                      "$ref": "#/components/schemas/TutoringRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Request claimed for processing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["kind", "request"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": ["claimed"],
+                      "example": "claimed"
+                    },
+                    "request": {
+                      "$ref": "#/components/schemas/TutoringRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid courseId, requestId, or question",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "invalid_question"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "unauthenticated"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "forbidden"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Course not found or ungranted to learner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "not_found"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tutoring/requests/{id}": {
+      "get": {
+        "tags": ["Tutoring"],
+        "summary": "Get tutoring request by ID",
+        "description": "Retrieves a single tutoring request owned by the learner.",
+        "operationId": "getTutoringRequestById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tutoring request UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tutoring request found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TutoringRequest"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "unauthenticated"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "forbidden"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found or owned by another learner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "not_found"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tutoring/answers": {
+      "post": {
+        "tags": ["Tutoring"],
+        "summary": "Ask question with AI or FAQ answer",
+        "description": "Unified tutoring answer endpoint. Answers using grounded Gemini AI if external consent is given and online provider is configured; otherwise falls back deterministically to approved course FAQ passages.",
+        "operationId": "askTutoringAnswer",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["courseId", "requestId", "question"],
+                "properties": {
+                  "courseId": {
+                    "type": "string",
+                    "example": "course-101"
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "example": "req-uuid-002"
+                  },
+                  "question": {
+                    "type": "string",
+                    "example": "How does RAM differ from ROM?"
+                  },
+                  "conversationId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "33333333-3333-4333-8333-333333333333"
+                  },
+                  "externalConsent": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Grounded answer with verified course citations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TutoringAnswerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "invalid_question"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "unauthenticated"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "forbidden"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Course or conversation not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "not_found"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Model produced unsupported output (e.g. invented citation or citation attached to limitation)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "unsupported_output",
+                  "reason": "invented_citation"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "External AI provider returned an upstream error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "provider_error",
+                  "message": "Upstream model service unavailable"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "External AI provider timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "timeout",
+                  "message": "Online answer provider timed out"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tutoring/faq": {
+      "post": {
+        "tags": ["Tutoring"],
+        "summary": "Ask question via approved FAQ corpus",
+        "description": "Directly queries the approved FAQ and lesson material without calling external cloud AI providers.",
+        "operationId": "askTutoringFaq",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["courseId", "requestId", "question"],
+                "properties": {
+                  "courseId": {
+                    "type": "string",
+                    "example": "course-101"
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "example": "req-uuid-003"
+                  },
+                  "question": {
+                    "type": "string",
+                    "example": "What is software?"
+                  },
+                  "conversationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Answer from approved FAQ with source citations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TutoringAnswerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Course not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tutoring/history": {
+      "get": {
+        "tags": ["Tutoring"],
+        "summary": "List learner tutoring request history",
+        "description": "Returns chronological history of tutoring requests for the authenticated learner, optionally filtered by courseId.",
+        "operationId": "listTutoringHistory",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "courseId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional course filter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tutoring request history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["history"],
+                  "properties": {
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TutoringRequest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Tutoring"],
+        "summary": "Clear learner tutoring conversation history",
+        "description": "Removes all conversations and requests owned by the authenticated learner.",
+        "operationId": "clearTutoringHistory",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "History cleared successfully; no content"
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tutoring/conversations/{id}": {
+      "get": {
+        "tags": ["Tutoring"],
+        "summary": "Get conversation messages by ID",
+        "description": "Retrieves multi-turn conversation messages belonging to the authenticated learner.",
+        "operationId": "getTutoringConversation",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Conversation UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conversation details and message list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TutoringConversation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Conversation not found or owned by another learner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tutoring/admin/purge": {
+      "post": {
+        "tags": ["Tutoring"],
+        "summary": "Trigger expiry purge of expired tutoring records",
+        "description": "Support-only administrative maintenance endpoint. Redacts question and answer text for records past the 7-day retention period.",
+        "operationId": "purgeExpiredTutoring",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Purge execution completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["purged"],
+                  "properties": {
+                    "purged": {
+                      "type": "integer",
+                      "example": 12,
+                      "description": "Number of request rows purged"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: support role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/help/requests": {
+      "post": {
+        "tags": ["Human Help"],
+        "summary": "Submit human help request with consented context snapshot",
+        "description": "Submits a new help request to the support staff queue. Idempotent on (ownerId, clientRequestId). Returns 201 on new request, 200 on duplicate.",
+        "operationId": "submitHelpRequest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["clientRequestId", "contextSnapshot"],
+                "properties": {
+                  "clientRequestId": {
+                    "type": "string",
+                    "example": "help-req-uuid-001"
+                  },
+                  "contextSnapshot": {
+                    "type": "string",
+                    "example": "Stuck on arithmetic logic unit diagram in lesson 2."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Duplicate submission (idempotent)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["kind", "request"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": ["duplicate"],
+                      "example": "duplicate"
+                    },
+                    "request": {
+                      "$ref": "#/components/schemas/HelpRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Help request submitted to queue",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["kind", "request"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": ["submitted"],
+                      "example": "submitted"
+                    },
+                    "request": {
+                      "$ref": "#/components/schemas/HelpRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid clientRequestId or contextSnapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "invalid_client_request_id"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Principal not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Human Help"],
+        "summary": "List non-expired help requests owned by learner",
+        "description": "Returns all non-expired help requests submitted by the authenticated learner.",
+        "operationId": "listOwnedHelpRequests",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of owned help requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["requests"],
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/HelpRequest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/help/requests/{id}": {
+      "get": {
+        "tags": ["Human Help"],
+        "summary": "Get single help request by ID",
+        "description": "Retrieves single help request owned by the learner.",
+        "operationId": "getHelpRequestById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Help request UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Found help request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HelpRequest"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Help request not found or not owned by caller",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Human Help"],
+        "summary": "Cancel owned waiting help request",
+        "description": "Cancels an owned waiting help request before staff claims it.",
+        "operationId": "cancelHelpRequest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Help request UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request successfully cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["request"],
+                  "properties": {
+                    "request": {
+                      "$ref": "#/components/schemas/HelpRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found, already claimed, or already cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/help/queue": {
+      "get": {
+        "tags": ["Human Help"],
+        "summary": "List waiting help requests in support queue",
+        "description": "Support staff endpoint returning waiting help requests metadata without private context snapshots until claimed.",
+        "operationId": "listHelpQueue",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of waiting queue items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["queue"],
+                  "properties": {
+                    "queue": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/HelpQueueItem"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: support role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/help/requests/{id}/claim": {
+      "post": {
+        "tags": ["Human Help"],
+        "summary": "Atomically claim waiting help request",
+        "description": "Claims a waiting request for the authenticated support person, revealing the private context snapshot.",
+        "operationId": "claimHelpRequest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Help request UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request claimed; returns full request details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["request"],
+                  "properties": {
+                    "request": {
+                      "$ref": "#/components/schemas/HelpRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: support role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found or not in waiting state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: request was already claimed by another support person",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["error", "claimedBy"],
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "already_claimed"
+                    },
+                    "claimedBy": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/help/requests/{id}/replies": {
+      "post": {
+        "tags": ["Human Help"],
+        "summary": "Add threaded reply to help request",
+        "description": "Adds a message to the help conversation. Accessible by the owning learner or the claiming support staff.",
+        "operationId": "addHelpReply",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Help request UUID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["clientReplyId", "body"],
+                "properties": {
+                  "clientReplyId": {
+                    "type": "string",
+                    "example": "reply-client-id-01"
+                  },
+                  "body": {
+                    "type": "string",
+                    "example": "Have you verified the clock speed setting?"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Duplicate reply (idempotent)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["kind", "reply"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": ["duplicate"],
+                      "example": "duplicate"
+                    },
+                    "reply": {
+                      "$ref": "#/components/schemas/HelpReply"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Reply added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["kind", "reply"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": ["added"],
+                      "example": "added"
+                    },
+                    "reply": {
+                      "$ref": "#/components/schemas/HelpReply"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid clientReplyId or body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: not an authorized participant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Help request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: request is in a terminal state (cancelled/resolved) or expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "terminal_or_not_found"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Human Help"],
+        "summary": "List chronological replies for help request",
+        "description": "Returns chronological list of replies on the thread for authorised participants.",
+        "operationId": "listHelpReplies",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Help request UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chronological replies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["replies"],
+                  "properties": {
+                    "replies": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/HelpReply"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found or inaccessible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/help/requests/{id}/replies/read": {
+      "put": {
+        "tags": ["Human Help"],
+        "summary": "Mark unread incoming replies as read",
+        "description": "Marks incoming replies from the other party as read by setting readAt timestamp.",
+        "operationId": "markHelpRepliesRead",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Help request UUID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Replies marked as read; no content"
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Help request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/help/requests/{id}/resolve": {
+      "post": {
+        "tags": ["Human Help"],
+        "summary": "Resolve claimed help request",
+        "description": "Support-only action marking a claimed help request as resolved.",
+        "operationId": "resolveHelpRequest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Help request UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request successfully resolved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["request"],
+                  "properties": {
+                    "request": {
+                      "$ref": "#/components/schemas/HelpRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: support role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found, not claimed, or expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sharing/sessions": {
+      "post": {
+        "tags": ["Screen Sharing"],
+        "summary": "Initiate screen sharing session",
+        "description": "Initiates a WebRTC signalling session for a claimed help request. Restricted to support staff.",
+        "operationId": "initiateSharingSession",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["helpRequestId"],
+                "properties": {
+                  "helpRequestId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "44444444-4444-4444-8444-444444444444"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sharing session initiated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["session"],
+                  "properties": {
+                    "session": {
+                      "$ref": "#/components/schemas/SharingSession"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid helpRequestId format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "invalid_help_request_id"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: caller is not the claiming staff member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Help request not found or not in claimed state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sharing/sessions/{id}": {
+      "get": {
+        "tags": ["Screen Sharing"],
+        "summary": "Get current sharing session state",
+        "description": "Returns sharing session status. Restricted to the learner and support participants.",
+        "operationId": "getSharingSessionById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Sharing session UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sharing session details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["session"],
+                  "properties": {
+                    "session": {
+                      "$ref": "#/components/schemas/SharingSession"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: caller is not a participant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found or expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Screen Sharing"],
+        "summary": "Revoke/terminate sharing session",
+        "description": "Immediately revokes the sharing session and terminates signalling. Callable by either participant.",
+        "operationId": "revokeSharingSession",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Sharing session UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session revoked successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["session"],
+                  "properties": {
+                    "session": {
+                      "$ref": "#/components/schemas/SharingSession"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: not a participant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: session already in invalid/terminal state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sharing/sessions/by-request/{helpRequestId}": {
+      "get": {
+        "tags": ["Screen Sharing"],
+        "summary": "Get active sharing session for help request",
+        "description": "Finds the active screen sharing session linked to a specific help request.",
+        "operationId": "getSharingSessionByRequest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "helpRequestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Help request UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active session for this request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["session"],
+                  "properties": {
+                    "session": {
+                      "$ref": "#/components/schemas/SharingSession"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: caller is not a participant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found for this help request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sharing/sessions/{id}/join": {
+      "post": {
+        "tags": ["Screen Sharing"],
+        "summary": "Join/activate sharing session",
+        "description": "Transitions session from pending to active state upon participant joining.",
+        "operationId": "joinSharingSession",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Sharing session UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session joined and activated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["session"],
+                  "properties": {
+                    "session": {
+                      "$ref": "#/components/schemas/SharingSession"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: not a participant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: session not in valid joinable state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sharing/sessions/{id}/signals": {
+      "post": {
+        "tags": ["Screen Sharing"],
+        "summary": "Post WebRTC signalling message",
+        "description": "Sends an ephemeral WebRTC offer, answer, or ICE candidate to the peer participant.",
+        "operationId": "sendSharingSignal",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Sharing session UUID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["type", "payload"],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["offer", "answer", "candidate"],
+                    "example": "offer"
+                  },
+                  "payload": {
+                    "type": "object",
+                    "example": {
+                      "sdp": "v=0\r\no=synthetic 123456 ...",
+                      "type": "offer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Signalling message delivered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["signal"],
+                  "properties": {
+                    "signal": {
+                      "$ref": "#/components/schemas/SharingSignal"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid signal type or missing payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "invalid_signal_type"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: not an active session participant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: session not in active state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Screen Sharing"],
+        "summary": "Poll incoming WebRTC signalling messages",
+        "description": "Retrieves signalling messages sent by the peer participant. Optional after query parameter for incremental updates.",
+        "operationId": "getSharingSignals",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Sharing session UUID"
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "description": "Sequence ID of last received signal",
+            "example": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of peer signalling messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["signals"],
+                  "properties": {
+                    "signals": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SharingSignal"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: not a participant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: session not in active state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs": {
+      "get": {
+        "tags": ["Careers"],
+        "summary": "List active approved job listings",
+        "description": "Returns active approved job opportunities available for learner browsing and accommodation requests.",
+        "operationId": "listJobs",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of active approved jobs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["jobs"],
+                  "properties": {
+                    "jobs": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/JobListing"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/careers/subscriptions": {
+      "get": {
+        "tags": ["Careers"],
+        "summary": "List learner alert subscriptions",
+        "description": "Returns active job alert subscriptions owned by the requesting learner.",
+        "operationId": "listJobSubscriptions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned subscriptions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["subscriptions"],
+                  "properties": {
+                    "subscriptions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/JobSubscription"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Careers"],
+        "summary": "Subscribe to filtered job alerts",
+        "description": "Creates a job alert subscription with explicit category and location filters. Enforces deterministic filter matching without sensitive profiling.",
+        "operationId": "createJobSubscription",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["channel", "destination"],
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "example": "sms"
+                  },
+                  "destination": {
+                    "type": "string",
+                    "example": "+251911000000"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": ["Software Development"]
+                  },
+                  "locations": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": ["Addis Ababa"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Subscription created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["subscription"],
+                  "properties": {
+                    "subscription": {
+                      "$ref": "#/components/schemas/JobSubscription"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or invalid channel/destination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/careers/subscriptions/{id}": {
+      "delete": {
+        "tags": ["Careers"],
+        "summary": "Unsubscribe from job alerts",
+        "description": "Cancels an owned job subscription, revoking queued delivery intents and pruning unused alert contacts.",
+        "operationId": "deleteJobSubscription",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Subscription UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully unsubscribed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["status", "subscription", "cancelledIntentsCount", "contactRemoved"],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": ["unsubscribed"],
+                      "example": "unsubscribed"
+                    },
+                    "subscription": {
+                      "$ref": "#/components/schemas/JobSubscription"
+                    },
+                    "cancelledIntentsCount": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "contactRemoved": {
+                      "type": "boolean",
+                      "example": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Subscription not found or owned by another user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "subscription_not_found"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accommodation/requests": {
+      "post": {
+        "tags": ["Accommodation"],
+        "summary": "Submit workplace accommodation request",
+        "description": "Submits a learner-confirmed accommodation request targeting an approved job without storing diagnosis or medical proof fields.",
+        "operationId": "submitAccommodationRequest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["clientRequestId", "jobId", "supportDescription"],
+                "properties": {
+                  "clientRequestId": {
+                    "type": "string",
+                    "example": "accom-client-id-001"
+                  },
+                  "jobId": {
+                    "type": "string",
+                    "example": "job-addis-tech-01"
+                  },
+                  "supportDescription": {
+                    "type": "string",
+                    "example": "Large font keyboard and screen magnifier software."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Duplicate request (idempotent)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["kind", "request"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": ["duplicate"],
+                      "example": "duplicate"
+                    },
+                    "request": {
+                      "$ref": "#/components/schemas/AccommodationRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Accommodation request submitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["kind", "request"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": ["submitted"],
+                      "example": "submitted"
+                    },
+                    "request": {
+                      "$ref": "#/components/schemas/AccommodationRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "invalid_client_request_id"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Principal not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Target job does not exist or has expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "job_not_found"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Accommodation"],
+        "summary": "List non-expired accommodation requests owned by learner",
+        "description": "Returns all accommodation requests submitted by the authenticated learner.",
+        "operationId": "listOwnedAccommodationRequests",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of accommodation requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["requests"],
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AccommodationRequest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accommodation/requests/{id}": {
+      "get": {
+        "tags": ["Accommodation"],
+        "summary": "Get single accommodation request by ID",
+        "description": "Retrieves accommodation request by UUID. Accessible by the learner owner or authorized coordinators.",
+        "operationId": "getAccommodationRequestById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Accommodation request UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Found accommodation request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccommodationRequest"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found or inaccessible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Accommodation"],
+        "summary": "Cancel owned waiting accommodation request",
+        "description": "Cancels an owned waiting accommodation request.",
+        "operationId": "cancelAccommodationRequest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Accommodation request UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request successfully cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["request"],
+                  "properties": {
+                    "request": {
+                      "$ref": "#/components/schemas/AccommodationRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found, already reviewed, or already cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accommodation/coordinator/requests": {
+      "get": {
+        "tags": ["Accommodation"],
+        "summary": "List coordinator queue requests",
+        "description": "Returns all active accommodation requests in the coordinator triage queue. Restricted to support/coordinator staff.",
+        "operationId": "listCoordinatorAccommodationRequests",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of accommodation requests for coordinator review",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["requests"],
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AccommodationRequest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: support/coordinator role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accommodation/queue": {
+      "get": {
+        "tags": ["Accommodation"],
+        "summary": "Alias for coordinator queue",
+        "description": "Alias endpoint for /api/accommodation/coordinator/requests.",
+        "operationId": "getAccommodationQueueAlias",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of coordinator queue requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["requests"],
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AccommodationRequest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: support/coordinator role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accommodation/requests/{id}/status": {
+      "post": {
+        "tags": ["Accommodation"],
+        "summary": "Update request status (reviewing, confirmed, declined)",
+        "description": "Updates accommodation request status. Restricted to support/coordinator staff.",
+        "operationId": "updateAccommodationStatusPost",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Accommodation request UUID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": ["reviewing", "confirmed", "declined"],
+                    "example": "confirmed"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status successfully updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["request"],
+                  "properties": {
+                    "request": {
+                      "$ref": "#/components/schemas/AccommodationRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status value",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "invalid_status"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: coordinator role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found or already in terminal state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "terminal_or_not_found"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Accommodation"],
+        "summary": "Update request status (PATCH alias)",
+        "description": "PATCH alias for updating accommodation request status.",
+        "operationId": "updateAccommodationStatusPatch",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Accommodation request UUID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": ["reviewing", "confirmed", "declined"],
+                    "example": "confirmed"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status successfully updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["request"],
+                  "properties": {
+                    "request": {
+                      "$ref": "#/components/schemas/AccommodationRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status value",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: coordinator role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found or already in terminal state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accommodation/requests/{id}/replies": {
+      "post": {
+        "tags": ["Accommodation"],
+        "summary": "Add private reply to accommodation request",
+        "description": "Adds a threaded message to an active accommodation request. Accessible by learner owner or coordinator.",
+        "operationId": "addAccommodationReply",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Accommodation request UUID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["clientReplyId", "body"],
+                "properties": {
+                  "clientReplyId": {
+                    "type": "string",
+                    "example": "reply-accom-01"
+                  },
+                  "body": {
+                    "type": "string",
+                    "example": "We have approved ergonomic desk arrangements."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Duplicate reply (idempotent)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["kind", "reply"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": ["duplicate"],
+                      "example": "duplicate"
+                    },
+                    "reply": {
+                      "$ref": "#/components/schemas/AccommodationReply"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Reply added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["kind", "reply"],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": ["added"],
+                      "example": "added"
+                    },
+                    "reply": {
+                      "$ref": "#/components/schemas/AccommodationReply"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid clientReplyId or body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: not an authorized participant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: request is in terminal state or expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "terminal_or_not_found"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Accommodation"],
+        "summary": "List chronological replies for accommodation request",
+        "description": "Returns chronological replies on the accommodation request thread for authorised participants.",
+        "operationId": "listAccommodationReplies",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Accommodation request UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chronological replies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["replies"],
+                  "properties": {
+                    "replies": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AccommodationReply"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found or inaccessible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accommodation/requests/{id}/replies/read": {
+      "put": {
+        "tags": ["Accommodation"],
+        "summary": "Mark incoming accommodation replies as read",
+        "description": "Marks unread replies from the peer participant as read.",
+        "operationId": "markAccommodationRepliesRead",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Accommodation request UUID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Replies marked as read; no content"
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/telegram/link-code": {
+      "post": {
+        "tags": ["Telegram Channel"],
+        "summary": "Issue single-use Telegram link code",
+        "description": "Issues a single-use 15-minute linking code for the authenticated learner to link their Telegram account.",
+        "operationId": "issueTelegramLinkCode",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Link code successfully issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramLinkCode"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/telegram/status": {
+      "get": {
+        "tags": ["Telegram Channel"],
+        "summary": "Check Telegram account linking status",
+        "description": "Returns linking status of the authenticated learner account.",
+        "operationId": "getTelegramStatus",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Telegram linking status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/telegram/link": {
+      "post": {
+        "tags": ["Telegram Channel"],
+        "summary": "Direct account linking endpoint",
+        "description": "Directly links a Telegram account with a valid single-use link code. Restricts linking strictly to private chats.",
+        "operationId": "linkTelegramDirect",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code", "telegramUserId", "telegramChatId", "chatType"],
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 128,
+                    "example": "synthetic_telegram_code_1234567890"
+                  },
+                  "telegramUserId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "example": "12345678"
+                  },
+                  "telegramChatId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "example": "12345678"
+                  },
+                  "chatType": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32,
+                    "example": "private"
+                  },
+                  "telegramUsername": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "example": "demolearner"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Telegram account successfully linked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "identity"],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "identity": {
+                      "type": "object",
+                      "required": ["id", "learnerId", "telegramUserId", "linkedAt"],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "learnerId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "telegramUserId": {
+                          "type": "string"
+                        },
+                        "linkedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid code, expired code, or disallowed group chat type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "invalid_code"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: Telegram user or learner already linked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "telegram_user_already_linked"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Telegram Channel"],
+        "summary": "Revoke linked Telegram identity",
+        "description": "Unlinks the Telegram account for the authenticated learner, immediately terminating bot access.",
+        "operationId": "unlinkTelegram",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Telegram identity unlinked; no content"
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No active Telegram identity linked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "not_linked"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/telegram/webhook": {
+      "post": {
+        "tags": ["Telegram Channel"],
+        "summary": "Telegram bot webhook update ingestion",
+        "description": "Receives incoming webhook updates from Telegram Bot API with secret token header verification.",
+        "operationId": "handleTelegramWebhook",
+        "security": [
+          {
+            "TelegramWebhookSecret": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["update_id"],
+                "properties": {
+                  "update_id": {
+                    "type": "integer",
+                    "example": 10001
+                  },
+                  "message": {
+                    "type": "object",
+                    "required": ["message_id", "chat", "date"],
+                    "properties": {
+                      "message_id": {
+                        "type": "integer",
+                        "example": 42
+                      },
+                      "from": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "example": 12345678
+                          },
+                          "is_bot": {
+                            "type": "boolean",
+                            "example": false
+                          },
+                          "first_name": {
+                            "type": "string",
+                            "example": "Demo"
+                          },
+                          "username": {
+                            "type": "string",
+                            "example": "demolearner"
+                          }
+                        }
+                      },
+                      "chat": {
+                        "type": "object",
+                        "required": ["id", "type"],
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "example": 12345678
+                          },
+                          "type": {
+                            "type": "string",
+                            "example": "private"
+                          }
+                        }
+                      },
+                      "date": {
+                        "type": "integer",
+                        "example": 1731664800
+                      },
+                      "text": {
+                        "type": "string",
+                        "example": "/start synthetic_telegram_code_1234567890"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook processed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["ok", "status"],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "linked"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed payload or invalid command syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or missing x-telegram-bot-api-secret-token header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": "unauthorized"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: user or learner already linked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/help/notifications/preference": {
+      "get": {
+        "tags": ["Human Help"],
+        "summary": "Get learner notification preference for support replies",
+        "description": "Returns the authenticated learner notification preference (opt-in status) for support replies on a channel.",
+        "operationId": "getHelpNotificationPreference",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "telegram",
+              "example": "telegram"
+            },
+            "description": "Delivery channel (e.g. telegram)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification preference status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreference"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Human Help"],
+        "summary": "Update learner notification preference for support replies",
+        "description": "Updates whether the learner has opted in to receive external notifications for support replies.",
+        "operationId": "updateHelpNotificationPreference",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["optedIn"],
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "default": "telegram",
+                    "example": "telegram"
+                  },
+                  "optedIn": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated notification preference status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreference"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input - optedIn must be a boolean",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/help/notifications/opt-in": {
+      "post": {
+        "tags": ["Human Help"],
+        "summary": "Opt-in to support reply notifications",
+        "description": "Explicitly opts the learner in to receive external channel alerts when staff reply to help requests.",
+        "operationId": "optInHelpNotifications",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "default": "telegram",
+                    "example": "telegram"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Opt-in confirmation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreference"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/help/notifications/opt-out": {
+      "post": {
+        "tags": ["Human Help"],
+        "summary": "Opt-out of support reply notifications",
+        "description": "Explicitly opts out and suppresses pending delivery intents for support replies.",
+        "operationId": "optOutHelpNotifications",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "default": "telegram",
+                    "example": "telegram"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Opt-out confirmation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreference"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Token",
+        "description": "Bearer authentication using a signed-in demo session token or provisioned operator key."
+      },
+      "TelegramWebhookSecret": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-telegram-bot-api-secret-token",
+        "description": "Configured secret token verified on incoming Telegram Bot API webhook updates."
+      }
+    },
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Machine-readable error identifier",
+            "example": "not_found"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable explanation",
+            "example": "The requested resource was not found."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Specific failure reason code",
+            "example": "resource_missing"
+          }
+        }
+      },
+      "ValidationErrorEnvelope": {
+        "type": "object",
+        "required": ["statusCode", "error", "message"],
+        "properties": {
+          "statusCode": {
+            "type": "integer",
+            "example": 400
+          },
+          "error": {
+            "type": "string",
+            "example": "Bad Request"
+          },
+          "message": {
+            "type": "string",
+            "example": "body must have required property 'code'"
+          }
+        }
+      },
+      "HealthOk": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ok"],
+            "example": "ok"
+          }
+        }
+      },
+      "ReadinessReady": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ready"],
+            "example": "ready"
+          }
+        }
+      },
+      "ReadinessNotReady": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["not_ready"],
+            "example": "not_ready"
+          },
+          "reason": {
+            "type": "string",
+            "example": "database_unavailable"
+          }
+        }
+      },
+      "Principal": {
+        "type": "object",
+        "required": ["id", "role", "label", "isDemo"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["learner", "support", "coordinator"],
+            "example": "learner"
+          },
+          "label": {
+            "type": "string",
+            "example": "Demo Learner"
+          },
+          "isDemo": {
+            "type": "boolean",
+            "example": true
+          },
+          "demoKey": {
+            "type": "string",
+            "example": "synthetic-learner"
+          }
+        }
+      },
+      "DemoSessionExchangeRequest": {
+        "type": "object",
+        "required": ["code"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{20,128}$",
+            "description": "Single-use handoff code generated by demo:handoff CLI",
+            "example": "synthetic_handoff_code_1234567890abcdef"
+          }
+        }
+      },
+      "DemoSessionExchangeResponse": {
+        "type": "object",
+        "required": ["token", "expiresAt"],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Revocable bearer session secret",
+            "example": "synthetic_session_token_987654321"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Expiration instant (2 hours from issue)",
+            "example": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      "DemoRecord": {
+        "type": "object",
+        "required": ["id", "courseId", "body", "createdAt"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+          },
+          "courseId": {
+            "type": "string",
+            "example": "course-101"
+          },
+          "body": {
+            "type": "string",
+            "example": "Synthetic fixture note."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:00:00.000Z"
+          }
+        }
+      },
+      "ContentPassage": {
+        "type": "object",
+        "required": [
+          "sourceId",
+          "sectionId",
+          "sourceTitle",
+          "heading",
+          "excerpt",
+          "language",
+          "courseId"
+        ],
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "example": "course-101"
+          },
+          "sectionId": {
+            "type": "string",
+            "example": "section-01"
+          },
+          "sourceTitle": {
+            "type": "string",
+            "example": "Introduction to Computers"
+          },
+          "heading": {
+            "type": "string",
+            "example": "Central Processing Unit"
+          },
+          "excerpt": {
+            "type": "string",
+            "example": "The CPU coordinates all hardware components..."
+          },
+          "language": {
+            "type": "string",
+            "enum": ["en", "am"],
+            "example": "en"
+          },
+          "courseId": {
+            "type": "string",
+            "example": "course-101"
+          }
+        }
+      },
+      "ContentSection": {
+        "type": "object",
+        "required": ["id", "sourceId", "title", "text", "language", "courseId", "orderIndex"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "section-01"
+          },
+          "sourceId": {
+            "type": "string",
+            "example": "course-101"
+          },
+          "title": {
+            "type": "string",
+            "example": "Central Processing Unit"
+          },
+          "text": {
+            "type": "string",
+            "example": "The central processing unit performs basic arithmetic, logic, and control operations..."
+          },
+          "language": {
+            "type": "string",
+            "enum": ["en", "am"],
+            "example": "en"
+          },
+          "courseId": {
+            "type": "string",
+            "example": "course-101"
+          },
+          "orderIndex": {
+            "type": "integer",
+            "example": 1
+          }
+        }
+      },
+      "FaqCitation": {
+        "type": "object",
+        "required": ["sourceId", "sectionId", "sourceTitle", "heading"],
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "example": "course-101"
+          },
+          "sectionId": {
+            "type": "string",
+            "example": "section-01"
+          },
+          "sourceTitle": {
+            "type": "string",
+            "example": "Introduction to Computers"
+          },
+          "heading": {
+            "type": "string",
+            "example": "Hardware Components"
+          }
+        }
+      },
+      "TutoringRequest": {
+        "type": "object",
+        "required": [
+          "id",
+          "conversationId",
+          "ownerId",
+          "courseId",
+          "requestId",
+          "question",
+          "state",
+          "createdAt",
+          "updatedAt",
+          "expiresAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "22222222-2222-4222-8222-222222222222"
+          },
+          "conversationId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "33333333-3333-4333-8333-333333333333"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "courseId": {
+            "type": "string",
+            "example": "course-101"
+          },
+          "requestId": {
+            "type": "string",
+            "example": "client-req-001"
+          },
+          "question": {
+            "type": "string",
+            "example": "What is the function of the ALU?"
+          },
+          "state": {
+            "type": "string",
+            "enum": ["pending", "completed", "recoverable_failure"],
+            "example": "completed"
+          },
+          "answerText": {
+            "type": "string",
+            "nullable": true,
+            "example": "The ALU executes mathematical and logical instructions."
+          },
+          "answerLang": {
+            "type": "string",
+            "nullable": true,
+            "example": "en"
+          },
+          "errorReason": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:00:01.000Z"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-11-15T09:00:01.000Z"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-22T09:00:00.000Z"
+          },
+          "purgedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          }
+        }
+      },
+      "TutoringAnswerResponse": {
+        "type": "object",
+        "required": ["request", "answer", "lang", "kind", "citations"],
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/TutoringRequest"
+          },
+          "answer": {
+            "type": "string",
+            "example": "The ALU performs arithmetic computations."
+          },
+          "lang": {
+            "type": "string",
+            "enum": ["en", "am"],
+            "example": "en"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["answered", "insufficient_evidence"],
+            "example": "answered"
+          },
+          "provider": {
+            "type": "string",
+            "enum": ["online", "faq"],
+            "example": "faq"
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FaqCitation"
+            }
+          }
+        }
+      },
+      "TutoringConversation": {
+        "type": "object",
+        "required": ["id", "ownerId", "courseId", "createdAt", "updatedAt", "expiresAt"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "33333333-3333-4333-8333-333333333333"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "courseId": {
+            "type": "string",
+            "example": "course-101"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:00:00.000Z"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-22T09:00:00.000Z"
+          },
+          "purgedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          }
+        }
+      },
+      "HelpRequest": {
+        "type": "object",
+        "required": [
+          "id",
+          "ownerId",
+          "clientRequestId",
+          "contextSnapshot",
+          "consentGiven",
+          "state",
+          "createdAt",
+          "expiresAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "44444444-4444-4444-8444-444444444444"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "clientRequestId": {
+            "type": "string",
+            "example": "help-client-req-001"
+          },
+          "contextSnapshot": {
+            "type": "string",
+            "example": "Question regarding ALU operation in section 2."
+          },
+          "consentGiven": {
+            "type": "boolean",
+            "example": true
+          },
+          "state": {
+            "type": "string",
+            "enum": ["waiting", "cancelled", "claimed", "resolved"],
+            "example": "waiting"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:00:00.000Z"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-22T09:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:00:00.000Z"
+          },
+          "cancelledAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "claimedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "example": null
+          },
+          "claimedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "resolvedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "example": null
+          }
+        }
+      },
+      "HelpQueueItem": {
+        "type": "object",
+        "required": ["id", "ownerId", "clientRequestId", "state", "createdAt", "expiresAt"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "44444444-4444-4444-8444-444444444444"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "clientRequestId": {
+            "type": "string",
+            "example": "help-client-req-001"
+          },
+          "state": {
+            "type": "string",
+            "enum": ["waiting"],
+            "example": "waiting"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:00:00.000Z"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-22T09:00:00.000Z"
+          }
+        }
+      },
+      "HelpReply": {
+        "type": "object",
+        "required": ["id", "helpRequestId", "authorId", "clientReplyId", "body", "createdAt"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "55555555-5555-4555-8555-555555555555"
+          },
+          "helpRequestId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "44444444-4444-4444-8444-444444444444"
+          },
+          "authorId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "clientReplyId": {
+            "type": "string",
+            "example": "reply-client-001"
+          },
+          "body": {
+            "type": "string",
+            "example": "Could you review this step?"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:05:00.000Z"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          }
+        }
+      },
+      "SharingSession": {
+        "type": "object",
+        "required": [
+          "id",
+          "helpRequestId",
+          "learnerId",
+          "supportId",
+          "state",
+          "createdAt",
+          "expiresAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "88888888-8888-4888-8888-888888888888"
+          },
+          "helpRequestId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "44444444-4444-4444-8444-444444444444"
+          },
+          "learnerId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "supportId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "99999999-9999-4999-8999-999999999999"
+          },
+          "state": {
+            "type": "string",
+            "enum": ["pending", "active", "revoked", "expired"],
+            "example": "active"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:00:00.000Z"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T10:00:00.000Z"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          }
+        }
+      },
+      "SharingSignal": {
+        "type": "object",
+        "required": ["id", "sessionId", "senderId", "type", "payload", "createdAt"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "sessionId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "88888888-8888-4888-8888-888888888888"
+          },
+          "senderId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["offer", "answer", "candidate"],
+            "example": "offer"
+          },
+          "payload": {
+            "type": "object",
+            "example": {
+              "sdp": "v=0\r\no=synthetic 123456 ...",
+              "type": "offer"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:01:00.000Z"
+          }
+        }
+      },
+      "JobListing": {
+        "type": "object",
+        "required": ["id", "title", "organization", "category", "location", "sourceUrl"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "job-addis-tech-01"
+          },
+          "title": {
+            "type": "string",
+            "example": "Junior Software Engineer"
+          },
+          "organization": {
+            "type": "string",
+            "example": "EthioTech Solutions"
+          },
+          "category": {
+            "type": "string",
+            "example": "Software Development"
+          },
+          "location": {
+            "type": "string",
+            "example": "Addis Ababa"
+          },
+          "sourceUrl": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://example.com/jobs/01"
+          }
+        }
+      },
+      "JobSubscription": {
+        "type": "object",
+        "required": [
+          "id",
+          "learnerId",
+          "channel",
+          "destination",
+          "categories",
+          "locations",
+          "active",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+          },
+          "learnerId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "channel": {
+            "type": "string",
+            "example": "sms"
+          },
+          "destination": {
+            "type": "string",
+            "example": "+251911000000"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["Software Development"]
+          },
+          "locations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["Addis Ababa"]
+          },
+          "active": {
+            "type": "boolean",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:00:00.000Z"
+          },
+          "unsubscribedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          }
+        }
+      },
+      "AccommodationRequest": {
+        "type": "object",
+        "required": [
+          "id",
+          "ownerId",
+          "jobId",
+          "clientRequestId",
+          "supportDescription",
+          "state",
+          "createdAt",
+          "expiresAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "66666666-6666-4666-8666-666666666666"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "jobId": {
+            "type": "string",
+            "example": "job-addis-tech-01"
+          },
+          "clientRequestId": {
+            "type": "string",
+            "example": "accom-req-001"
+          },
+          "supportDescription": {
+            "type": "string",
+            "example": "Screen reader setup and high contrast theme."
+          },
+          "state": {
+            "type": "string",
+            "enum": ["waiting", "reviewing", "confirmed", "declined", "cancelled"],
+            "example": "waiting"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:00:00.000Z"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-22T09:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:00:00.000Z"
+          },
+          "cancelledAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "reviewedBy": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "example": null
+          }
+        }
+      },
+      "AccommodationReply": {
+        "type": "object",
+        "required": [
+          "id",
+          "accommodationRequestId",
+          "authorId",
+          "clientReplyId",
+          "body",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "77777777-7777-4777-8777-777777777777"
+          },
+          "accommodationRequestId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "66666666-6666-4666-8666-666666666666"
+          },
+          "authorId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          "clientReplyId": {
+            "type": "string",
+            "example": "accom-reply-001"
+          },
+          "body": {
+            "type": "string",
+            "example": "We can configure screen reader software on your first week."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:10:00.000Z"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          }
+        }
+      },
+      "TelegramStatus": {
+        "type": "object",
+        "required": ["isLinked"],
+        "properties": {
+          "isLinked": {
+            "type": "boolean",
+            "example": true
+          },
+          "linkedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:00:00.000Z"
+          },
+          "telegramUsername": {
+            "type": "string",
+            "example": "demolearner"
+          },
+          "chatType": {
+            "type": "string",
+            "example": "private"
+          }
+        }
+      },
+      "TelegramLinkCode": {
+        "type": "object",
+        "required": ["code", "botUsername", "expiresAt", "instructions"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "synthetic_telegram_link_code_12345"
+          },
+          "botUsername": {
+            "type": "string",
+            "example": "Track3DemoBot"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-15T09:15:00.000Z"
+          },
+          "instructions": {
+            "type": "string",
+            "example": "Send /start synthetic_telegram_link_code_12345 to @Track3DemoBot in Telegram."
+          }
+        }
+      },
+      "NotificationPreference": {
+        "type": "object",
+        "required": ["channel", "optedIn"],
+        "properties": {
+          "channel": {
+            "type": "string",
+            "example": "telegram"
+          },
+          "optedIn": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      }
+    }
+  }
+}
