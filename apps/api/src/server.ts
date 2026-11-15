@@ -35,6 +35,7 @@ import { PostgresTelegramLinkRepository } from './modules/telegram/infrastructur
 import { FaqProvider } from './modules/tutoring/application/faq-provider.ts';
 import { Tutoring } from './modules/tutoring/application/tutoring.ts';
 import { GeminiTranscriptionAdapter } from './modules/tutoring/infrastructure/gemini-transcription-adapter.ts';
+import { ProviderAdmissionController } from './modules/tutoring/application/provider-admission.ts';
 import { PostgresTutoringRepository } from './modules/tutoring/infrastructure/persistence/postgres-tutoring-repository.ts';
 
 const config = loadOrExit(() => loadConfig(process.env));
@@ -49,6 +50,7 @@ const content = new ContentAccess(new PostgresLessonReader(pool), glossary);
 const faqProvider = new FaqProvider(content);
 const onlineProvider = new GeminiGroundedAnswerProvider();
 const transcription = new GeminiTranscriptionAdapter();
+const admissionController = new ProviderAdmissionController(config.providerLimits);
 const helpRepository = new PostgresHelpRepository(pool);
 const sharingRepository = new PostgresSharingRepository(pool);
 const helpRequestLookup = new PostgresHelpRequestLookup(pool);
@@ -73,6 +75,7 @@ const app = buildApp(
       faqProvider,
       onlineProvider,
       content,
+      admissionController,
       jobAnswers,
     ),
     transcription,
@@ -85,6 +88,7 @@ const app = buildApp(
     jobPreferences,
     jobAnswers,
     telegramService,
+    admissionController,
   },
   { logger: true },
 );

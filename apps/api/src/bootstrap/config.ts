@@ -37,7 +37,45 @@ export interface ApiConfig {
   readonly relay: RelayConfig;
   /** Optional Telegram bot/webhook configuration for channel adapter. */
   readonly telegram: TelegramConfig;
+  /** Bounded provider admission and rate limits configuration (T3-024-C). */
+  readonly providerLimits: ProviderLimitsConfig;
 }
+
+export interface ProviderLimitsConfig {
+  /** Maximum concurrent provider operations in this API process across all learners. Default: 5. */
+  readonly maxConcurrency: number;
+  /** Maximum concurrent provider operations for a single learner (fairness guard). Default: 2. */
+  readonly maxPerLearnerConcurrency: number;
+  /** Maximum number of queued requests awaiting an execution slot before immediate rejection. Default: 10. */
+  readonly maxQueueSize: number;
+  /** Maximum pending requests in queue for a single learner. Default: 2. */
+  readonly maxPerLearnerQueue: number;
+  /** Maximum time (ms) a request may wait in queue before timing out. Default: 5000. */
+  readonly queueTimeoutMs: number;
+  /** Sliding window duration (ms) for rate limits. Default: 60000 (1 minute). */
+  readonly rateLimitWindowMs: number;
+  /** Maximum provider requests in window across all learners. Default: 60. */
+  readonly rateLimitMaxRequests: number;
+  /** Maximum provider requests in window for a single learner. Default: 10. */
+  readonly rateLimitPerLearnerMaxRequests: number;
+  /** Maximum character length for a question input. Default: 1000. */
+  readonly maxQuestionLength: number;
+  /** Maximum character length for speech text input. Default: 2000. */
+  readonly maxSpeechTextLength: number;
+}
+
+export const DEFAULT_PROVIDER_LIMITS: ProviderLimitsConfig = {
+  maxConcurrency: 5,
+  maxPerLearnerConcurrency: 2,
+  maxQueueSize: 10,
+  maxPerLearnerQueue: 2,
+  queueTimeoutMs: 5000,
+  rateLimitWindowMs: 60000,
+  rateLimitMaxRequests: 60,
+  rateLimitPerLearnerMaxRequests: 10,
+  maxQuestionLength: 1000,
+  maxSpeechTextLength: 2000,
+};
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -138,6 +176,71 @@ export function loadTelegramConfig(env: Env): TelegramConfig {
   };
 }
 
+export function loadProviderLimitsConfig(env: Env): ProviderLimitsConfig {
+  function optionalPositiveInteger(name: string, defaultValue: number): number {
+    const raw = env[name]?.trim();
+    if (!raw) return defaultValue;
+    const value = Number(raw);
+    if (!/^\d+$/.test(raw) || value < 1) {
+      throw new ConfigError(`${name} must be a positive integer`);
+    }
+    return value;
+  }
+
+  function optionalNonNegativeInteger(name: string, defaultValue: number): number {
+    const raw = env[name]?.trim();
+    if (!raw) return defaultValue;
+    const value = Number(raw);
+    if (!/^\d+$/.test(raw) || value < 0) {
+      throw new ConfigError(`${name} must be a non-negative integer`);
+    }
+    return value;
+  }
+
+  return {
+    maxConcurrency: optionalPositiveInteger(
+      'PROVIDER_MAX_CONCURRENCY',
+      DEFAULT_PROVIDER_LIMITS.maxConcurrency,
+    ),
+    maxPerLearnerConcurrency: optionalPositiveInteger(
+      'PROVIDER_MAX_PER_LEARNER_CONCURRENCY',
+      DEFAULT_PROVIDER_LIMITS.maxPerLearnerConcurrency,
+    ),
+    maxQueueSize: optionalNonNegativeInteger(
+      'PROVIDER_MAX_QUEUE_SIZE',
+      DEFAULT_PROVIDER_LIMITS.maxQueueSize,
+    ),
+    maxPerLearnerQueue: optionalPositiveInteger(
+      'PROVIDER_MAX_PER_LEARNER_QUEUE',
+      DEFAULT_PROVIDER_LIMITS.maxPerLearnerQueue,
+    ),
+    queueTimeoutMs: optionalPositiveInteger(
+      'PROVIDER_QUEUE_TIMEOUT_MS',
+      DEFAULT_PROVIDER_LIMITS.queueTimeoutMs,
+    ),
+    rateLimitWindowMs: optionalPositiveInteger(
+      'PROVIDER_RATE_LIMIT_WINDOW_MS',
+      DEFAULT_PROVIDER_LIMITS.rateLimitWindowMs,
+    ),
+    rateLimitMaxRequests: optionalPositiveInteger(
+      'PROVIDER_RATE_LIMIT_MAX_REQUESTS',
+      DEFAULT_PROVIDER_LIMITS.rateLimitMaxRequests,
+    ),
+    rateLimitPerLearnerMaxRequests: optionalPositiveInteger(
+      'PROVIDER_RATE_LIMIT_PER_LEARNER_MAX_REQUESTS',
+      DEFAULT_PROVIDER_LIMITS.rateLimitPerLearnerMaxRequests,
+    ),
+    maxQuestionLength: optionalPositiveInteger(
+      'PROVIDER_MAX_QUESTION_LENGTH',
+      DEFAULT_PROVIDER_LIMITS.maxQuestionLength,
+    ),
+    maxSpeechTextLength: optionalPositiveInteger(
+      'PROVIDER_MAX_SPEECH_TEXT_LENGTH',
+      DEFAULT_PROVIDER_LIMITS.maxSpeechTextLength,
+    ),
+  };
+}
+
 export function loadConfig(env: Env): ApiConfig {
   return {
     host: required(env, 'API_HOST'),
@@ -147,6 +250,7 @@ export function loadConfig(env: Env): ApiConfig {
     demoAllowedOrigins: loadDemoAllowedOrigins(env),
     relay: loadRelayConfig(env),
     telegram: loadTelegramConfig(env),
+    providerLimits: loadProviderLimitsConfig(env),
   };
 }
 

@@ -164,11 +164,11 @@ Publication order places explicit prerequisites before dependants. These columns
 | [#56](https://github.com/EyasuGet/Hackaton/issues/56) | **T3-025-A** — Pass final automated accessibility and desktop task checks | Leaf | 4 | Baseline | [T3-025](https://github.com/EyasuGet/Hackaton/issues/99) |
 | [#57](https://github.com/EyasuGet/Hackaton/issues/57) | **T3-025-B** — Pass the actual Android bilingual and low-bandwidth journey | Leaf | 4 | Baseline | [T3-025](https://github.com/EyasuGet/Hackaton/issues/99) |
 | [#58](https://github.com/EyasuGet/Hackaton/issues/58) | **T3-025-C** — Compile the assessed WCAG report and co-design evidence | Leaf | 4 | Baseline | [T3-025](https://github.com/EyasuGet/Hackaton/issues/99) |
-| [#59](https://github.com/EyasuGet/Hackaton/issues/59) | **T3-026-A** — Document and check implemented REST/OpenAPI contracts | Leaf | 4 | Baseline | [T3-026](https://github.com/EyasuGet/Hackaton/issues/63) |
-| [#60](https://github.com/EyasuGet/Hackaton/issues/60) | **T3-026-B** — Prove early embedding in the official static starter | Leaf | 4 | Baseline | [T3-026](https://github.com/EyasuGet/Hackaton/issues/63) |
-| [#61](https://github.com/EyasuGet/Hackaton/issues/61) | **T3-026-D** — Prove the completed core journey in the static starter | Leaf | 4 | Baseline | [T3-026](https://github.com/EyasuGet/Hackaton/issues/63) |
-| [#62](https://github.com/EyasuGet/Hackaton/issues/62) | **T3-026-C** — Prove a stranger can install and embed within an hour | Leaf | 4 | Baseline | [T3-026](https://github.com/EyasuGet/Hackaton/issues/63) |
-| [#63](https://github.com/EyasuGet/Hackaton/issues/63) | **T3-026** — Prove clean installation, Savanna integration and portable interfaces | Epic | 4 | Baseline | — |
+| [#59](https://github.com/EyasuGet/Hackaton/issues/59) | [✓] **T3-026-A** — Document and check implemented REST/OpenAPI contracts | Leaf | 4 | Baseline | [T3-026](https://github.com/EyasuGet/Hackaton/issues/63) |
+| [#60](https://github.com/EyasuGet/Hackaton/issues/60) | [✓] **T3-026-B** — Prove early embedding in the official static starter | Leaf | 4 | Baseline | [T3-026](https://github.com/EyasuGet/Hackaton/issues/63) |
+| [#61](https://github.com/EyasuGet/Hackaton/issues/61) | [✓] **T3-026-D** — Prove the completed core journey in the static starter | Leaf | 4 | Baseline | [T3-026](https://github.com/EyasuGet/Hackaton/issues/63) |
+| [#62](https://github.com/EyasuGet/Hackaton/issues/62) | [✓] **T3-026-C** — Prove a stranger can install and embed within an hour | Leaf | 4 | Baseline | [T3-026](https://github.com/EyasuGet/Hackaton/issues/63) |
+| [#63](https://github.com/EyasuGet/Hackaton/issues/63) | [✓] **T3-026** — Prove clean installation, Savanna integration and portable interfaces | Epic | 4 | Baseline | — |
 | [#64](https://github.com/EyasuGet/Hackaton/issues/64) | **T3-027-B** — Verify the core end-to-end learner story | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
 | [#65](https://github.com/EyasuGet/Hackaton/issues/65) | **T3-027-D** — Confirm core-demo readiness and record coverage gaps | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
 | [#66](https://github.com/EyasuGet/Hackaton/issues/66) | **T3-027-A** — Prepare the package, licence and operating-cost evidence | Leaf | 4 | Baseline | [T3-027](https://github.com/EyasuGet/Hackaton/issues/101) |
@@ -216,3 +216,16 @@ Publication order places explicit prerequisites before dependants. These columns
 | [#108](https://github.com/EyasuGet/Hackaton/issues/108) | **T3-030** — Show anonymous frequently asked topics to authorised teachers | Leaf | 5 | Stretch | — |
 | [#109](https://github.com/EyasuGet/Hackaton/issues/109) | **T3-031** — Future spec: employer dashboard | Leaf | 5 | Lowest-priority stretch | — |
 | [#110](https://github.com/EyasuGet/Hackaton/issues/110) | **T3-032** — Future spec: consented employer outreach | Leaf | 5 | Lowest-priority stretch | — |
+
+## Epic sign-off and verification records
+
+### [T3-026 · #63](https://github.com/EyasuGet/Hackaton/issues/63) — Prove clean installation, Savanna integration and portable interfaces [✓]
+
+Integrated epic verification and acceptance sign-off: [`docs/evidence/t3-026-epic-closure.md`](evidence/t3-026-epic-closure.md).
+
+#### Child checklist
+- [✓] [T3-026-A — Document and check implemented REST/OpenAPI contracts](https://github.com/EyasuGet/Hackaton/issues/59) (PR #169)
+- [✓] [T3-026-B — Prove early embedding in the official static starter](https://github.com/EyasuGet/Hackaton/issues/60) (PR #146)
+- [✓] [T3-026-C — Prove a stranger can install and embed within an hour](https://github.com/EyasuGet/Hackaton/issues/62) (PR #172)
+- [✓] [T3-026-D — Prove the completed core journey in the static starter](https://github.com/EyasuGet/Hackaton/issues/61) (PR #177)
+

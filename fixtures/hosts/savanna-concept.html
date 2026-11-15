@@ -182,6 +182,18 @@
           Use these controls to verify the assistant embed inside the Savanna page structure. This
           notice does not appear in the real Savanna pages.
           <div>
+            <input
+              id="token-input"
+              type="text"
+              placeholder="Handoff code"
+              style="
+                padding: 0.4rem;
+                font-size: 0.875rem;
+                margin-right: 0.5rem;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+              "
+            />
             <button id="open-btn">Open Assistant</button>
             <button id="close-btn">Send Close</button>
           </div>
@@ -244,9 +256,12 @@
 
       document.getElementById('open-btn').addEventListener('click', function () {
         addLog('Opening assistant (synthetic demo token)…');
+        var inputEl = document.getElementById('token-input');
+        var tokenVal =
+          inputEl && inputEl.value.trim() ? inputEl.value.trim() : 'demo-savanna-synthetic';
         // Permitted synthetic context: demo token, our assistant origin.
         embedAssistant({
-          token: 'demo-savanna-synthetic',
+          token: tokenVal,
           origin: 'http://localhost:5173',
         });
       });

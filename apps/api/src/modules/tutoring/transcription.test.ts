@@ -190,9 +190,9 @@ describe('GeminiTranscriptionAdapter', () => {
 
   it('sends the audio inline data and prompt in the request body', async () => {
     let capturedBody: unknown;
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
       capturedBody = JSON.parse(init?.body as string);
-      return geminiSuccess('Test transcript');
+      return Promise.resolve(geminiSuccess('Test transcript'));
     });
 
     const adapter = new GeminiTranscriptionAdapter(API_KEY);

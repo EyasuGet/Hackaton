@@ -1,13 +1,10 @@
-// Headless assistant running inside iframe. Receives token from parent,
-// instantiates Assistant with authenticated client, handles close signals.
-import { useEffect, useMemo, useState } from 'react';
-import { Assistant } from '../features/assistant/assistant.tsx';
-import { createFixtureClient } from '../features/assistant/fixture-client.ts';
+import { useEffect, useState } from 'react';
+import { App } from '../app/app.tsx';
 import { validateMessage } from './message-protocol.ts';
 
 export function IframeApp() {
+  const [token, setToken] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
-  const client = useMemo(() => createFixtureClient('english'), []);
 
   useEffect(() => {
     // Listen for init message from parent.
@@ -19,8 +16,7 @@ export function IframeApp() {
       const msg = event.data;
 
       if (msg.type === 'init' && 'token' in msg) {
-        // Token is received but fixture uses demo data; in a real app,
-        // pass it to the conversation client for authentication.
+        setToken(msg.token);
         setInitialized(true);
         // Send ready status back to parent.
         window.parent.postMessage({ type: 'status', status: 'ready' }, '*');
@@ -41,19 +37,32 @@ export function IframeApp() {
     return <div style={{ padding: '1rem', textAlign: 'center', color: '#666' }}>Initializing…</div>;
   }
 
+  const handleClose = () => {
+    window.parent.postMessage({ type: 'close' }, '*');
+    window.close?.();
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      <main style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
-        <h1>Learning assistant</h1>
-        <Assistant client={client} />
-      </main>
-      <footer style={{ padding: '1rem', borderTop: '1px solid #ddd', textAlign: 'center' }}>
-        <button
-          onClick={() => {
-            window.parent.postMessage({ type: 'close' }, '*');
-            window.close?.();
-          }}
-        >
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        overflow: 'hidden',
+      }}
+    >
+      <div style={{ flex: 1, overflow: 'auto', padding: '0.5rem' }}>
+        <App handoffCode={token} />
+      </div>
+      <footer
+        style={{
+          padding: '0.5rem',
+          borderTop: '1px solid #ddd',
+          textAlign: 'center',
+          background: '#fff',
+        }}
+      >
+        <button type="button" onClick={handleClose}>
           Close
         </button>
       </footer>

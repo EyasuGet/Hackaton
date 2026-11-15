@@ -1,0 +1,9 @@
+{
+  "acknowledge": "error",
+  "response": {
+    "message_id": "9ab2867c-96ce-4405-b890-8d35d52c8e01",
+    "status": "REJECTD",
+    "to": "+251911000001",
+    "errors": ["Destination number blocked by carrier firewall"]
+  }
+}
