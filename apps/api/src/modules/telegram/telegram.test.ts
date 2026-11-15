@@ -1807,6 +1807,10 @@ describe('Telegram Voice Transcript Review Flow (T3-013-A)', () => {
       this.calls.push(input);
       return Promise.resolve(this.outcome);
     }
+
+    isAvailable(): boolean {
+      return true;
+    }
   }
 
   let mockClient: MockVoiceTelegramClient;
