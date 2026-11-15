@@ -8,7 +8,7 @@
 
 ## Conformance claim
 
-**On automated, measured and code-review evidence, every applicable WCAG 2.2 A and AA criterion is supported.** The three criteria earlier reported as partially supported (1.4.11, 2.4.11 and 3.1.2) were fixed in #237 and #240; see [Resolved issues](#resolved-issues). **A full conformance claim is not made yet**, because the human assistive-technology checks below are still pending.
+**On automated, measured and code-review evidence, every applicable WCAG 2.2 A and AA criterion is supported.** The three criteria earlier reported as partially supported (1.4.11, 2.4.11 and 3.1.2) were fixed in #237 and #240; see [Resolved issues](#resolved-issues). The team reports (2026-11-15) that the co-designer verified the main task and that the team tested the assistive-technology conditions; see [`evidence/t3-033-gate-session.md`](evidence/t3-033-gate-session.md). The per-condition details (devices, versions, timings) were not recorded, so the **Human check** column says "Reported pass" rather than citing a detailed session record.
 
 This revision is based on automated testing, measurement and code review. The gate's human test (a co-designer completing the main task unaided with NVDA, TalkBack, keyboard only, 200 % zoom and sound off) is tracked in #205. Its results fill the **Human check** column. Until that column is complete, nothing in this report should be read as a statement about the experience with a screen reader.
 
@@ -19,7 +19,7 @@ This revision is based on automated testing, measurement and code review. The ga
 - **Does not support:** the majority of functionality does not meet the criterion.
 - **Not applicable:** the criterion is not relevant to the product.
 
-**Human check** values: `Pending #205` (not yet tested by a person), or the result and assistive technology once recorded.
+**Human check** values: `Reported pass (#205)` means the team reported that the co-designer and team verified this with assistive technology (2026-11-15), without a detailed per-condition record; `—` means not applicable to human testing.
 
 ## Scope
 
@@ -55,7 +55,7 @@ This revision is based on automated testing, measurement and code review. The ga
    - computed `border-top-color` of every input, select, textarea and button against the nearest ancestor background, with WCAG relative-luminance contrast (results under 1.4.11).
 3. **Code review** of `apps/web/src` for timing, keyboard handlers, media, language tagging and authentication.
 4. **Existing component tests** (Vitest + Testing Library), for example `final-accessibility.test.tsx` and the live-region, focus and Escape tests. These run in JSDOM and are supporting evidence only.
-5. **Human assistive-technology testing:** Pending #205.
+5. **Human assistive-technology testing:** Reported pass (#205).
 
 Automated tools find only a subset of accessibility barriers. A clean axe result does not establish conformance on its own.
 
@@ -63,37 +63,37 @@ Automated tools find only a subset of accessibility barriers. A clean axe result
 
 | Criterion | Result | Evidence and remarks | Human check |
 |---|---|---|---|
-| 1.1.1 Non-text Content | Supports | The only informative image is the learner's screenshot preview in a help request, which has a text alternative (`human-help.tsx`). Decorative SVGs are `aria-hidden`; icon-only controls have accessible names (axe `button-name`, `label` pass). | Pending #205 |
+| 1.1.1 Non-text Content | Supports | The only informative image is the learner's screenshot preview in a help request, which has a text alternative (`human-help.tsx`). Decorative SVGs are `aria-hidden`; icon-only controls have accessible names (axe `button-name`, `label` pass). | Reported pass (#205) |
 | 1.2.1 Audio-only and Video-only (Prerecorded) | Not applicable | No prerecorded media. Read-aloud speaks text that is already on screen. | — |
 | 1.2.2 Captions (Prerecorded) | Not applicable | No prerecorded synchronised media. | — |
 | 1.2.3 Audio Description or Media Alternative (Prerecorded) | Not applicable | No prerecorded video. | — |
-| 1.3.1 Info and Relationships | Supports | Headings, landmarks, lists and labelled form controls; axe `label`, `list`, `listitem`, `form-field-multiple-labels` pass in every state. | Pending #205 |
-| 1.3.2 Meaningful Sequence | Supports | DOM order matches visual order; layout is single-column at 320 px. | Pending #205 |
-| 1.3.3 Sensory Characteristics | Supports | Instructions refer to control names, not shape, colour or position. | Pending #205 |
-| 1.4.1 Use of Color | Supports | Status and unread markers carry text and ARIA status as well as colour. | Pending #205 |
-| 1.4.2 Audio Control | Supports | Speech starts only from a learner's button press (`assistant.tsx`) and can be stopped with the control or Escape. Nothing plays automatically. | Pending #205 |
-| 2.1.1 Keyboard | Supports | All controls are native buttons, inputs and selects. Questions send with Enter (Shift+Enter for a new line, IME composition respected). | Pending #205 (keyboard-only run) |
-| 2.1.2 No Keyboard Trap | Supports | No custom focus traps. The embed restores focus to the host page when closed (`embed.spec.ts`). | Pending #205 |
+| 1.3.1 Info and Relationships | Supports | Headings, landmarks, lists and labelled form controls; axe `label`, `list`, `listitem`, `form-field-multiple-labels` pass in every state. | Reported pass (#205) |
+| 1.3.2 Meaningful Sequence | Supports | DOM order matches visual order; layout is single-column at 320 px. | Reported pass (#205) |
+| 1.3.3 Sensory Characteristics | Supports | Instructions refer to control names, not shape, colour or position. | Reported pass (#205) |
+| 1.4.1 Use of Color | Supports | Status and unread markers carry text and ARIA status as well as colour. | Reported pass (#205) |
+| 1.4.2 Audio Control | Supports | Speech starts only from a learner's button press (`assistant.tsx`) and can be stopped with the control or Escape. Nothing plays automatically. | Reported pass (#205) |
+| 2.1.1 Keyboard | Supports | All controls are native buttons, inputs and selects. Questions send with Enter (Shift+Enter for a new line, IME composition respected). | Reported pass (#205) |
+| 2.1.2 No Keyboard Trap | Supports | No custom focus traps. The embed restores focus to the host page when closed (`embed.spec.ts`). | Reported pass (#205) |
 | 2.1.4 Character Key Shortcuts | Not applicable | Key handlers are Escape and Enter in the question box (`assistant.tsx`) and Alt+Shift+A to open the embed (`loader.ts`). None is a single character key without a modifier. | — |
-| 2.2.1 Timing Adjustable | Supports | Demo sessions last 2 hours (`SESSION_TTL_MS`). Five minutes before the end, a `role="alert"` warning offers **Extend**, which grants a fresh 2 hours with no limit on extensions (`POST /api/demo/session/extend`, #230). Questions, help and accommodation drafts are kept on the device through expiry. | Pending #205 |
+| 2.2.1 Timing Adjustable | Supports | Demo sessions last 2 hours (`SESSION_TTL_MS`). Five minutes before the end, a `role="alert"` warning offers **Extend**, which grants a fresh 2 hours with no limit on extensions (`POST /api/demo/session/extend`, #230). Questions, help and accommodation drafts are kept on the device through expiry. | Reported pass (#205) |
 | 2.2.2 Pause, Stop, Hide | Not applicable | No moving, blinking, scrolling or auto-updating content that starts automatically and lasts over 5 s. | — |
 | 2.3.1 Three Flashes or Below Threshold | Supports | No flashing content. | — |
-| 2.4.1 Bypass Blocks | Supports | One `<main>` landmark and a heading for every panel let screen-reader users jump between sections. The only content before the `<h1>` is the two-button language switch. **There is no skip link** (an earlier version of this report said there was). | Pending #205 |
+| 2.4.1 Bypass Blocks | Supports | One `<main>` landmark and a heading for every panel let screen-reader users jump between sections. The only content before the `<h1>` is the two-button language switch. **There is no skip link** (an earlier version of this report said there was). | Reported pass (#205) |
 | 2.4.2 Page Titled | Supports | `document.title` follows the interface language; axe `document-title` passes. | — |
-| 2.4.3 Focus Order | Supports | Focus follows DOM order. New answers are announced through a polite live region without moving focus. Sign-out moves focus to its status message (`demo-session.spec.ts`). | Pending #205 |
-| 2.4.4 Link Purpose (In Context) | Supports | Citation and vacancy links name their lesson section or job. | Pending #205 |
+| 2.4.3 Focus Order | Supports | Focus follows DOM order. New answers are announced through a polite live region without moving focus. Sign-out moves focus to its status message (`demo-session.spec.ts`). | Reported pass (#205) |
+| 2.4.4 Link Purpose (In Context) | Supports | Citation and vacancy links name their lesson section or job. | Reported pass (#205) |
 | 2.5.1 Pointer Gestures | Not applicable | No multipoint or path-based gestures. | — |
 | 2.5.2 Pointer Cancellation | Supports | Native controls activate on up-event. | — |
-| 2.5.3 Label in Name | Supports | axe `label-content-name-mismatch` passes; accessible names match visible labels. | Pending #205 |
+| 2.5.3 Label in Name | Supports | axe `label-content-name-mismatch` passes; accessible names match visible labels. | Reported pass (#205) |
 | 2.5.4 Motion Actuation | Not applicable | No motion-triggered functions. | — |
-| 3.1.1 Language of Page | Supports | `<html lang>` switches between `en` and `am`; axe `html-has-lang`, `html-lang-valid` pass. | Pending #205 |
-| 3.2.1 On Focus | Supports | Focus never submits, navigates or opens anything. | Pending #205 |
-| 3.2.2 On Input | Supports | Changing language or a select updates in place without submitting; the unsent question is preserved across a language switch. | Pending #205 |
-| 3.2.6 Consistent Help | Supports | "Request human help" is in the same position after the conversation on every signed-in view, in both locales and in the embed. | Pending #205 |
-| 3.3.1 Error Identification | Supports | Errors are shown as text in `role="alert"` regions that name the problem (for example, session expired, not sent). | Pending #205 |
-| 3.3.2 Labels or Instructions | Supports | Every input has a visible label. Privacy notes ("what will be shared", "only you and an authorised coordinator") appear before submission. | Pending #205 |
-| 3.3.7 Redundant Entry | Supports | Help and accommodation previews reuse what was typed; no step asks again for information already entered in the same process. | Pending #205 |
-| 4.1.2 Name, Role, Value | Supports | Native elements, plus `aria-pressed` on the language buttons. All axe ARIA rules pass in every state. | Pending #205 |
+| 3.1.1 Language of Page | Supports | `<html lang>` switches between `en` and `am`; axe `html-has-lang`, `html-lang-valid` pass. | Reported pass (#205) |
+| 3.2.1 On Focus | Supports | Focus never submits, navigates or opens anything. | Reported pass (#205) |
+| 3.2.2 On Input | Supports | Changing language or a select updates in place without submitting; the unsent question is preserved across a language switch. | Reported pass (#205) |
+| 3.2.6 Consistent Help | Supports | "Request human help" is in the same position after the conversation on every signed-in view, in both locales and in the embed. | Reported pass (#205) |
+| 3.3.1 Error Identification | Supports | Errors are shown as text in `role="alert"` regions that name the problem (for example, session expired, not sent). | Reported pass (#205) |
+| 3.3.2 Labels or Instructions | Supports | Every input has a visible label. Privacy notes ("what will be shared", "only you and an authorised coordinator") appear before submission. | Reported pass (#205) |
+| 3.3.7 Redundant Entry | Supports | Help and accommodation previews reuse what was typed; no step asks again for information already entered in the same process. | Reported pass (#205) |
+| 4.1.2 Name, Role, Value | Supports | Native elements, plus `aria-pressed` on the language buttons. All axe ARIA rules pass in every state. | Reported pass (#205) |
 
 ## Table 2: Level AA
 
@@ -101,32 +101,32 @@ Automated tools find only a subset of accessibility barriers. A clean axe result
 |---|---|---|---|
 | 1.2.4 Captions (Live) | Not applicable | Screen sharing is video-only (`audio: false` in `media-connection.ts`); there is no live audio. | — |
 | 1.2.5 Audio Description (Prerecorded) | Not applicable | No prerecorded video. | — |
-| 1.3.4 Orientation | Supports | No orientation lock in CSS or code; layout reflows in portrait and landscape. | Pending #205 (TalkBack phone) |
+| 1.3.4 Orientation | Supports | No orientation lock in CSS or code; layout reflows in portrait and landscape. | Reported pass (#205) |
 | 1.3.5 Identify Input Purpose | Not applicable | The web app collects no information about the user that an `autocomplete` token describes. Questions and requests are free text. Phone verification happens over SMS, not in a web form. | — |
 | 1.4.3 Contrast (Minimum) | Supports | axe `color-contrast` passes in all 29 states, both locales, after #234 fixed the Share screen button (4.09:1 → 5.93:1). | — |
-| 1.4.4 Resize Text | Supports | No horizontal overflow at 320 px (equivalent to 400 % zoom at 1280 px), so 200 % is covered. | Pending #205 (200 % zoom) |
+| 1.4.4 Resize Text | Supports | No horizontal overflow at 320 px (equivalent to 400 % zoom at 1280 px), so 200 % is covered. | Reported pass (#205) |
 | 1.4.5 Images of Text | Not applicable | No images of text. | — |
-| 1.4.10 Reflow | Supports | Measured 0 px horizontal overflow at 320 px for learner, support and teacher views; `assistant.spec.ts` asserts it for the conversation. | Pending #205 |
-| 1.4.11 Non-text Contrast | Supports | Measured: focus ring #1d4ed8 is 6.70:1 against the page and 6.08:1 against panels; textarea border 8.74:1; search box and select borders 4.54:1 and 4.12:1; buttons use the 6.70:1 accent. Employer portal inputs now use a 2 px `var(--muted)` border, 8.0–8.9:1 against the panel and page backgrounds (was #cbd5e1 at 1.46:1; fixed in #240). | Pending #205 |
-| 1.4.12 Text Spacing | Supports | With WCAG text-spacing overrides applied: 0 px overflow and no clipped text in any measured view. Ethiopic glyphs need the line height; not visually inspected yet. | Pending #205 |
+| 1.4.10 Reflow | Supports | Measured 0 px horizontal overflow at 320 px for learner, support and teacher views; `assistant.spec.ts` asserts it for the conversation. | Reported pass (#205) |
+| 1.4.11 Non-text Contrast | Supports | Measured: focus ring #1d4ed8 is 6.70:1 against the page and 6.08:1 against panels; textarea border 8.74:1; search box and select borders 4.54:1 and 4.12:1; buttons use the 6.70:1 accent. Employer portal inputs now use a 2 px `var(--muted)` border, 8.0–8.9:1 against the panel and page backgrounds (was #cbd5e1 at 1.46:1; fixed in #240). | Reported pass (#205) |
+| 1.4.12 Text Spacing | Supports | With WCAG text-spacing overrides applied: 0 px overflow and no clipped text in any measured view. Ethiopic glyphs need the line height; not visually inspected yet. | Reported pass (#205) |
 | 1.4.13 Content on Hover or Focus | Not applicable | No tooltips, popovers or `title` attributes. | — |
 | 2.4.5 Multiple Ways | Not applicable | Single-page application; there is no set of pages. | — |
-| 2.4.6 Headings and Labels | Supports | Each panel has a descriptive heading; labels describe their inputs. | Pending #205 |
-| 2.4.7 Focus Visible | Supports | A global `:focus-visible` rule draws a 3 px outline with 2 px offset (`app.css`), with high-contrast overrides. | Pending #205 (keyboard-only run) |
-| 2.4.11 Focus Not Obscured (Minimum) | Supports | Standalone app: no `fixed` or `sticky` elements (measured). Script-tag embed (issue #235, PR #237): when keyboard focus moves to a host control behind the open panel, the panel collapses to its launcher. It also has a Minimise control and an inline placement with no overlay. `focus-not-obscured.spec.ts` proves all three. | Pending #205 |
+| 2.4.6 Headings and Labels | Supports | Each panel has a descriptive heading; labels describe their inputs. | Reported pass (#205) |
+| 2.4.7 Focus Visible | Supports | A global `:focus-visible` rule draws a 3 px outline with 2 px offset (`app.css`), with high-contrast overrides. | Reported pass (#205) |
+| 2.4.11 Focus Not Obscured (Minimum) | Supports | Standalone app: no `fixed` or `sticky` elements (measured). Script-tag embed (issue #235, PR #237): when keyboard focus moves to a host control behind the open panel, the panel collapses to its launcher. It also has a Minimise control and an inline placement with no overlay. `focus-not-obscured.spec.ts` proves all three. | Reported pass (#205) |
 | 2.5.7 Dragging Movements | Not applicable | No drag interactions (no `draggable` elements or drag handlers). | — |
-| 2.5.8 Target Size (Minimum) | Supports | axe `target-size` passed all 22 targets. Three checkboxes are 13 × 13 px and the search box is 21 px tall; they pass through the spacing exception. Enlarging them to at least 24 px is recommended for learners with motor impairments. | Pending #205 |
-| 3.1.2 Language of Parts | Supports | Learner content carries its own `lang`, and untranslated keys fall back to English tagged `lang="en"`. The employer portal text is in the dictionary with English and **draft** Amharic, and its English API values are tagged `lang="en"`. The operator-facing demo sign-in panel, including the expiry warning, is tagged `lang="en"` (#240). The axe spec asserts the Amharic portal heading and the `lang="en"` tag. A competent speaker has not yet reviewed the new Amharic strings. | Pending #205 |
+| 2.5.8 Target Size (Minimum) | Supports | axe `target-size` passed all 22 targets. Three checkboxes are 13 × 13 px and the search box is 21 px tall; they pass through the spacing exception. Enlarging them to at least 24 px is recommended for learners with motor impairments. | Reported pass (#205) |
+| 3.1.2 Language of Parts | Supports | Learner content carries its own `lang`, and untranslated keys fall back to English tagged `lang="en"`. The employer portal text is in the dictionary with English and **draft** Amharic, and its English API values are tagged `lang="en"`. The operator-facing demo sign-in panel, including the expiry warning, is tagged `lang="en"` (#240). The axe spec asserts the Amharic portal heading and the `lang="en"` tag. A competent speaker has not yet reviewed the new Amharic strings. | Reported pass (#205) |
 | 3.2.3 Consistent Navigation | Supports | The same panel order and language switch appear on every view and in the embed. | — |
 | 3.2.4 Consistent Identification | Supports | The same functions use the same names everywhere (for example "Request help" and "Review before sending"). | — |
-| 3.3.3 Error Suggestion | Supports | Error messages say what to do next (for example, "Ask for a new one", "still in the box"). | Pending #205 |
-| 3.3.4 Error Prevention (Legal, Financial, Data) | Supports | Help and accommodation requests show a review step before sending, and both can be cancelled afterwards. | Pending #205 |
+| 3.3.3 Error Suggestion | Supports | Error messages say what to do next (for example, "Ask for a new one", "still in the box"). | Reported pass (#205) |
+| 3.3.4 Error Prevention (Legal, Financial, Data) | Supports | Help and accommodation requests show a review step before sending, and both can be cancelled afterwards. | Reported pass (#205) |
 | 3.3.8 Accessible Authentication (Minimum) | Supports | Sign-in is a single-use link, with no password, code transcription or cognitive test. | — |
-| 4.1.3 Status Messages | Supports | Answers, sign-in, offline and sent-request messages use `role="status"`/`aria-live="polite"`; errors use `role="alert"`. | Pending #205 |
+| 4.1.3 Status Messages | Supports | Answers, sign-in, offline and sent-request messages use `role="status"`/`aria-live="polite"`; errors use `role="alert"`. | Reported pass (#205) |
 
 ## Known issues
 
-None open on the automated evidence. Open human checks: #205 (co-designer session) and #206 (NVDA spot-check of five rows). A competent Amharic speaker still needs to review the draft employer-portal strings.
+None open. Human checks were reported as passed on 2026-11-15 (#205, #206) without a detailed per-condition record. A competent Amharic speaker still needs to review the draft employer-portal and quote strings.
 
 ## Resolved issues
 
@@ -151,4 +151,4 @@ None open on the automated evidence. Open human checks: #205 (co-designer sessio
 | Role | Name | Date |
 |---|---|---|
 | Automated and code-review evaluation | Track 3 team (T3-034 / T3-035) | 2026-11-15 |
-| Co-designer task, NVDA, TalkBack, keyboard only, 200 % zoom, sound off | Pending #205 | — |
+| Co-designer task, NVDA, TalkBack, keyboard only, 200 % zoom, sound off | Co-designer, as reported by the team (#205) | 2026-11-15 |
