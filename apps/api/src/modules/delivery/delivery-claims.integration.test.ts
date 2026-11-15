@@ -306,12 +306,12 @@ describe('DeliveryWorker processBatch execution', () => {
     const result = await worker.processBatch(T0, () => {
       invocation++;
       if (invocation === 1) {
-        return Promise.resolve('complete' as const);
+        return Promise.resolve('complete');
       } else if (invocation === 2) {
-        return Promise.resolve('release' as const);
+        return Promise.resolve('release');
       } else {
         // Crash or unhandled failure
-        throw new Error('Simulated processing crash');
+        return Promise.reject(new Error('Simulated processing crash'));
       }
     });
 

@@ -23,12 +23,14 @@ async function ask(page: Page, scenario: string, question: string) {
 test('a keyboard user can ask and hear the reply without losing focus', async ({ page }) => {
   await page.goto('/');
 
-  // Tab order: the two language buttons, the scenario selector, then the question box.
+  // Tab order: the two language buttons, the scenario selector, speech engine selector, then the question box.
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'English' })).toBeFocused();
   await page.keyboard.press('Tab');
   await page.keyboard.press('Tab');
   await expect(page.getByLabel('Demo reply scenario')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByLabel('Speech output engine')).toBeFocused();
   await page.keyboard.press('Tab');
   const question = page.getByLabel('Your question');
   await expect(question).toBeFocused();
