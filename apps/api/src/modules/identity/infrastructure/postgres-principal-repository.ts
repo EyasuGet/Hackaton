@@ -15,7 +15,8 @@ interface PrincipalRow {
 
 function toRole(value: string): Role {
   // The table's CHECK constraint guarantees this; fail loudly if it is ever bypassed.
-  if (value !== 'learner' && value !== 'support') throw new Error('Unknown principal role');
+  if (value !== 'learner' && value !== 'support' && value !== 'teacher')
+    throw new Error('Unknown principal role');
   return value;
 }
 
@@ -65,6 +66,7 @@ export const DEMO_PRINCIPALS = [
     courseIds: ['course-1', 'course-2'],
   },
   { key: 'support', role: 'support', label: 'Demo support person', courseIds: [] },
+  { key: 'teacher', role: 'teacher', label: 'Demo teacher', courseIds: ['course-1'] },
 ] as const satisfies readonly {
   key: string;
   role: Role;
