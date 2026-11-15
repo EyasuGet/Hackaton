@@ -3,7 +3,12 @@
 // read any non-expired request by ID, view the coordinator queue, update request status,
 // and exchange private replies with the requesting learner.
 // Attempts to access another learner's record return 404 to avoid leaking existence.
-import type { FastifyInstance, FastifyReply, FastifyRequest, preHandlerAsyncHookHandler } from 'fastify';
+import type {
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  preHandlerAsyncHookHandler,
+} from 'fastify';
 import { principalOf, requireRole } from '../../../identity/presentation/http/authentication.ts';
 import type { Accommodation } from '../../application/accommodation.ts';
 
@@ -158,12 +163,7 @@ export function registerAccommodationRoutes(
       }
 
       const principal = principalOf(request);
-      const result = await accommodation.addReply(
-        principal,
-        id,
-        clientReplyId.trim(),
-        body.trim(),
-      );
+      const result = await accommodation.addReply(principal, id, clientReplyId.trim(), body.trim());
 
       if (!result) return reply.code(409).send({ error: 'terminal_or_not_found' });
       const statusCode = result.kind === 'added' ? 201 : 200;

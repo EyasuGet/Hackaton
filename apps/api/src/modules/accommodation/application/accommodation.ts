@@ -4,10 +4,7 @@
 // may read accommodation content; no other role has access.
 // Authorised coordinators (support role) can list all requests, update status, and exchange private replies.
 import { ownedScope, type Principal } from '../../identity/domain/principal.ts';
-import type {
-  AccommodationReply,
-  AccommodationRequest,
-} from '../domain/accommodation-request.ts';
+import type { AccommodationReply, AccommodationRequest } from '../domain/accommodation-request.ts';
 import type {
   AccommodationRepository,
   AddAccommodationReplyResult,

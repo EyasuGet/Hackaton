@@ -10,12 +10,7 @@ export interface Job {
   readonly sourceUrl: string;
 }
 
-export type AccommodationState =
-  | 'waiting'
-  | 'reviewing'
-  | 'confirmed'
-  | 'declined'
-  | 'cancelled';
+export type AccommodationState = 'waiting' | 'reviewing' | 'confirmed' | 'declined' | 'cancelled';
 
 export interface AccommodationRequest {
   readonly id: string;
@@ -43,8 +38,7 @@ export interface AccommodationReply {
 }
 
 export type JobsResult =
-  | { readonly kind: 'ok'; readonly jobs: readonly Job[] }
-  | { readonly kind: 'denied' | 'failed' };
+  { readonly kind: 'ok'; readonly jobs: readonly Job[] } | { readonly kind: 'denied' | 'failed' };
 
 export type SubmitResult =
   | { readonly kind: 'submitted' | 'existing'; readonly request: AccommodationRequest }
@@ -248,7 +242,9 @@ export async function listAccommodationRequests(token: string): Promise<ListRequ
 }
 
 /** Lists all accommodation requests for an authorised coordinator (support role). */
-export async function listCoordinatorAccommodationRequests(token: string): Promise<ListRequestsResult> {
+export async function listCoordinatorAccommodationRequests(
+  token: string,
+): Promise<ListRequestsResult> {
   try {
     const response = await fetch('/api/accommodation/coordinator/requests', {
       headers: { authorization: `Bearer ${token}` },
@@ -282,7 +278,8 @@ export async function updateAccommodationStatus(
       body: JSON.stringify({ status }),
     });
     if (response.status === 401 || response.status === 403) return { kind: 'denied' };
-    if (response.status === 404 || response.status === 409) return { kind: 'terminal_or_not_found' };
+    if (response.status === 404 || response.status === 409)
+      return { kind: 'terminal_or_not_found' };
     if (!response.ok) return { kind: 'failed' };
     const body: unknown = await response.json();
     if (!isRecord(body)) return { kind: 'failed' };
@@ -311,7 +308,8 @@ export async function addAccommodationReply(
       body: JSON.stringify({ clientReplyId, body: bodyText }),
     });
     if (response.status === 401 || response.status === 403) return { kind: 'denied' };
-    if (response.status === 404 || response.status === 409) return { kind: 'terminal_or_not_found' };
+    if (response.status === 404 || response.status === 409)
+      return { kind: 'terminal_or_not_found' };
     if (!response.ok) return { kind: 'failed' };
     const body: unknown = await response.json();
     if (!isRecord(body)) return { kind: 'failed' };
