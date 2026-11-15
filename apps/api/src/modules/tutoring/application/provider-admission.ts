@@ -3,16 +3,13 @@
 // per-user fairness, and input size bounds across answer and speech invocations.
 // Guarantees immediate capacity release on completion, failure, timeout, and cancellation.
 
-import {
-  DEFAULT_PROVIDER_LIMITS,
-  type ProviderLimitsConfig,
-} from '../../../bootstrap/config.ts';
+import { DEFAULT_PROVIDER_LIMITS, type ProviderLimitsConfig } from '../../../bootstrap/config.ts';
 
 export type AdmissionErrorCode = 'busy' | 'rate_limited' | 'input_too_large' | 'timeout';
 
 export class ProviderAdmissionError extends Error {
   readonly code: AdmissionErrorCode;
-  readonly retryAfterSeconds?: number;
+  readonly retryAfterSeconds?: number | undefined;
 
   constructor(code: AdmissionErrorCode, message: string, retryAfterSeconds?: number) {
     super(message);
@@ -104,17 +101,17 @@ export class ProviderAdmissionController {
     const windowStart = now - this.limits.rateLimitWindowMs;
 
     // 1. Prune expired global timestamps
-    while (
-      this.#globalRateTimestamps.length > 0 &&
-      this.#globalRateTimestamps[0]! <= windowStart
-    ) {
+    while (this.#globalRateTimestamps.length > 0 && this.#globalRateTimestamps[0]! <= windowStart) {
       this.#globalRateTimestamps.shift();
     }
 
     // 2. Check global rate limit
     if (this.#globalRateTimestamps.length >= this.limits.rateLimitMaxRequests) {
       const oldest = this.#globalRateTimestamps[0]!;
-      const retryAfter = Math.max(1, Math.ceil((oldest + this.limits.rateLimitWindowMs - now) / 1000));
+      const retryAfter = Math.max(
+        1,
+        Math.ceil((oldest + this.limits.rateLimitWindowMs - now) / 1000),
+      );
       throw new ProviderAdmissionError(
         'rate_limited',
         'Global provider rate limit reached. Please wait before submitting more requests.',
@@ -134,7 +131,10 @@ export class ProviderAdmissionController {
     // 4. Check per-learner rate limit
     if (prunedLearnerTimestamps.length >= this.limits.rateLimitPerLearnerMaxRequests) {
       const oldest = prunedLearnerTimestamps[0]!;
-      const retryAfter = Math.max(1, Math.ceil((oldest + this.limits.rateLimitWindowMs - now) / 1000));
+      const retryAfter = Math.max(
+        1,
+        Math.ceil((oldest + this.limits.rateLimitWindowMs - now) / 1000),
+      );
       throw new ProviderAdmissionError(
         'rate_limited',
         'Learner rate limit reached. Please wait before submitting more requests.',
@@ -166,8 +166,7 @@ export class ProviderAdmissionController {
     // queue item is already eligible for that slot (fair FIFO).
     const hasEligibleQueuedItem = this.#queue.some(
       (item) =>
-        (this.#activePerLearner.get(item.learnerId) ?? 0) <
-        this.limits.maxPerLearnerConcurrency,
+        (this.#activePerLearner.get(item.learnerId) ?? 0) < this.limits.maxPerLearnerConcurrency,
     );
 
     const canRunImmediately =

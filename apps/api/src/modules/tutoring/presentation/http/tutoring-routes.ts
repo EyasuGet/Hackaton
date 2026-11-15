@@ -84,25 +84,19 @@ export function registerTutoringRoutes(
       if (err instanceof TutoringError) {
         if (err.code === 'busy') {
           const retryAfter = err.retryAfterSeconds ?? 3;
-          return reply
-            .code(503)
-            .header('Retry-After', String(retryAfter))
-            .send({
-              error: 'busy',
-              message: err.message,
-              retryAfterSeconds: retryAfter,
-            });
+          return reply.code(503).header('Retry-After', String(retryAfter)).send({
+            error: 'busy',
+            message: err.message,
+            retryAfterSeconds: retryAfter,
+          });
         }
         if (err.code === 'rate_limited') {
           const retryAfter = err.retryAfterSeconds ?? 5;
-          return reply
-            .code(429)
-            .header('Retry-After', String(retryAfter))
-            .send({
-              error: 'rate_limited',
-              message: err.message,
-              retryAfterSeconds: retryAfter,
-            });
+          return reply.code(429).header('Retry-After', String(retryAfter)).send({
+            error: 'rate_limited',
+            message: err.message,
+            retryAfterSeconds: retryAfter,
+          });
         }
         if (err.code === 'input_too_large') {
           return reply.code(400).send({

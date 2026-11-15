@@ -2,7 +2,7 @@
 // Non-learner principals have no scope and receive null or empty results.
 // Integrates FaqProvider and OnlineAnswerProvider with explicit consent,
 // authorized retrieval, and truthful failure/limitation states (T3-007-A & T3-007-C).
-import type { JobAnswers } from '../../careers/application/job-answers.ts';
+import { JobAnswers } from '../../careers/application/job-answers.ts';
 import type { ContentAccess } from '../../content/application/content-access.ts';
 import { ownedScope, type OwnedScope, type Principal } from '../../identity/domain/principal.ts';
 import type { TutoringConversation } from '../domain/conversation.ts';
@@ -80,13 +80,29 @@ export class Tutoring {
     faqProvider?: FaqProvider,
     onlineProvider?: OnlineAnswerProvider,
     content?: ContentAccess,
-    admissionController?: ProviderAdmissionController,
-    jobAnswers?: JobAnswers,
+    admissionControllerOrJobAnswers?: ProviderAdmissionController | JobAnswers,
+    jobAnswersOrAdmissionController?: JobAnswers | ProviderAdmissionController,
   ) {
     this.#repository = repository;
     this.#faqProvider = faqProvider;
     this.#onlineProvider = onlineProvider;
     this.#content = content;
+
+    let admissionController: ProviderAdmissionController | undefined;
+    let jobAnswers: JobAnswers | undefined;
+
+    if (admissionControllerOrJobAnswers instanceof ProviderAdmissionController) {
+      admissionController = admissionControllerOrJobAnswers;
+    } else if (admissionControllerOrJobAnswers instanceof JobAnswers) {
+      jobAnswers = admissionControllerOrJobAnswers;
+    }
+
+    if (jobAnswersOrAdmissionController instanceof ProviderAdmissionController) {
+      admissionController = jobAnswersOrAdmissionController;
+    } else if (jobAnswersOrAdmissionController instanceof JobAnswers) {
+      jobAnswers = jobAnswersOrAdmissionController;
+    }
+
     this.#admissionController = admissionController ?? new ProviderAdmissionController();
     this.#jobAnswers = jobAnswers;
   }
@@ -305,84 +321,84 @@ export class Tutoring {
         );
       }
 
-    // 1. Reject invented citation IDs
-    const validSectionIds = new Set(coursePassages.map((p) => p.sectionId));
-    const invented = onlineResponse.citedPassageIds.filter((id) => !validSectionIds.has(id));
-    if (invented.length > 0) {
-      await this.#repository.recordOutcome(scope, request.id, {
-        state: 'recoverable_failure',
-        errorReason: 'invented_citation',
-      });
-      throw new TutoringError(
-        'invented_citation',
-        `Online provider produced fabricated citation IDs: [${invented.join(', ')}]`,
-      );
-    }
-
-    // 2. Reject unsupported output (citations on honest limitation)
-    if (
-      onlineResponse.outcome === 'honest_limitation' &&
-      onlineResponse.citedPassageIds.length > 0
-    ) {
-      await this.#repository.recordOutcome(scope, request.id, {
-        state: 'recoverable_failure',
-        errorReason: 'unsupported_output',
-      });
-      throw new TutoringError(
-        'unsupported_output',
-        'Online provider attached citations to an honest limitation',
-      );
-    }
-
-    // 3. Verify citations against ContentAccess
-    const verifiedCitations: FaqCitation[] = [];
-    if (this.#content) {
-      for (const citedId of onlineResponse.citedPassageIds) {
-        const passage = coursePassages.find((p) => p.sectionId === citedId);
-        if (!passage) continue;
-        const resolved = await this.#content.resolve(
-          principal,
-          passage.sourceId,
-          passage.sectionId,
+      // 1. Reject invented citation IDs
+      const validSectionIds = new Set(coursePassages.map((p) => p.sectionId));
+      const invented = onlineResponse.citedPassageIds.filter((id) => !validSectionIds.has(id));
+      if (invented.length > 0) {
+        await this.#repository.recordOutcome(scope, request.id, {
+          state: 'recoverable_failure',
+          errorReason: 'invented_citation',
+        });
+        throw new TutoringError(
+          'invented_citation',
+          `Online provider produced fabricated citation IDs: [${invented.join(', ')}]`,
         );
-        if (resolved.kind === 'section') {
-          verifiedCitations.push({
-            sourceId: passage.sourceId,
-            sectionId: passage.sectionId,
-            sourceTitle: passage.sourceTitle,
-            heading: passage.heading,
-          });
+      }
+
+      // 2. Reject unsupported output (citations on honest limitation)
+      if (
+        onlineResponse.outcome === 'honest_limitation' &&
+        onlineResponse.citedPassageIds.length > 0
+      ) {
+        await this.#repository.recordOutcome(scope, request.id, {
+          state: 'recoverable_failure',
+          errorReason: 'unsupported_output',
+        });
+        throw new TutoringError(
+          'unsupported_output',
+          'Online provider attached citations to an honest limitation',
+        );
+      }
+
+      // 3. Verify citations against ContentAccess
+      const verifiedCitations: FaqCitation[] = [];
+      if (this.#content) {
+        for (const citedId of onlineResponse.citedPassageIds) {
+          const passage = coursePassages.find((p) => p.sectionId === citedId);
+          if (!passage) continue;
+          const resolved = await this.#content.resolve(
+            principal,
+            passage.sourceId,
+            passage.sectionId,
+          );
+          if (resolved.kind === 'section') {
+            verifiedCitations.push({
+              sourceId: passage.sourceId,
+              sectionId: passage.sectionId,
+              sourceTitle: passage.sourceTitle,
+              heading: passage.heading,
+            });
+          }
         }
       }
-    }
 
-    if (onlineResponse.citedPassageIds.length > 0 && verifiedCitations.length === 0) {
-      await this.#repository.recordOutcome(scope, request.id, {
-        state: 'recoverable_failure',
-        errorReason: 'unverified_citation',
+      if (onlineResponse.citedPassageIds.length > 0 && verifiedCitations.length === 0) {
+        await this.#repository.recordOutcome(scope, request.id, {
+          state: 'recoverable_failure',
+          errorReason: 'unverified_citation',
+        });
+        throw new TutoringError(
+          'unverified_citation',
+          'None of the cited sections could be verified',
+        );
+      }
+
+      const kind =
+        onlineResponse.outcome === 'honest_limitation' ? 'insufficient_evidence' : 'answered';
+      const updated = await this.#repository.recordOutcome(scope, request.id, {
+        state: 'completed',
+        answerText: onlineResponse.answer,
+        answerLang: lang,
       });
-      throw new TutoringError(
-        'unverified_citation',
-        'None of the cited sections could be verified',
-      );
-    }
 
-    const kind =
-      onlineResponse.outcome === 'honest_limitation' ? 'insufficient_evidence' : 'answered';
-    const updated = await this.#repository.recordOutcome(scope, request.id, {
-      state: 'completed',
-      answerText: onlineResponse.answer,
-      answerLang: lang,
-    });
-
-    return {
-      request: updated ?? request,
-      answerText: onlineResponse.answer,
-      answerLang: lang,
-      kind,
-      provider: 'online',
-      citations: verifiedCitations,
-    };
+      return {
+        request: updated ?? request,
+        answerText: onlineResponse.answer,
+        answerLang: lang,
+        kind,
+        provider: 'online',
+        citations: verifiedCitations,
+      };
     } finally {
       lease.release();
     }

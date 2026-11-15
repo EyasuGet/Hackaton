@@ -4,10 +4,7 @@
 // without live-provider costs.
 
 import { describe, expect, it } from 'vitest';
-import {
-  ProviderAdmissionController,
-  ProviderAdmissionError,
-} from './provider-admission.ts';
+import { ProviderAdmissionController, ProviderAdmissionError } from './provider-admission.ts';
 
 describe('ProviderAdmissionController (T3-024-C)', () => {
   describe('Input size bounds', () => {
@@ -17,7 +14,9 @@ describe('ProviderAdmissionController (T3-024-C)', () => {
 
       const oversized = 'A'.repeat(51);
       expect(() => controller.assertQuestionSize(oversized)).toThrow(ProviderAdmissionError);
-      expect(() => controller.assertQuestionSize(oversized)).toThrow('exceeds maximum allowed length');
+      expect(() => controller.assertQuestionSize(oversized)).toThrow(
+        'exceeds maximum allowed length',
+      );
     });
 
     it('accepts speech text within limits and rejects oversized speech inputs', () => {
@@ -26,7 +25,9 @@ describe('ProviderAdmissionController (T3-024-C)', () => {
 
       const oversized = 'B'.repeat(61);
       expect(() => controller.assertSpeechTextSize(oversized)).toThrow(ProviderAdmissionError);
-      expect(() => controller.assertSpeechTextSize(oversized)).toThrow('exceeds maximum allowed length');
+      expect(() => controller.assertSpeechTextSize(oversized)).toThrow(
+        'exceeds maximum allowed length',
+      );
     });
   });
 
@@ -75,9 +76,9 @@ describe('ProviderAdmissionController (T3-024-C)', () => {
 
       // Execute a failing task
       await expect(
-        controller.execute('learner-1', async () => {
+        controller.execute('learner-1', () => {
           expect(controller.activeCount).toBe(1);
-          throw new Error('Synthetic provider breakdown');
+          return Promise.reject(new Error('Synthetic provider breakdown'));
         }),
       ).rejects.toThrow('Synthetic provider breakdown');
 
@@ -85,7 +86,7 @@ describe('ProviderAdmissionController (T3-024-C)', () => {
       expect(controller.activeCount).toBe(0);
 
       // Subsequent request can acquire immediately
-      const result = await controller.execute('learner-1', async () => 'recovered');
+      const result = await controller.execute('learner-1', () => Promise.resolve('recovered'));
       expect(result).toBe('recovered');
       expect(controller.activeCount).toBe(0);
     });

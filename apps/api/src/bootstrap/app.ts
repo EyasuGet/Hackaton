@@ -166,8 +166,7 @@ export function buildApp(
   if (dependencies.telegramService) {
     registerTelegramRoutes(app, dependencies.resolvePrincipal, dependencies.telegramService);
   }
-  const admission =
-    dependencies.admissionController ?? dependencies.tutoring.admissionController;
+  const admission = dependencies.admissionController ?? dependencies.tutoring.admissionController;
   registerSpeechRoutes(
     app,
     authenticate(dependencies.resolvePrincipal),
