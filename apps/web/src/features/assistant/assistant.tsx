@@ -29,7 +29,11 @@ interface Entry {
   readonly lang?: string;
   readonly createdAt?: string;
   readonly citations?: readonly Citation[];
-  readonly provider?: 'online' | 'faq' | 'job';
+  readonly provider?: 'online' | 'faq' | 'job' | 'external_web_research';
+  readonly provenance?: {
+    readonly kind: string;
+    readonly disclaimer?: string;
+  };
 }
 
 type Problem = 'empty' | 'denied' | 'failed';
@@ -89,6 +93,7 @@ function MessageDate({
 
 export interface AssistantProps {
   readonly client: ConversationClient;
+  readonly researchClient?: ConversationClient;
   readonly mode?: 'demo' | 'faq' | 'online';
   readonly speechSynthesizer?: SpeechSynthesizer;
   readonly cloudSynthesizer?: SpeechSynthesizer;
@@ -98,10 +103,13 @@ export interface AssistantProps {
   readonly consent?: boolean;
   readonly onConsentChange?: (consented: boolean) => void;
   readonly audioRecorder?: AudioRecorder;
+  readonly researchMode?: boolean;
+  readonly onResearchModeChange?: (enabled: boolean) => void;
 }
 
 export function Assistant({
   client,
+  researchClient,
   mode = 'demo',
   speechSynthesizer,
   cloudSynthesizer,
@@ -111,6 +119,8 @@ export function Assistant({
   consent,
   onConsentChange,
   audioRecorder,
+  researchMode,
+  onResearchModeChange,
 }: AssistantProps) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [draft, setDraft] = useState('');
@@ -126,6 +136,14 @@ export function Assistant({
   }
   const recorder = audioRecorder ?? recorderRef.current;
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Career web research mode state (T3-028-B, disabled by default)
+  const [internalResearchMode, setInternalResearchMode] = useState(false);
+  const isResearchMode = researchMode ?? internalResearchMode;
+  const setResearchMode = (enabled: boolean) => {
+    setInternalResearchMode(enabled);
+    onResearchModeChange?.(enabled);
+  };
 
   // Speech playback and consented cloud synthesis state (T3-011)
   const [speechEngine, setSpeechEngine] = useState<'client' | 'cloud'>(defaultSpeechEngine);
@@ -157,6 +175,8 @@ export function Assistant({
     speechEngine: useId(),
     voiceRegion: useId(),
     voiceProblem: useId(),
+    researchMode: useId(),
+    researchModeHint: useId(),
   };
   const t = useT();
   const locale = useContext(LocaleContext);
@@ -404,7 +424,8 @@ export function Assistant({
 
     let result: AskResult;
     try {
-      result = await client.ask(question);
+      const activeClient = isResearchMode && researchClient ? researchClient : client;
+      result = await activeClient.ask(question);
     } catch {
       // The contract says ask() must not reject; if one does, never leave the form stuck.
       result = { kind: 'failed' };
@@ -434,6 +455,7 @@ export function Assistant({
         createdAt: reply.createdAt,
         ...(reply.citations ? { citations: reply.citations } : {}),
         ...(reply.provider ? { provider: reply.provider } : {}),
+        ...(reply.provenance ? { provenance: reply.provenance } : {}),
       },
     ]);
     setDraft('');
@@ -502,16 +524,24 @@ export function Assistant({
         <T k="assistant.heading" />
       </h2>
 
-      {mode === 'faq' && (
-        <p className="assistant-mode-notice" role="note">
-          <T k="assistant.modeNotice" />
+      {isResearchMode ? (
+        <p className="assistant-mode-notice assistant-research-notice" role="note">
+          <T k="assistant.researchModeNotice" />
         </p>
-      )}
+      ) : (
+        <>
+          {mode === 'faq' && (
+            <p className="assistant-mode-notice" role="note">
+              <T k="assistant.modeNotice" />
+            </p>
+          )}
 
-      {mode === 'online' && (
-        <p className="assistant-mode-notice" role="note">
-          <T k="assistant.onlineModeNotice" />
-        </p>
+          {mode === 'online' && (
+            <p className="assistant-mode-notice" role="note">
+              <T k="assistant.onlineModeNotice" />
+            </p>
+          )}
+        </>
       )}
 
       {onConsentChange && (
@@ -531,6 +561,22 @@ export function Assistant({
           </p>
         </div>
       )}
+
+      <div className="assistant-research-control">
+        <label htmlFor={ids.researchMode}>
+          <input
+            id={ids.researchMode}
+            type="checkbox"
+            checked={isResearchMode}
+            aria-describedby={ids.researchModeHint}
+            onChange={(e) => setResearchMode(e.target.checked)}
+          />
+          <T k="assistant.researchModeLabel" />
+        </label>
+        <p id={ids.researchModeHint} className="hint">
+          <T k="assistant.researchModeHint" />
+        </p>
+      </div>
 
       {/* Speech preferences and cloud consent (T3-011) */}
       <div
@@ -608,19 +654,26 @@ export function Assistant({
                     k={
                       entry.speaker === 'learner'
                         ? 'assistant.speakerLearner'
-                        : entry.provider === 'job'
-                          ? 'assistant.speakerJob'
-                          : mode === 'online'
-                            ? 'assistant.speakerOnline'
-                            : mode === 'faq'
-                              ? 'assistant.speakerFaq'
-                              : 'assistant.speakerAssistant'
+                        : entry.provider === 'external_web_research'
+                          ? 'assistant.speakerResearch'
+                          : entry.provider === 'job'
+                            ? 'assistant.speakerJob'
+                            : mode === 'online'
+                              ? 'assistant.speakerOnline'
+                              : mode === 'faq'
+                                ? 'assistant.speakerFaq'
+                                : 'assistant.speakerAssistant'
                     }
                   />
                 </p>
                 <p className="message-text" dir="auto" lang={entry.lang}>
                   {entry.text}
                 </p>
+                {entry.provider === 'external_web_research' && (
+                  <p className="research-provenance-disclaimer" role="note">
+                    <T k="assistant.researchProvenanceNote" />
+                  </p>
+                )}
                 {entry.citations && entry.citations.length > 0 && (
                   <div
                     className="citations"

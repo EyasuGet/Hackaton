@@ -17,6 +17,8 @@ export const FIXTURE_SCENARIOS = {
   jobActive: 'demo.scenario.jobActive',
   jobExpired: 'demo.scenario.jobExpired',
   jobUnknown: 'demo.scenario.jobUnknown',
+  researchSuccess: 'demo.scenario.researchSuccess',
+  researchLimitation: 'demo.scenario.researchLimitation',
 } as const satisfies Record<string, MessageKey>;
 
 export type FixtureScenario = keyof typeof FIXTURE_SCENARIOS;
@@ -54,6 +56,14 @@ const DATA_CLERK_CITATION: Citation = {
   url: 'https://digitalbridge.et/jobs/job-data-clerk-02',
 };
 
+const RESEARCH_CITATION: Citation = {
+  sourceId: 'web-market-01',
+  sectionId: 'salary',
+  sourceTitle: 'Addis Ababa Remote Work Trends 2026',
+  heading: 'Virtual Assistant Compensation and Opportunities',
+  url: 'https://digitalbridge.et/research/va-2026',
+};
+
 // Amharic wording needs competent-speaker review with the translations (T3-006-C).
 const REPLY_TEXT: Record<
   | 'faqCited'
@@ -64,8 +74,15 @@ const REPLY_TEXT: Record<
   | 'markup'
   | 'jobActive'
   | 'jobExpired'
-  | 'jobUnknown',
-  [text: string, lang: string, citations?: readonly Citation[], provider?: 'online' | 'faq' | 'job']
+  | 'jobUnknown'
+  | 'researchSuccess'
+  | 'researchLimitation',
+  [
+    text: string,
+    lang: string,
+    citations?: readonly Citation[],
+    provider?: 'online' | 'faq' | 'job' | 'external_web_research',
+  ]
 > = {
   faqCited: [
     'Virtual Assistant can mean AI software assistants such as chatbots or human remote professionals providing business support online.',
@@ -80,9 +97,9 @@ const REPLY_TEXT: Record<
     'faq',
   ],
   english: ['This is a demo reply from a test fixture, not a tutor answer.', 'en'],
-  amharic: ['ይህ የሙከራ መልስ ነው። እውነተኛ የትምህርት መልስ አይደለም።', 'am'],
+  amharic: ['ይህ የሙከራ መልስ ነው፤ እውነተኛ የትምህርት መልስ አይደለም።', 'am'],
   // Starts right-to-left so dir="auto" must resolve to RTL; English and Amharic are embedded.
-  mixed: ['«مرحبا بكم» تعني “welcome” بالإنجليزية፣ و«እንኳን ደህና መጡ» بالأمهرية.', 'ar'],
+  mixed: ['«مرحبا بكم» تعني “welcome” بالإنجليزية፤ و«እንኳን ደህና መጡ» بالأمهرية.', 'ar'],
   markup: [
     'Demo text with markup that must stay inert: <img src="x" onerror="alert(1)"> <script>alert(2)</script>',
     'en',
@@ -104,6 +121,18 @@ const REPLY_TEXT: Record<
     'en',
     [],
     'job',
+  ],
+  researchSuccess: [
+    'Market research shows active demand for Virtual Assistants in Addis Ababa with competitive entry-level salaries and remote flexibility.',
+    'en',
+    [RESEARCH_CITATION],
+    'external_web_research',
+  ],
+  researchLimitation: [
+    'No verified external career research could be located for that specific query.',
+    'en',
+    [],
+    'external_web_research',
   ],
 };
 

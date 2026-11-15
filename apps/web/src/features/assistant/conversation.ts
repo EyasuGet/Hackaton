@@ -18,7 +18,11 @@ export interface Reply {
   /** Stored ISO 8601 instant; presentation must not rewrite it. */
   readonly createdAt: string;
   readonly citations?: readonly Citation[];
-  readonly provider?: 'online' | 'faq' | 'job';
+  readonly provider?: 'online' | 'faq' | 'job' | 'external_web_research';
+  readonly provenance?: {
+    readonly kind: 'external_web_research' | 'demo' | 'faq' | 'course' | 'job';
+    readonly disclaimer?: string;
+  };
 }
 
 /**
