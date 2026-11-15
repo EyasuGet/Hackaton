@@ -52,7 +52,10 @@
       }
       body {
         margin: 0;
-        font-family: system-ui, -apple-system, sans-serif;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
         background: #f4f4f4;
       }
       /* Savanna fixed header matches z-index: 1000 */
@@ -145,11 +148,7 @@
     data-theme-suffix="_alx" is the Savanna theme toggle attribute.
     translate="no" disables browser translation on lesson text.
   -->
-  <body
-    class="signed_in env_development notranslate"
-    translate="no"
-    data-theme-suffix="_alx"
-  >
+  <body class="signed_in env_development notranslate" translate="no" data-theme-suffix="_alx">
     <!-- Savanna fixed header (structural copy of data-react-class="header/Header") -->
     <div class="header" role="banner">
       <span style="font-weight: bold; color: #cc0000">ALX</span>
@@ -172,9 +171,7 @@
     <div class="content-with-sidebar">
       <main class="main-content" role="main">
         <!-- Savanna concept page heading -->
-        <h1 style="font-size: 1.25rem; margin-bottom: 0.5rem">
-          The Future of the VA Industry
-        </h1>
+        <h1 style="font-size: 1.25rem; margin-bottom: 0.5rem">The Future of the VA Industry</h1>
         <p style="color: #666; font-size: 0.875rem; margin-bottom: 1rem">
           Module 2 — concept with curriculum navigation
         </p>
@@ -182,8 +179,8 @@
         <!-- T3-026-B test controls — not part of Savanna page -->
         <div class="test-controls">
           <strong>T3-026-B embed test fixture</strong>
-          Use these controls to verify the assistant embed inside the Savanna
-          page structure. This notice does not appear in the real Savanna pages.
+          Use these controls to verify the assistant embed inside the Savanna page structure. This
+          notice does not appear in the real Savanna pages.
           <div>
             <button id="open-btn">Open Assistant</button>
             <button id="close-btn">Send Close</button>
@@ -195,12 +192,11 @@
         <div class="content-container" id="curriculum_navigation_content">
           <h2>Lesson content area</h2>
           <p>
-            This area corresponds to <code>#curriculum_navigation_content</code>
-            in the actual Savanna concept page. The <code>static-page.js</code>
-            script replaces children of <code>.content-container</code> on
-            template swaps. Our embed iframe is appended to
-            <code>document.body</code>, not inside this container, so template
-            swaps do not affect the embed mount.
+            This area corresponds to <code>#curriculum_navigation_content</code> in the actual
+            Savanna concept page. The <code>static-page.js</code> script replaces children of
+            <code>.content-container</code> on template swaps. Our embed iframe is appended to
+            <code>document.body</code>, not inside this container, so template swaps do not affect
+            the embed mount.
           </p>
         </div>
       </main>
