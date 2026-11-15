@@ -53,9 +53,10 @@ export function IframeApp() {
         overflow: 'hidden',
       }}
     >
-      <div style={{ flex: 1, overflow: 'auto', padding: '0.5rem' }}>
-        <App handoffCode={token} isEmbedded={true} onClose={handleClose} />
-      </div>
+      <main style={{ flex: 1, overflow: 'auto', padding: '0.5rem' }}>
+        <h1>Learning assistant</h1>
+        <App handoffCode={token} />
+      </main>
       <footer
         style={{
           padding: '0.5rem',
