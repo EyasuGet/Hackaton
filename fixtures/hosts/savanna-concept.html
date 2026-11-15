@@ -1,0 +1,277 @@
+<!doctype html>
+<!--
+  Savanna concept page fixture for T3-026-B embed integration evidence.
+
+  This is a minimal faithful reproduction of the structural elements of the
+  official Savanna static pages pinned at:
+    alx-africa/Savanna-static-pages commit 9e83ac77891708117728ad9fc05301e124cc8ec8
+
+  Source page inspected: pages/concept-with-navigation.html from that commit.
+
+  Key fidelity points retained from the actual Savanna page:
+  - body class="signed_in env_development notranslate" data-theme-suffix="_alx"
+  - Bootstrap 5 layout class names on the main content areas
+  - Script loading order: popper.js, bootstrap.bundle.js, static-page.js
+  - Our loader.js added LAST, after all Savanna scripts
+
+  What is NOT included (and why):
+  - Full Savanna CSS/JS: would require network access in CI; CSS does not
+    affect whether postMessage embed works. Script behaviour is documented.
+  - Personal learner data or authenticity_token: must not be reused or tested.
+  - Full curriculum navigation HTML (1300+ lines): not needed to prove embed
+    mounting; only the outer page structure matters.
+
+  The Savanna static-page.js does template-swap on .content-container children.
+  Our embed appends an iframe directly to document.body, outside any swapped
+  container, so template swaps do not unmount the iframe (verified in test 3).
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Savanna concept page fixture — T3-026-B embed test</title>
+
+    <!--
+      Actual Savanna page loads:
+        assets/css/typekit-xgz4ilr-css.css (Adobe Typekit fonts)
+        assets/css/application_alx.css      (main app stylesheet)
+        assets/css/app.css                  (bundled feature styles)
+        assets/css/static-page.css          (static-capture overrides)
+      Those paths are relative to the Savanna repo root; we do not embed them
+      here to avoid external network dependencies in CI. The z-index and layout
+      structure are reproduced with inline styles below.
+    -->
+
+    <style>
+      /* Minimal reproduction of Savanna Bootstrap 5 layout structure. */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #f4f4f4;
+      }
+      /* Savanna fixed header matches z-index: 1000 */
+      .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 56px;
+        background: #fff;
+        border-bottom: 1px solid #dee2e6;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        padding: 0 1rem;
+      }
+      /* Savanna main content pushed below fixed header */
+      .main-content {
+        margin-top: 56px;
+        padding: 1.5rem;
+        max-width: 900px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      /* Savanna sidebar (position: fixed on larger screens) */
+      .sidebar {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        bottom: 0;
+        width: 240px;
+        background: #fff;
+        border-right: 1px solid #dee2e6;
+        overflow-y: auto;
+        z-index: 100;
+        padding: 1rem;
+      }
+      .content-with-sidebar {
+        margin-left: 240px;
+      }
+      /* Savanna content-container — the area static-page.js swaps */
+      .content-container {
+        padding: 1rem;
+      }
+      /* Test UI */
+      .test-controls {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        padding: 0.75rem 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        font-size: 0.875rem;
+        color: #333;
+      }
+      .test-controls strong {
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+      button {
+        padding: 0.4rem 0.9rem;
+        font-size: 0.875rem;
+        cursor: pointer;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        margin-right: 0.5rem;
+        margin-top: 0.25rem;
+      }
+      button:hover {
+        background: #0052a3;
+      }
+      .log {
+        font-family: monospace;
+        font-size: 0.75rem;
+        background: #f0f0f0;
+        padding: 0.75rem;
+        border-radius: 4px;
+        margin-top: 0.75rem;
+        max-height: 120px;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+      }
+    </style>
+  </head>
+
+  <!--
+    body class mirrors the actual Savanna concept page exactly:
+      "signed_in env_development notranslate"
+    data-theme-suffix="_alx" is the Savanna theme toggle attribute.
+    translate="no" disables browser translation on lesson text.
+  -->
+  <body
+    class="signed_in env_development notranslate"
+    translate="no"
+    data-theme-suffix="_alx"
+  >
+    <!-- Savanna fixed header (structural copy of data-react-class="header/Header") -->
+    <div class="header" role="banner">
+      <span style="font-weight: bold; color: #cc0000">ALX</span>
+      <span style="margin-left: 0.75rem; font-size: 0.875rem; color: #666">
+        Savanna (static fixture — T3-026-B)
+      </span>
+    </div>
+
+    <!-- Savanna sidebar navigation (structural copy) -->
+    <nav class="sidebar" aria-label="Course navigation">
+      <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.875rem">
+        <li style="padding: 0.4rem 0"><a href="#">Home</a></li>
+        <li style="padding: 0.4rem 0"><a href="#">My learning</a></li>
+        <li style="padding: 0.4rem 0"><a href="#">My courses</a></li>
+        <li style="padding: 0.4rem 0"><strong>Module 2 concept</strong></li>
+      </ul>
+    </nav>
+
+    <!-- Main content area (structural copy) -->
+    <div class="content-with-sidebar">
+      <main class="main-content" role="main">
+        <!-- Savanna concept page heading -->
+        <h1 style="font-size: 1.25rem; margin-bottom: 0.5rem">
+          The Future of the VA Industry
+        </h1>
+        <p style="color: #666; font-size: 0.875rem; margin-bottom: 1rem">
+          Module 2 — concept with curriculum navigation
+        </p>
+
+        <!-- T3-026-B test controls — not part of Savanna page -->
+        <div class="test-controls">
+          <strong>T3-026-B embed test fixture</strong>
+          Use these controls to verify the assistant embed inside the Savanna
+          page structure. This notice does not appear in the real Savanna pages.
+          <div>
+            <button id="open-btn">Open Assistant</button>
+            <button id="close-btn">Send Close</button>
+          </div>
+          <div class="log" id="log"></div>
+        </div>
+
+        <!-- Savanna content-container: static-page.js swaps children here -->
+        <div class="content-container" id="curriculum_navigation_content">
+          <h2>Lesson content area</h2>
+          <p>
+            This area corresponds to <code>#curriculum_navigation_content</code>
+            in the actual Savanna concept page. The <code>static-page.js</code>
+            script replaces children of <code>.content-container</code> on
+            template swaps. Our embed iframe is appended to
+            <code>document.body</code>, not inside this container, so template
+            swaps do not affect the embed mount.
+          </p>
+        </div>
+      </main>
+    </div>
+
+    <!--
+      Savanna scripts loaded in original order (paths from pinned commit):
+        ../assets/js/popper.js        (Popper 2.11.8)
+        ../assets/js/bootstrap.bundle.js  (Bootstrap 5.3.3)
+        ../assets/js/static-page.js   (static capture interaction layer)
+
+      We do not load them from external URLs to keep the CI fixture self-contained.
+      The script references are shown as comments to document the actual load
+      order; the fixture omits Bootstrap/Popper because CSS layout does not
+      affect postMessage embed correctness, and static-page.js is simulated
+      below to test template-swap survival.
+    -->
+    <!-- popper.js (Popper 2.11.8) -->
+    <!-- bootstrap.bundle.js (Bootstrap 5.3.3) -->
+    <!-- static-page.js (Savanna interaction layer) -->
+
+    <!-- Minimal simulation of static-page.js template swap behaviour -->
+    <script>
+      // static-page.js replaces children of .content-container on nav events.
+      // This simulation fires on demand to verify the embed survives a swap.
+      window.__savannaTriggerTemplateSwap = function () {
+        var container = document.getElementById('curriculum_navigation_content');
+        if (container) {
+          container.innerHTML =
+            '<h2>Swapped content</h2><p>Template swap fired (simulating static-page.js).</p>';
+        }
+      };
+    </script>
+
+    <!-- Test interaction logic -->
+    <script>
+      var logEl = document.getElementById('log');
+
+      function addLog(msg) {
+        var entry = document.createElement('div');
+        entry.textContent = new Date().toISOString().slice(11, 23) + ' ' + msg;
+        logEl.appendChild(entry);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      document.getElementById('open-btn').addEventListener('click', function () {
+        addLog('Opening assistant (synthetic demo token)…');
+        // Permitted synthetic context: demo token, our assistant origin.
+        embedAssistant({
+          token: 'demo-savanna-synthetic',
+          origin: 'http://localhost:5173',
+        });
+      });
+
+      document.getElementById('close-btn').addEventListener('click', function () {
+        addLog('Sending close to iframe…');
+        var iframe = document.querySelector('iframe[title="Learning assistant"]');
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage({ type: 'close' }, 'http://localhost:5173');
+        }
+      });
+
+      window.addEventListener('error', function (e) {
+        addLog('ERROR: ' + e.message);
+      });
+    </script>
+
+    <!--
+      Our embed loader loaded LAST, after all Savanna scripts.
+      This matches the integration pattern: add one <script> tag to the host.
+    -->
+    <script src="http://localhost:5173/loader.js"></script>
+  </body>
+</html>
