@@ -303,12 +303,12 @@ describe('DeliveryWorker processBatch execution', () => {
     });
 
     let invocation = 0;
-    const result = await worker.processBatch(T0, async (claimedIntent) => {
+    const result = await worker.processBatch(T0, () => {
       invocation++;
       if (invocation === 1) {
-        return 'complete';
+        return Promise.resolve('complete' as const);
       } else if (invocation === 2) {
-        return 'release';
+        return Promise.resolve('release' as const);
       } else {
         // Crash or unhandled failure
         throw new Error('Simulated processing crash');
@@ -323,21 +323,21 @@ describe('DeliveryWorker processBatch execution', () => {
     });
 
     // The released item is immediately pending again.
-    const pendingRows = await pool.query(
+    const pendingRows = await pool.query<{ count: string }>(
       "SELECT count(*) FROM delivery_intents WHERE status = 'pending'",
     );
-    expect(Number(pendingRows.rows[0].count)).toBe(1);
+    expect(Number(pendingRows.rows[0]?.count)).toBe(1);
 
     // The completed item is completed.
-    const completedRows = await pool.query(
+    const completedRows = await pool.query<{ count: string }>(
       "SELECT count(*) FROM delivery_intents WHERE status = 'completed'",
     );
-    expect(Number(completedRows.rows[0].count)).toBe(1);
+    expect(Number(completedRows.rows[0]?.count)).toBe(1);
 
     // The crashed item remains leased until its lease expires.
-    const leasedRows = await pool.query(
+    const leasedRows = await pool.query<{ count: string }>(
       "SELECT count(*) FROM delivery_intents WHERE status = 'leased'",
     );
-    expect(Number(leasedRows.rows[0].count)).toBe(1);
+    expect(Number(leasedRows.rows[0]?.count)).toBe(1);
   });
 });
