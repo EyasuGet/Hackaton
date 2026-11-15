@@ -330,12 +330,34 @@ export function Assistant({
     });
   }
 
+  function handleEscape(): boolean {
+    if (playbackState === 'playing' || playbackState === 'paused') {
+      stopPlayback();
+      return true;
+    }
+    if (speechProblem) {
+      setSpeechProblem(null);
+      return true;
+    }
+    if (problem) {
+      setProblem(null);
+      return true;
+    }
+    return false;
+  }
+
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     void send();
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === 'Escape') {
+      if (handleEscape()) {
+        event.preventDefault();
+        return;
+      }
+    }
     // Enter sends; Shift+Enter adds a line. Ignore Enter while an input method
     // (for example an Amharic keyboard) is still composing a character.
     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
@@ -344,7 +366,15 @@ export function Assistant({
   }
 
   return (
-    <section className="assistant" aria-labelledby={ids.heading}>
+    <section
+      className="assistant"
+      aria-labelledby={ids.heading}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && handleEscape()) {
+          event.stopPropagation();
+        }
+      }}
+    >
       <h2 id={ids.heading}>
         <T k="assistant.heading" />
       </h2>
@@ -445,7 +475,7 @@ export function Assistant({
           <T k="assistant.empty" />
         </p>
       ) : (
-        <ol className="messages">
+        <ol className="messages" role="log" aria-label={t('assistant.heading')}>
           {entries.map((entry) => {
             const isCurrentMessage = playingMessageId === entry.id;
             return (
@@ -467,7 +497,11 @@ export function Assistant({
                   {entry.text}
                 </p>
                 {entry.citations && entry.citations.length > 0 && (
-                  <div className="citations" aria-label={t('assistant.citationsLabel')}>
+                  <div
+                    className="citations"
+                    role="region"
+                    aria-label={t('assistant.citationsLabel')}
+                  >
                     <span className="citations-label">
                       <T k="assistant.citationsLabel" />
                     </span>
@@ -602,7 +636,13 @@ export function Assistant({
       </form>
 
       {/* The prefix and the reply each carry their own language tag. */}
-      <p className="visually-hidden" role="status" aria-label={t('assistant.updatesLabel')}>
+      <p
+        className="visually-hidden"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label={t('assistant.updatesLabel')}
+      >
         {announcement.prefix && (
           <span lang={announcement.prefix.lang}>{announcement.prefix.text}</span>
         )}
