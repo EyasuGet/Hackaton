@@ -12,14 +12,8 @@ import {
   migrate,
   MIGRATIONS_DIR,
 } from '../../infrastructure/database/migrations.ts';
-import {
-  DeliveryWorker,
-  type DispatchPort,
-} from './application/delivery-worker.ts';
-import {
-  MAX_ATTEMPT_COUNT,
-  type NewDeliveryIntent,
-} from './domain/delivery-intent.ts';
+import { DeliveryWorker, type DispatchPort } from './application/delivery-worker.ts';
+import { MAX_ATTEMPT_COUNT, type NewDeliveryIntent } from './domain/delivery-intent.ts';
 import { PostgresDeliveryIntents } from './infrastructure/postgres-delivery-intents.ts';
 
 const config = loadDatabaseConfig(process.env);
@@ -170,7 +164,10 @@ describe('bounded retries', () => {
       leaseDurationMs: 30 * SECOND,
     });
     // Advance time past all prior lease expirations so the intent is claimable.
-    const result = await finalWorker.dispatchBatch(at(MAX_ATTEMPT_COUNT * 20 * SECOND + SECOND), port);
+    const result = await finalWorker.dispatchBatch(
+      at(MAX_ATTEMPT_COUNT * 20 * SECOND + SECOND),
+      port,
+    );
 
     expect(result).toEqual({ claimed: 1, sent: 0, failed: 0, uncertain: 0, exceeded: 1 });
     expect(dispatchFn).not.toHaveBeenCalled();
