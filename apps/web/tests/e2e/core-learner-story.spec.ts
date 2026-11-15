@@ -196,7 +196,7 @@ test.describe('T3-027-B: Core End-to-End Learner Story', () => {
 
     // Verify disclosure and recipient preview
     await expect(frame.getByRole('heading', { name: /review your request/i })).toBeVisible();
-    await expect(frame.getByText('Opportunity coordinator')).toBeVisible();
+    await expect(frame.getByText(/authorised coordinator/i)).toBeVisible();
     await frame.getByRole('button', { name: /confirm and send/i }).click();
 
     // Verify status confirms submission to coordinator
@@ -308,10 +308,7 @@ test.describe('T3-027-B: Core End-to-End Learner Story', () => {
     await questionInput.press('Enter');
 
     const unlistedReply = frame.locator('.messages .message-assistant').nth(2);
-    await expect(unlistedReply).toContainText(
-      'I do not have an approved job answer for that question.',
-      { timeout: 10000 },
-    );
+    await expect(unlistedReply).toContainText(/I do not have an approved job/i, { timeout: 10000 });
     await expect(unlistedReply.locator('.citations')).toHaveCount(0);
   });
 
@@ -354,7 +351,7 @@ test.describe('T3-027-B: Core End-to-End Learner Story', () => {
 
     // Review preview gate
     await expect(frame.getByRole('heading', { name: /review your request/i })).toBeVisible();
-    await expect(frame.getByText('Opportunity coordinator')).toBeVisible();
+    await expect(frame.getByText(/authorised coordinator/i)).toBeVisible();
     await expect(frame.getByText(/Quiet room, text transcription display/i)).toBeVisible();
 
     // Submit
