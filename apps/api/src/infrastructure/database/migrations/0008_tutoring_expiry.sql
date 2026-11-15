@@ -16,10 +16,8 @@ ALTER TABLE tutoring_requests
 UPDATE tutoring_conversations SET expires_at = created_at + INTERVAL '7 days' WHERE expires_at IS NULL;
 UPDATE tutoring_requests SET expires_at = created_at + INTERVAL '7 days' WHERE expires_at IS NULL;
 
--- Make expires_at NOT NULL now that every row has a value and set 7-day default for new rows.
-ALTER TABLE tutoring_conversations ALTER COLUMN expires_at SET DEFAULT now() + INTERVAL '7 days';
+-- Make expires_at NOT NULL now that every row has a value.
 ALTER TABLE tutoring_conversations ALTER COLUMN expires_at SET NOT NULL;
-ALTER TABLE tutoring_requests ALTER COLUMN expires_at SET DEFAULT now() + INTERVAL '7 days';
 ALTER TABLE tutoring_requests ALTER COLUMN expires_at SET NOT NULL;
 
 -- Index for efficient expiry sweeps (find rows past their expiry that are not yet purged).
