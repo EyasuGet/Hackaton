@@ -586,22 +586,6 @@ export function Assistant({
         </div>
       )}
 
-      <div className="assistant-simple-language-control">
-        <label htmlFor={ids.simpleLanguage}>
-          <input
-            id={ids.simpleLanguage}
-            type="checkbox"
-            checked={isSimpleLanguage}
-            aria-describedby={ids.simpleLanguageHint}
-            onChange={(e) => handleSimpleLanguageChange(e.target.checked)}
-          />
-          <T k="assistant.simpleLanguageLabel" />
-        </label>
-        <p id={ids.simpleLanguageHint} className="hint">
-          <T k="assistant.simpleLanguageHint" />
-        </p>
-      </div>
-
       {/* Speech preferences and cloud consent (T3-011) */}
       <div
         className="speech-settings"
@@ -913,6 +897,21 @@ export function Assistant({
               <T k={VOICE_PROBLEM_TEXT[voiceProblem]} />
             </p>
           )}
+        </div>
+        <div className="assistant-simple-language-control">
+          <label htmlFor={ids.simpleLanguage}>
+            <input
+              id={ids.simpleLanguage}
+              type="checkbox"
+              checked={isSimpleLanguage}
+              aria-describedby={ids.simpleLanguageHint}
+              onChange={(e) => handleSimpleLanguageChange(e.target.checked)}
+            />
+            <T k="assistant.simpleLanguageLabel" />
+          </label>
+          <p id={ids.simpleLanguageHint} className="hint">
+            <T k="assistant.simpleLanguageHint" />
+          </p>
         </div>
         <div className="assistant-research-control">
           <label htmlFor={ids.researchMode}>
