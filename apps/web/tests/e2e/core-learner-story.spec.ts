@@ -196,7 +196,7 @@ test.describe('T3-027-B: Core End-to-End Learner Story', () => {
 
     // Verify disclosure and recipient preview
     await expect(frame.getByRole('heading', { name: /review your request/i })).toBeVisible();
-    await expect(frame.getByText(/authorised coordinator/i)).toBeVisible();
+    await expect(frame.getByText('Authorised coordinator only')).toBeVisible();
     await frame.getByRole('button', { name: /confirm and send/i }).click();
 
     // Verify status confirms submission to coordinator
@@ -351,7 +351,7 @@ test.describe('T3-027-B: Core End-to-End Learner Story', () => {
 
     // Review preview gate
     await expect(frame.getByRole('heading', { name: /review your request/i })).toBeVisible();
-    await expect(frame.getByText(/authorised coordinator/i)).toBeVisible();
+    await expect(frame.getByText('Authorised coordinator only')).toBeVisible();
     await expect(frame.getByText(/Quiet room, text transcription display/i)).toBeVisible();
 
     // Submit
