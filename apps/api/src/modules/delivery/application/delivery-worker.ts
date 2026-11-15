@@ -1,3 +1,8 @@
+// Background delivery worker (T3-014-B/C).
+// Claims bounded batches of due work under a time-bounded lease (T3-014-B) and
+// dispatches each intent through a channel adapter with bounded retries and
+// safe handling of unknown outcomes (T3-014-C).
+// Work processing occurs completely outside any database transaction.
 import {
   DEFAULT_CLAIM_BATCH_SIZE,
   DEFAULT_LEASE_DURATION_MS,
@@ -24,7 +29,7 @@ export interface DeliveryIntentsPort {
 
 /** Port: a channel dispatcher that attempts to deliver a claimed intent. */
 export interface DispatchPort {
-  dispatch(intent: ClaimedDeliveryIntent, now: Date): Promise<DispatchOutcome>;
+  dispatch(intent: ClaimedDeliveryIntent, now?: Date): Promise<DispatchOutcome>;
 }
 
 export type ProcessAction = 'complete' | 'release' | 'abandon';
@@ -41,6 +46,18 @@ export interface BatchProcessingResult {
   readonly completed: number;
   readonly released: number;
   readonly abandoned: number;
+}
+
+export interface DispatchBatchResult {
+  readonly claimed: number;
+  /** Successfully sent and completed. */
+  readonly sent: number;
+  /** Adapter reported a definitive failure. */
+  readonly failed: number;
+  /** Outcome unknown after dispatch attempt (network error or adapter uncertainty). */
+  readonly uncertain: number;
+  /** Exceeded max attempts without dispatch; permanently failed. */
+  readonly exceeded: number;
 }
 
 export class DeliveryWorker {
@@ -111,10 +128,15 @@ export class DeliveryWorker {
   /**
    * Claims due work and dispatches each intent through the supplied channel adapter.
    * - Exceeded-attempt intents are marked failed without dispatch.
+<<<<<<< HEAD
    * - Pre-send cancellation (suppression) updates status to cancelled.
    * - Thrown errors or unconfirmed outcomes are marked uncertain.
    * - Transient errors release the lease for bounded retry.
    * - Work processing runs outside any database transaction.
+=======
+   * - A thrown adapter error is treated as uncertain (message may or may not have been sent).
+   * - Each dispatch call runs outside any database transaction.
+>>>>>>> main
    */
   async dispatchBatch(now: Date, dispatchPort: DispatchPort): Promise<DispatchBatchResult> {
     const claimed = await this.claimDue(now);

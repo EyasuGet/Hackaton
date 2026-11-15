@@ -4,6 +4,8 @@
 export interface EmbedConfig {
   readonly token: string;
   readonly origin: string;
+  readonly allow?: string;
+  readonly sandbox?: string;
 }
 
 export type EmbedMessage =

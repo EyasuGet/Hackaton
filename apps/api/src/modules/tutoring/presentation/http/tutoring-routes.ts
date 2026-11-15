@@ -1,5 +1,5 @@
 // HTTP presentation routes for tutoring requests, conversations, history,
-// and online/FAQ answers (T3-007-A & T3-007-C).
+// online/FAQ answers, and voice transcription (T3-007-A, T3-007-C, T3-010-A).
 // Endpoints are restricted to authenticated learners; attempts to access records
 // of another learner or ungranted courses return 404 to avoid leaking existence.
 import type {
@@ -10,6 +10,7 @@ import type {
 } from 'fastify';
 import { principalOf, requireRole } from '../../../identity/presentation/http/authentication.ts';
 import { TutoringError, type Tutoring } from '../../application/tutoring.ts';
+import type { TranscriptionPort } from '../../application/ports/transcription-port.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -25,6 +26,7 @@ export function registerTutoringRoutes(
   app: FastifyInstance,
   authenticated: preHandlerAsyncHookHandler,
   tutoring: Tutoring,
+  transcription?: TranscriptionPort,
 ) {
   const learnerOnly = { preHandler: [authenticated, requireRole('learner')] };
 
@@ -43,6 +45,12 @@ export function registerTutoringRoutes(
     if (!question || typeof question !== 'string' || question.trim() === '') {
       return reply.code(400).send({ error: 'invalid_question' });
     }
+    if (question.length > tutoring.admissionController.limits.maxQuestionLength) {
+      return reply.code(400).send({
+        error: 'input_too_large',
+        message: `Question exceeds maximum allowed length of ${tutoring.admissionController.limits.maxQuestionLength} characters`,
+      });
+    }
     if (conversationId !== undefined && !UUID.test(conversationId)) {
       return reply.code(404).send({ error: 'not_found' });
     }
@@ -50,13 +58,17 @@ export function registerTutoringRoutes(
     const principal = principalOf(request);
 
     try {
-      const result = await tutoring.ask(principal, {
-        courseId: courseId.trim(),
-        requestId: requestId.trim(),
-        question: question.trim(),
-        ...(conversationId !== undefined ? { conversationId } : {}),
-        externalConsent: externalConsent === true,
-      });
+      const result = await tutoring.ask(
+        principal,
+        {
+          courseId: courseId.trim(),
+          requestId: requestId.trim(),
+          question: question.trim(),
+          ...(conversationId !== undefined ? { conversationId } : {}),
+          externalConsent: externalConsent === true,
+        },
+        { signal: request.signal },
+      );
 
       if (!result) {
         return reply.code(404).send({ error: 'not_found' });
@@ -72,6 +84,28 @@ export function registerTutoringRoutes(
       });
     } catch (err: unknown) {
       if (err instanceof TutoringError) {
+        if (err.code === 'busy') {
+          const retryAfter = err.retryAfterSeconds ?? 3;
+          return reply.code(503).header('Retry-After', String(retryAfter)).send({
+            error: 'busy',
+            message: err.message,
+            retryAfterSeconds: retryAfter,
+          });
+        }
+        if (err.code === 'rate_limited') {
+          const retryAfter = err.retryAfterSeconds ?? 5;
+          return reply.code(429).header('Retry-After', String(retryAfter)).send({
+            error: 'rate_limited',
+            message: err.message,
+            retryAfterSeconds: retryAfter,
+          });
+        }
+        if (err.code === 'input_too_large') {
+          return reply.code(400).send({
+            error: 'input_too_large',
+            message: err.message,
+          });
+        }
         if (err.code === 'timeout') {
           return reply.code(504).send({ error: 'timeout', message: err.message });
         }
@@ -107,6 +141,12 @@ export function registerTutoringRoutes(
       }
       if (!question || typeof question !== 'string' || question.trim() === '') {
         return reply.code(400).send({ error: 'invalid_question' });
+      }
+      if (question.length > tutoring.admissionController.limits.maxQuestionLength) {
+        return reply.code(400).send({
+          error: 'input_too_large',
+          message: `Question exceeds maximum allowed length of ${tutoring.admissionController.limits.maxQuestionLength} characters`,
+        });
       }
       if (conversationId !== undefined && !UUID.test(conversationId)) {
         return reply.code(404).send({ error: 'not_found' });
@@ -185,6 +225,48 @@ export function registerTutoringRoutes(
     await tutoring.clearHistory(principal);
     return reply.code(204).send();
   });
+
+  if (transcription) {
+    // Transcribes a learner-supplied audio clip to text (T3-010-A).
+    // Accepts base64-encoded audio with its MIME type. Audio is held only in
+    // memory during the API call; it is never persisted or logged.
+    app.post<{ Body: { audio?: string; mimeType?: string } }>(
+      '/api/tutoring/transcription',
+      learnerOnly,
+      async (request, reply) => {
+        const { audio, mimeType } = request.body ?? {};
+        if (typeof audio !== 'string' || !audio.trim()) {
+          return reply.code(400).send({ error: 'audio is required' });
+        }
+        if (typeof mimeType !== 'string' || !mimeType.trim()) {
+          return reply.code(400).send({ error: 'mimeType is required' });
+        }
+
+        const outcome = await transcription.transcribe({
+          audioBase64: audio.trim(),
+          mimeType: mimeType.trim(),
+        });
+
+        switch (outcome.status) {
+          case 'transcribed':
+            return reply.code(200).send({
+              transcript: outcome.transcript,
+              lang: outcome.detectedLang === 'unknown' ? 'en' : outcome.detectedLang,
+            });
+          case 'unsupported_format':
+            return reply.code(400).send({ error: 'unsupported_format' });
+          case 'too_large':
+            return reply.code(413).send({ error: 'audio_too_large' });
+          case 'empty_audio':
+            return reply.code(400).send({ error: 'empty_audio' });
+          case 'provider_unavailable':
+            return reply.code(503).send({ error: 'provider_unavailable' });
+          case 'provider_error':
+            return reply.code(502).send({ error: 'provider_error' });
+        }
+      },
+    );
+  }
 
   // Triggers an expiry purge up to the current instant. Restricted to support role
   // only; learners cannot trigger purges. Returns the count of purged rows.

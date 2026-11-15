@@ -109,7 +109,6 @@ export type CancelLeasedOutcome =
   | { readonly status: 'cancelled' }
   | { readonly status: 'lost_lease' }
   | { readonly status: 'not_found' };
-
 export function dedupDigest(dedupKey: string): string {
   return createHash('sha256').update(dedupKey).digest('hex');
 }

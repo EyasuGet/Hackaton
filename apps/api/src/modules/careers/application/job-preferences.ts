@@ -1,5 +1,11 @@
+// Application use case for learner job alert preferences (T3-020-A).
+// Strictly enforces learner ownership: only learner principals may view,
+// create, and unsubscribe their own alert subscriptions.
+// When PhoneVerificationService is configured, SMS subscriptions require
+// verified Ethiopian phone ownership proof (Decision D24, T3-021-A).
 import { ownedScope, type Principal } from '../../identity/domain/principal.ts';
 import type { TelegramLinkRepository } from '../../telegram/application/ports/telegram-link-repository.ts';
+import type { PhoneVerificationService } from '../../delivery/application/phone-verification-service.ts';
 import type { CreateSubscriptionInput, JobSubscription } from '../domain/job-preferences.ts';
 import type {
   JobPreferencesRepository,
@@ -9,16 +15,31 @@ import type {
 export class JobPreferences {
   readonly #repository: JobPreferencesRepository;
   readonly #telegramLinkRepo?: TelegramLinkRepository | undefined;
+  readonly #phoneVerificationService?: PhoneVerificationService | undefined;
 
-  constructor(repository: JobPreferencesRepository, telegramLinkRepo?: TelegramLinkRepository) {
+  constructor(
+    repository: JobPreferencesRepository,
+    secondArg?: TelegramLinkRepository | PhoneVerificationService,
+    thirdArg?: PhoneVerificationService | TelegramLinkRepository,
+  ) {
     this.#repository = repository;
-    this.#telegramLinkRepo = telegramLinkRepo;
+    if (secondArg && 'isPhoneVerified' in secondArg) {
+      this.#phoneVerificationService = secondArg as PhoneVerificationService;
+    } else if (secondArg && 'findIdentityByLearnerId' in secondArg) {
+      this.#telegramLinkRepo = secondArg as TelegramLinkRepository;
+    }
+    if (thirdArg && 'isPhoneVerified' in thirdArg) {
+      this.#phoneVerificationService = thirdArg as PhoneVerificationService;
+    } else if (thirdArg && 'findIdentityByLearnerId' in thirdArg) {
+      this.#telegramLinkRepo = thirdArg as TelegramLinkRepository;
+    }
   }
 
   /**
    * Subscribes a learner to job alert notifications with category/location preferences.
    * If channel is telegram and telegramLinkRepo is present, binds to verified linked account.
    * Rejects non-learner principals or invalid input (empty destination/channel).
+   * If channel is 'sms' and phone verification is configured, rejects unverified destinations.
    */
   async subscribe(
     principal: Principal,
@@ -49,6 +70,15 @@ export class JobPreferences {
         }
       }
       destination = identity.telegramChatId;
+    } else if (channel === 'sms' && this.#phoneVerificationService) {
+      if (!destination) return null;
+      const isVerified = await this.#phoneVerificationService.isPhoneVerified(
+        principal,
+        destination,
+      );
+      if (!isVerified) {
+        return null;
+      }
     }
 
     if (!destination) return null;

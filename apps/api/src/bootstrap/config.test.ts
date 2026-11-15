@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigError, loadConfig } from './config.ts';
+import { ConfigError, DEFAULT_PROVIDER_LIMITS, loadConfig } from './config.ts';
 
 const valid = {
   API_HOST: '127.0.0.1',
@@ -34,6 +34,7 @@ describe('loadConfig', () => {
         enabled: false,
       },
       telegram: {},
+      providerLimits: DEFAULT_PROVIDER_LIMITS,
     });
   });
 
@@ -166,5 +167,43 @@ describe('loadConfig', () => {
     const load = () => loadConfig({ ...valid, DATABASE_PORT: secretLike });
     expect(load).toThrow(ConfigError);
     expect(load).not.toThrow(secretLike);
+  });
+
+  it('accepts custom provider limits', () => {
+    const withCustomLimits = {
+      ...valid,
+      PROVIDER_MAX_CONCURRENCY: '12',
+      PROVIDER_MAX_PER_LEARNER_CONCURRENCY: '4',
+      PROVIDER_MAX_QUEUE_SIZE: '25',
+      PROVIDER_MAX_PER_LEARNER_QUEUE: '5',
+      PROVIDER_QUEUE_TIMEOUT_MS: '8000',
+      PROVIDER_RATE_LIMIT_WINDOW_MS: '30000',
+      PROVIDER_RATE_LIMIT_MAX_REQUESTS: '100',
+      PROVIDER_RATE_LIMIT_PER_LEARNER_MAX_REQUESTS: '20',
+      PROVIDER_MAX_QUESTION_LENGTH: '1500',
+      PROVIDER_MAX_SPEECH_TEXT_LENGTH: '3000',
+    };
+    expect(loadConfig(withCustomLimits).providerLimits).toEqual({
+      maxConcurrency: 12,
+      maxPerLearnerConcurrency: 4,
+      maxQueueSize: 25,
+      maxPerLearnerQueue: 5,
+      queueTimeoutMs: 8000,
+      rateLimitWindowMs: 30000,
+      rateLimitMaxRequests: 100,
+      rateLimitPerLearnerMaxRequests: 20,
+      maxQuestionLength: 1500,
+      maxSpeechTextLength: 3000,
+    });
+  });
+
+  it.each([
+    ['non-numeric concurrency', 'PROVIDER_MAX_CONCURRENCY', 'invalid', 'positive integer'],
+    ['negative concurrency', 'PROVIDER_MAX_CONCURRENCY', '-1', 'positive integer'],
+    ['zero concurrency', 'PROVIDER_MAX_CONCURRENCY', '0', 'positive integer'],
+    ['negative queue size', 'PROVIDER_MAX_QUEUE_SIZE', '-2', 'non-negative integer'],
+    ['non-numeric rate limit', 'PROVIDER_RATE_LIMIT_MAX_REQUESTS', 'abc', 'positive integer'],
+  ])('rejects %s', (_desc, envKey, value, msg) => {
+    expect(() => loadConfig({ ...valid, [envKey]: value })).toThrow(msg);
   });
 });
