@@ -31,6 +31,9 @@ import type { TelegramLinkService } from '../modules/telegram/application/telegr
 import { registerTelegramRoutes } from '../modules/telegram/presentation/http/telegram-routes.ts';
 import type { Tutoring } from '../modules/tutoring/application/tutoring.ts';
 import { registerTutoringRoutes } from '../modules/tutoring/presentation/http/tutoring-routes.ts';
+import type { ProviderAdmissionController } from '../modules/tutoring/application/provider-admission.ts';
+import type { SpeechSynthesizerProvider } from '../modules/tutoring/application/ports/speech-synthesizer-provider.ts';
+import { registerSpeechRoutes } from '../modules/tutoring/presentation/http/speech-routes.ts';
 
 export interface AppDependencies {
   /** Must not throw: report an unavailable dependency as not ready. */
@@ -53,6 +56,10 @@ export interface AppDependencies {
   readonly jobPreferences?: JobPreferences;
   /** Optional; when omitted Telegram channel routes are not registered. */
   readonly telegramService?: TelegramLinkService;
+  /** Optional provider admission controller for route-level provider admission (T3-024-C). */
+  readonly admissionController?: ProviderAdmissionController;
+  /** Optional custom speech synthesizer provider (defaults to synthetic WAV generator). */
+  readonly speechProvider?: SpeechSynthesizerProvider;
 }
 
 export function buildApp(
@@ -156,5 +163,13 @@ export function buildApp(
   if (dependencies.telegramService) {
     registerTelegramRoutes(app, dependencies.resolvePrincipal, dependencies.telegramService);
   }
+  const admission =
+    dependencies.admissionController ?? dependencies.tutoring.admissionController;
+  registerSpeechRoutes(
+    app,
+    authenticate(dependencies.resolvePrincipal),
+    admission,
+    dependencies.speechProvider,
+  );
   return app;
 }

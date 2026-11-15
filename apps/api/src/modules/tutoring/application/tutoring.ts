@@ -15,17 +15,31 @@ import type {
   RecordOutcomeInput,
   TutoringRepository,
 } from './ports/tutoring-repository.ts';
+import {
+  ProviderAdmissionController,
+  ProviderAdmissionError,
+  type AdmissionLease,
+} from './provider-admission.ts';
 
 export type TutoringErrorCode =
-  'invented_citation' | 'unsupported_output' | 'timeout' | 'provider_error' | 'unverified_citation';
+  | 'invented_citation'
+  | 'unsupported_output'
+  | 'timeout'
+  | 'provider_error'
+  | 'unverified_citation'
+  | 'busy'
+  | 'rate_limited'
+  | 'input_too_large';
 
 export class TutoringError extends Error {
   readonly code: TutoringErrorCode;
+  readonly retryAfterSeconds?: number | undefined;
 
-  constructor(code: TutoringErrorCode, message: string) {
+  constructor(code: TutoringErrorCode, message: string, retryAfterSeconds?: number) {
     super(message);
     this.name = 'TutoringError';
     this.code = code;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -57,17 +71,24 @@ export class Tutoring {
   readonly #faqProvider: FaqProvider | undefined;
   readonly #onlineProvider: OnlineAnswerProvider | undefined;
   readonly #content: ContentAccess | undefined;
+  readonly #admissionController: ProviderAdmissionController;
 
   constructor(
     repository: TutoringRepository,
     faqProvider?: FaqProvider,
     onlineProvider?: OnlineAnswerProvider,
     content?: ContentAccess,
+    admissionController?: ProviderAdmissionController,
   ) {
     this.#repository = repository;
     this.#faqProvider = faqProvider;
     this.#onlineProvider = onlineProvider;
     this.#content = content;
+    this.#admissionController = admissionController ?? new ProviderAdmissionController();
+  }
+
+  get admissionController(): ProviderAdmissionController {
+    return this.#admissionController;
   }
 
   async claim(principal: Principal, input: ClaimRequestInput): Promise<ClaimResult | null> {
@@ -80,9 +101,22 @@ export class Tutoring {
    * Primary answer endpoint enforcing authorized retrieval and external-processing consent.
    * If consent is declined or provider is unavailable, falls back safely to the labelled FAQ path.
    */
-  async ask(principal: Principal, input: AskAnswerInput): Promise<AnswerResult | null> {
+  async ask(
+    principal: Principal,
+    input: AskAnswerInput,
+    options?: { signal?: AbortSignal },
+  ): Promise<AnswerResult | null> {
     const scope = ownedScope(principal);
     if (!scope || !scope.courseIds.includes(input.courseId)) return null;
+
+    try {
+      this.#admissionController.assertQuestionSize(input.question);
+    } catch (err: unknown) {
+      if (err instanceof ProviderAdmissionError) {
+        throw new TutoringError(err.code, err.message, err.retryAfterSeconds);
+      }
+      throw err;
+    }
 
     // 1. Atomically claim request (idempotent for retries)
     const claimRes = await this.#repository.claimRequest(scope, input);
@@ -111,8 +145,8 @@ export class Tutoring {
       return this.#executeFaqAnswer(scope, request, principal, input);
     }
 
-    // 3. Online path with permission-filtered retrieval
-    return this.#executeOnlineAnswer(scope, request, principal, input);
+    // 3. Online path with permission-filtered retrieval and bounded provider admission
+    return this.#executeOnlineAnswer(scope, request, principal, input, options?.signal);
   }
 
   /**
@@ -171,6 +205,7 @@ export class Tutoring {
     request: TutoringRequest,
     principal: Principal,
     input: ClaimRequestInput,
+    signal?: AbortSignal,
   ): Promise<AnswerResult> {
     const isAmharic = /[\u1200-\u137F]/.test(input.question);
     const lang: 'en' | 'am' = isAmharic ? 'am' : 'en';
@@ -198,36 +233,53 @@ export class Tutoring {
       };
     }
 
-    // Query online provider with timeout protection
-    let onlineResponse: OnlineAnswerResponse;
+    // Acquire admission lease for external provider invocation
+    let lease: AdmissionLease;
     try {
-      if (!this.#onlineProvider) {
-        throw new TutoringError('provider_error', 'Online provider not available');
-      }
-      onlineResponse = await this.#onlineProvider.generateAnswer({
-        question: input.question,
-        language: lang,
-        passages: coursePassages.map((p) => ({
-          id: p.sectionId,
-          heading: p.heading,
-          text: p.text,
-        })),
-      });
+      lease = await this.#admissionController.acquire(principal.id, signal);
     } catch (err: unknown) {
-      const isTimeout =
-        (err instanceof Error &&
-          (err.name === 'TimeoutError' || err.message.toLowerCase().includes('timeout'))) ||
-        (typeof err === 'object' && err !== null && 'code' in err && err.code === 'ETIMEDOUT');
-      const errorCode: TutoringErrorCode = isTimeout ? 'timeout' : 'provider_error';
-      await this.#repository.recordOutcome(scope, request.id, {
-        state: 'recoverable_failure',
-        errorReason: errorCode,
-      });
-      throw new TutoringError(
-        errorCode,
-        isTimeout ? 'Online answer provider timed out' : 'Online answer provider failed',
-      );
+      if (err instanceof ProviderAdmissionError) {
+        await this.#repository.recordOutcome(scope, request.id, {
+          state: 'recoverable_failure',
+          errorReason: err.code,
+        });
+        throw new TutoringError(err.code, err.message, err.retryAfterSeconds);
+      }
+      throw err;
     }
+
+    try {
+      // Query online provider with timeout protection
+      let onlineResponse: OnlineAnswerResponse;
+      try {
+        if (!this.#onlineProvider) {
+          throw new TutoringError('provider_error', 'Online provider not available');
+        }
+        onlineResponse = await this.#onlineProvider.generateAnswer({
+          question: input.question,
+          language: lang,
+          passages: coursePassages.map((p) => ({
+            id: p.sectionId,
+            heading: p.heading,
+            text: p.text,
+          })),
+        });
+      } catch (err: unknown) {
+        if (err instanceof TutoringError) throw err;
+        const isTimeout =
+          (err instanceof Error &&
+            (err.name === 'TimeoutError' || err.message.toLowerCase().includes('timeout'))) ||
+          (typeof err === 'object' && err !== null && 'code' in err && err.code === 'ETIMEDOUT');
+        const errorCode: TutoringErrorCode = isTimeout ? 'timeout' : 'provider_error';
+        await this.#repository.recordOutcome(scope, request.id, {
+          state: 'recoverable_failure',
+          errorReason: errorCode,
+        });
+        throw new TutoringError(
+          errorCode,
+          isTimeout ? 'Online answer provider timed out' : 'Online answer provider failed',
+        );
+      }
 
     // 1. Reject invented citation IDs
     const validSectionIds = new Set(coursePassages.map((p) => p.sectionId));
@@ -307,6 +359,9 @@ export class Tutoring {
       provider: 'online',
       citations: verifiedCitations,
     };
+    } finally {
+      lease.release();
+    }
   }
 
   async getRequest(principal: Principal, id: string): Promise<TutoringRequest | null> {
