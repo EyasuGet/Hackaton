@@ -21,7 +21,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:e2e": "pnpm --filter @track3/web run test:e2e",
-    "eval:grounding": "pnpm --filter @track3/api run eval:grounding"
+    "eval:grounding": "pnpm --filter @track3/api run eval:grounding",
+    "eval:tutoring": "node --env-file-if-exists=.env scripts/run-bilingual-tutoring-eval.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

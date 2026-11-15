@@ -255,3 +255,81 @@ export function analyzeSmsText(
       : {}),
   };
 }
+
+/** Standard Ethiopian SMS rate in ETB per message segment (AfroMessage standard tariff). */
+export const DEFAULT_AFROMESSAGE_RATE_PER_SEGMENT_ETB = 0.35;
+
+export interface SmsCostCalculation {
+  /** Number of billable segments. */
+  readonly segments: number;
+  /** Unit cost per segment in Ethiopian Birr (ETB). */
+  readonly ratePerSegmentEtb: number;
+  /** Total calculated cost in Ethiopian Birr (ETB). */
+  readonly totalCostEtb: number;
+  /** Currency code ('ETB'). */
+  readonly currency: 'ETB';
+}
+
+/**
+ * Calculates the operational cost in ETB for a given number of SMS segments.
+ *
+ * @param segmentCount Number of billable SMS segments (from text analysis).
+ * @param ratePerSegment Custom rate per segment in ETB (defaults to 0.35 ETB).
+ */
+export function calculateSmsCost(
+  segmentCount: number,
+  ratePerSegment: number = DEFAULT_AFROMESSAGE_RATE_PER_SEGMENT_ETB,
+): SmsCostCalculation {
+  const segments = Math.max(0, Math.floor(segmentCount));
+  const rate = Math.max(0, ratePerSegment);
+  const totalCostEtb = Math.round(segments * rate * 10000) / 10000;
+
+  return {
+    segments,
+    ratePerSegmentEtb: rate,
+    totalCostEtb,
+    currency: 'ETB',
+  };
+}
+
+export interface MonthlySmsCostProjection {
+  /** Total monthly message volume. */
+  readonly messageCount: number;
+  /** Average segment count per message. */
+  readonly averageSegments: number;
+  /** Total billable segments for the projected volume. */
+  readonly totalSegments: number;
+  /** Projected monthly cost in ETB. */
+  readonly totalCostEtb: number;
+  /** Rate per segment in ETB. */
+  readonly ratePerSegmentEtb: number;
+  /** Currency code ('ETB'). */
+  readonly currency: 'ETB';
+}
+
+/**
+ * Projects monthly SMS operational expenditure across volume tiers.
+ *
+ * @param messageCount Projected monthly message dispatch count.
+ * @param averageSegmentsPerMessage Expected average segments per alert (defaults to 1).
+ * @param ratePerSegment Rate per segment in ETB (defaults to 0.35 ETB).
+ */
+export function projectMonthlySmsCost(
+  messageCount: number,
+  averageSegmentsPerMessage: number = 1,
+  ratePerSegment: number = DEFAULT_AFROMESSAGE_RATE_PER_SEGMENT_ETB,
+): MonthlySmsCostProjection {
+  const count = Math.max(0, Math.floor(messageCount));
+  const avgSegments = Math.max(1, averageSegmentsPerMessage);
+  const totalSegments = Math.ceil(count * avgSegments);
+  const calculation = calculateSmsCost(totalSegments, ratePerSegment);
+
+  return {
+    messageCount: count,
+    averageSegments: avgSegments,
+    totalSegments,
+    totalCostEtb: calculation.totalCostEtb,
+    ratePerSegmentEtb: calculation.ratePerSegmentEtb,
+    currency: 'ETB',
+  };
+}
