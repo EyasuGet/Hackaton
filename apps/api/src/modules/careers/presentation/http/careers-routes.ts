@@ -1,8 +1,6 @@
-// HTTP presentation routes for career job listings and job preferences (T3-020-A, T3-022-A).
-// Authenticated learners may browse active approved jobs and manage their alert subscriptions.
-// Learner ownership is strictly enforced: third parties cannot see or modify subscriptions.
 import type { FastifyInstance, preHandlerAsyncHookHandler } from 'fastify';
 import { principalOf, requireRole } from '../../../identity/presentation/http/authentication.ts';
+import type { JobAnswers } from '../../application/job-answers.ts';
 import type { JobPreferences } from '../../application/job-preferences.ts';
 import type { JobRepository } from '../../application/import-jobs.ts';
 
@@ -11,6 +9,7 @@ export function registerCareersRoutes(
   authenticated: preHandlerAsyncHookHandler,
   jobRepository: JobRepository,
   jobPreferences?: JobPreferences,
+  jobAnswers?: JobAnswers,
 ) {
   const learnerOnly = { preHandler: [authenticated, requireRole('learner')] };
 
@@ -78,6 +77,21 @@ export function registerCareersRoutes(
         cancelledIntentsCount: outcome.cancelledIntentsCount,
         contactRemoved: outcome.contactRemoved,
       });
+    });
+  }
+
+  if (jobAnswers) {
+    // Answers learner questions grounded in approved job records (T3-019-B).
+    app.post<{
+      Body: { question?: string };
+    }>('/api/careers/answers', learnerOnly, async (request, reply) => {
+      const { question } = request.body ?? {};
+      if (!question || typeof question !== 'string' || question.trim() === '') {
+        return reply.code(400).send({ error: 'invalid_question' });
+      }
+      const principal = principalOf(request);
+      const result = await jobAnswers.answer(principal, question.trim());
+      return reply.code(200).send(result);
     });
   }
 }

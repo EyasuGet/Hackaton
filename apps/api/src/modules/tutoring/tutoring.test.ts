@@ -16,6 +16,8 @@ import type {
   GlossaryGroup,
   Passage,
 } from '../content/domain/retrieval.ts';
+import { JobAnswers } from '../careers/application/job-answers.ts';
+import type { JobRecord } from '../careers/domain/job.ts';
 import { FaqProvider } from './application/faq-provider.ts';
 import type { OnlineAnswerProvider } from './application/ports/online-answer-provider.ts';
 import type {
@@ -1496,6 +1498,197 @@ describe('Online Grounded Answer Path with Safe Fallback (T3-007-C)', () => {
       expect(res?.answerLang).toBe('am');
       expect(res?.citations).toEqual([]);
       expect(res?.answerText).toContain('የተረጋገጠ መልስ አልተገኘም');
+    });
+  });
+
+  describe('Job Question Routing and Evidence Segregation (T3-019-B)', () => {
+    const testActiveJob: JobRecord = {
+      id: 'job-va-specialist-01',
+      publicationId: 'pub-va-01',
+      version: 'starter-1.0',
+      title: 'Virtual Assistant Specialist',
+      organization: 'Savanna Digital Services',
+      category: 'administrative',
+      location: 'Addis Ababa',
+      description:
+        'Managing calendars, correspondence in English and Amharic, digital document filing, and remote tools.',
+      sourceUrl: 'https://digitalbridge.et/jobs/job-va-specialist-01',
+      postedAt: new Date('2026-11-01T08:00:00.000Z'),
+      expiresAt: new Date('2026-12-31T23:59:59.000Z'),
+      withdrawn: false,
+      status: 'active',
+      isDemo: true,
+      importedAt: new Date('2026-11-01T08:00:00.000Z'),
+      provenance: { kind: 'demo', note: 'test' },
+    };
+
+    const testExpiredJob: JobRecord = {
+      id: 'job-data-clerk-02',
+      publicationId: 'pub-data-02',
+      version: 'starter-1.0',
+      title: 'Data Entry and Records Clerk',
+      organization: 'Ethio Tech Solutions',
+      category: 'administrative',
+      location: 'Addis Ababa',
+      description: 'Accurately transcribe bilingual survey forms.',
+      sourceUrl: 'https://digitalbridge.et/jobs/job-data-clerk-02',
+      postedAt: new Date('2026-09-01T08:00:00.000Z'),
+      expiresAt: new Date('2026-10-01T17:00:00.000Z'),
+      withdrawn: false,
+      status: 'expired',
+      isDemo: true,
+      importedAt: new Date('2026-09-01T08:00:00.000Z'),
+      provenance: { kind: 'demo', note: 'test' },
+    };
+
+    function createJobMockRepo(jobs: JobRecord[]) {
+      return {
+        importJob: () => Promise.reject(new Error('not implemented')),
+        getJob: (id: string) => Promise.resolve(jobs.find((j) => j.id === id) ?? null),
+        listJobs: (filter: { status?: string } = {}) => {
+          let res = [...jobs];
+          if (filter.status && filter.status !== 'all') {
+            res = res.filter((j) => j.status === filter.status);
+          }
+          return Promise.resolve(res);
+        },
+        getPublicationEvent: () => Promise.resolve(null),
+      };
+    }
+
+    it('routes job questions to JobAnswers without mixing course evidence', async () => {
+      const content = createRetrievalContentAccess();
+      const faq = new FaqProvider(content);
+      const repo = new InMemoryTutoringRepository();
+      const jobRepo = createJobMockRepo([testActiveJob, testExpiredJob]);
+      const jobAnswers = new JobAnswers(jobRepo);
+      const tutoring = new Tutoring(repo, faq, undefined, content, jobAnswers);
+
+      const res = await tutoring.ask(learnerA, {
+        courseId: 'course-1',
+        requestId: 'job-routing-req-1',
+        question: 'Are there any virtual assistant jobs available?',
+      });
+
+      expect(res).not.toBeNull();
+      expect(res?.provider).toBe('job');
+      expect(res?.kind).toBe('answered');
+      expect(res?.answerText).toContain('Virtual Assistant Specialist');
+      expect(res?.answerText).toContain('Savanna Digital Services');
+      expect(res?.citations).toHaveLength(1);
+      expect(res?.citations[0]?.sourceId).toBe('job-va-specialist-01');
+      expect(res?.citations[0]?.url).toBe('https://digitalbridge.et/jobs/job-va-specialist-01');
+      // Verify no course sections are cited in job answer
+      expect(res?.citations.some((c) => c.sourceId.startsWith('savanna-va1'))).toBe(false);
+    });
+
+    it('routes course questions to course FAQ without mixing job evidence', async () => {
+      const content = createRetrievalContentAccess();
+      const faq = new FaqProvider(content);
+      const repo = new InMemoryTutoringRepository();
+      const jobRepo = createJobMockRepo([testActiveJob, testExpiredJob]);
+      const jobAnswers = new JobAnswers(jobRepo);
+      const tutoring = new Tutoring(repo, faq, undefined, content, jobAnswers);
+
+      const res = await tutoring.ask(learnerA, {
+        courseId: 'course-1',
+        requestId: 'course-routing-req-1',
+        question: 'What is a virtual assistant?',
+      });
+
+      expect(res).not.toBeNull();
+      expect(res?.provider).toBe('faq');
+      expect(res?.kind).toBe('answered');
+      expect(res?.citations).toHaveLength(1);
+      expect(res?.citations[0]?.sourceId).toBe('savanna-va1-future-of-va-industry');
+      // Verify no job records are cited in course answer
+      expect(res?.citations.some((c) => c.sourceId.startsWith('job-'))).toBe(false);
+    });
+
+    it('answers job questions via POST /api/tutoring/answers endpoint', async () => {
+      const content = createRetrievalContentAccess();
+      const faq = new FaqProvider(content);
+      const repo = new InMemoryTutoringRepository();
+      const jobRepo = createJobMockRepo([testActiveJob, testExpiredJob]);
+      const jobAnswers = new JobAnswers(jobRepo);
+      const tutoring = new Tutoring(repo, faq, undefined, content, jobAnswers);
+      const app = createTestApp(tutoring, content);
+
+      // 1. Active job
+      const activeRes = await app.inject({
+        method: 'POST',
+        url: '/api/tutoring/answers',
+        headers: { authorization: `Bearer ${learnerAToken}` },
+        payload: {
+          courseId: 'course-1',
+          requestId: 'http-job-req-1',
+          question: 'What are the requirements for Virtual Assistant Specialist?',
+        },
+      });
+
+      expect(activeRes.statusCode).toBe(200);
+      const activeBody = activeRes.json<{
+        provider: string;
+        citations: Array<{ sourceId: string; url: string }>;
+        answer: string;
+      }>();
+      expect(activeBody.provider).toBe('job');
+      expect(activeBody.answer).toContain('Requirements for Virtual Assistant Specialist');
+      expect(activeBody.citations[0]?.sourceId).toBe('job-va-specialist-01');
+      expect(activeBody.citations[0]?.url).toBe(
+        'https://digitalbridge.et/jobs/job-va-specialist-01',
+      );
+
+      // 2. Expired job handling
+      const expiredRes = await app.inject({
+        method: 'POST',
+        url: '/api/tutoring/answers',
+        headers: { authorization: `Bearer ${learnerAToken}` },
+        payload: {
+          courseId: 'course-1',
+          requestId: 'http-job-req-2',
+          question: 'Is the Data Entry and Records Clerk job open?',
+        },
+      });
+
+      expect(expiredRes.statusCode).toBe(200);
+      const expiredBody = expiredRes.json<{
+        provider: string;
+        citations: Array<{ sourceId: string; heading: string }>;
+        answer: string;
+      }>();
+      expect(expiredBody.provider).toBe('job');
+      expect(expiredBody.answer).toContain(
+        'expired on 2026-10-01 and is no longer open for applications',
+      );
+      expect(expiredBody.citations[0]?.sourceId).toBe('job-data-clerk-02');
+      expect(expiredBody.citations[0]?.heading).toContain('Expired');
+
+      // 3. Unknown job limitation (no web search)
+      const unknownRes = await app.inject({
+        method: 'POST',
+        url: '/api/tutoring/answers',
+        headers: { authorization: `Bearer ${learnerAToken}` },
+        payload: {
+          courseId: 'course-1',
+          requestId: 'http-job-req-3',
+          question: 'Is Google hiring in Addis Ababa?',
+        },
+      });
+
+      expect(unknownRes.statusCode).toBe(200);
+      const unknownBody = unknownRes.json<{
+        kind: string;
+        provider: string;
+        citations: unknown[];
+        answer: string;
+      }>();
+      expect(unknownBody.provider).toBe('job');
+      expect(unknownBody.kind).toBe('insufficient_evidence');
+      expect(unknownBody.citations).toEqual([]);
+      expect(unknownBody.answer).toContain('External web search is not used');
+
+      await app.close();
     });
   });
 });
