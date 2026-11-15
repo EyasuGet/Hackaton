@@ -1,7 +1,7 @@
 // Persistent user preferences (T3-008-B).
 // Preserves learner settings across page reloads, service worker updates, and cache refreshes
 // so language and scenario preferences are not wiped.
-import type { Locale } from '../shared/i18n/i18n.tsx';
+import { LOCALES, type Locale } from '../shared/i18n/messages.ts';
 import type { FixtureScenario } from '../features/assistant/fixture-client.ts';
 
 export const PREFERENCES_STORAGE_KEY = 'track3.preferences';
@@ -18,7 +18,7 @@ export function loadStoredPreferences(storage: Storage = localStorage): UserPref
     const raw = storage.getItem(PREFERENCES_STORAGE_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const locale = parsed.locale === 'en' || parsed.locale === 'am' ? parsed.locale : undefined;
+    const locale = LOCALES.find((option) => option === parsed.locale);
     const scenario =
       typeof parsed.scenario === 'string' ? (parsed.scenario as FixtureScenario) : undefined;
     const simpleLanguage =

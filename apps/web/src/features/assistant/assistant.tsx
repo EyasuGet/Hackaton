@@ -10,7 +10,14 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
-import { LocaleContext, lookup, T, useT, type MessageKey } from '../../shared/i18n/i18n.tsx';
+import {
+  LocaleContext,
+  lookup,
+  T,
+  useT,
+  type Locale,
+  type MessageKey,
+} from '../../shared/i18n/i18n.tsx';
 import { formatAddisDate, type DateLanguage } from '../../shared/i18n/addis-date.ts';
 import type { AskResult, Citation, ConversationClient } from './conversation.ts';
 import { AudioRecorderError, BrowserAudioRecorder, type AudioRecorder } from './audio-recorder.ts';
@@ -63,6 +70,11 @@ const VOICE_PROBLEM_TEXT: Record<VoiceProblemKind, MessageKey> = {
   tooLarge: 'assistant.voiceTooLarge',
   unavailable: 'assistant.voiceUnavailable',
 };
+
+// Answer providers only write English and Amharic; other interface locales get a note.
+function isAnswerLanguage(locale: Locale): boolean {
+  return locale === 'en' || locale === 'am';
+}
 
 function dateLanguage(lang: string | undefined): DateLanguage {
   return lang?.toLowerCase().startsWith('am') ? 'am' : 'en';
@@ -691,6 +703,13 @@ export function Assistant({
                 <p className="message-text" dir="auto" lang={entry.lang}>
                   {entry.text}
                 </p>
+                {entry.speaker === 'assistant' &&
+                  !isAnswerLanguage(locale) &&
+                  !entry.lang?.toLowerCase().startsWith(locale) && (
+                    <p className="reply-language-note" role="note">
+                      <T k="assistant.replyLanguageNote" />
+                    </p>
+                  )}
                 {entry.provider === 'external_web_research' && (
                   <p className="research-provenance-disclaimer" role="note">
                     <T k="assistant.researchProvenanceNote" />

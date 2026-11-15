@@ -142,6 +142,28 @@ describe('App language', () => {
     expect(screen.getByLabelText('Your question')).toHaveProperty('value', 'ያልተላከ ጥያቄ');
   });
 
+  it('mirrors the page in Arabic, marks the draft translation and notes the reply language', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(Response.json({ status: 'ok' }))),
+    );
+    render(<App />);
+    await screen.findByText('API available');
+
+    fireEvent.click(screen.getByRole('button', { name: 'العربية' }));
+
+    expect(document.documentElement.lang).toBe('ar');
+    expect(document.documentElement.dir).toBe('rtl');
+    expect(screen.getByRole('note').textContent).toContain('مسودة');
+    fireEvent.change(screen.getByLabelText('سؤالك'), { target: { value: 'Question' } });
+    fireEvent.click(screen.getByRole('button', { name: 'إرسال' }));
+    expect(await screen.findByText(/الإجابات غير متاحة بلغتك/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(document.documentElement.dir).toBe('ltr');
+    expect(screen.queryByText(/not yet available in your language/)).toBeNull();
+  });
+
   it('does not rewrite the last announcement when the language changes', async () => {
     vi.stubGlobal(
       'fetch',

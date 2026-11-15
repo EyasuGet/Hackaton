@@ -26,4 +26,14 @@ describe('interface dictionary', () => {
       Object.assign(am, original);
     }
   });
+
+  it('isolates an English fallback left-to-right inside the Arabic interface', () => {
+    const { container } = render(
+      <LocaleContext value="ar">
+        <T k="assistant.speakerJob" />
+      </LocaleContext>,
+    );
+
+    expect(container.innerHTML).toBe('<span lang="en" dir="ltr">Assistant (approved jobs)</span>');
+  });
 });
