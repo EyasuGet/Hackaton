@@ -32,6 +32,7 @@ import type { TelegramLinkService } from '../modules/telegram/application/telegr
 import { registerTelegramRoutes } from '../modules/telegram/presentation/http/telegram-routes.ts';
 import type { SmsSubscriptionService } from '../modules/delivery/application/sms-subscription-service.ts';
 import { registerSmsSubscriptionRoutes } from '../modules/delivery/presentation/http/sms-subscription-routes.ts';
+import type { TranscriptionPort } from '../modules/tutoring/application/ports/transcription-port.ts';
 import type { ProviderAdmissionController } from '../modules/tutoring/application/provider-admission.ts';
 import type { SpeechSynthesizerProvider } from '../modules/tutoring/application/ports/speech-synthesizer-provider.ts';
 import { registerSpeechRoutes } from '../modules/tutoring/presentation/http/speech-routes.ts';
@@ -47,6 +48,8 @@ export interface AppDependencies {
   /** Exact page origins allowed to start a demo session. */
   readonly demoAllowedOrigins: readonly string[];
   readonly tutoring: Tutoring;
+  /** Optional; when omitted the transcription route is not registered. */
+  readonly transcription?: TranscriptionPort;
   readonly content: ContentAccess;
   /** Optional; when omitted the help routes are not registered (for tests that do not exercise them). */
   readonly help?: Help;
@@ -139,7 +142,12 @@ export function buildApp(
     authenticate(dependencies.resolvePrincipal),
     dependencies.demoRecords,
   );
-  registerTutoringRoutes(app, authenticate(dependencies.resolvePrincipal), dependencies.tutoring);
+  registerTutoringRoutes(
+    app,
+    authenticate(dependencies.resolvePrincipal),
+    dependencies.tutoring,
+    dependencies.transcription,
+  );
   if (dependencies.help && dependencies.staffHelp) {
     registerHelpRoutes(
       app,
