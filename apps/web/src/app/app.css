@@ -357,3 +357,83 @@ button[aria-disabled='true'] {
   padding: 0.25rem 0.75rem;
   font-size: 0.875rem;
 }
+
+/* Screen sharing (T3-018-B) */
+.sharing-panel {
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--surface, #f8fafc);
+  border-radius: 0.375rem;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+}
+
+.sharing-panel h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.sharing-unsupported-note {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted, #475569);
+  background: #f1f5f9;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  border-left: 3px solid #64748b;
+}
+
+.sharing-status {
+  font-size: 0.875rem;
+  color: var(--muted, #475569);
+  margin: 0.25rem 0 0.5rem;
+}
+
+.sharing-controls {
+  margin: 0.5rem 0 0;
+}
+
+.sharing-start-btn {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: #0284c7;
+  color: #ffffff;
+  border: 1px solid #0369a1;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.sharing-start-btn:hover {
+  background: #0369a1;
+}
+
+.sharing-stop-control {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: #dc2626;
+  color: #ffffff;
+  border: 1px solid #b91c1c;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.sharing-stop-control:hover {
+  background: #b91c1c;
+}
+
+.sharing-video-container {
+  margin-top: 0.75rem;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 0.375rem;
+  background: #0f172a;
+}
+
+.sharing-video {
+  width: 100%;
+  max-height: 480px;
+  display: block;
+  object-fit: contain;
+}

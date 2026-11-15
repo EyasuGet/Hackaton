@@ -1,7 +1,7 @@
 // Domain model for a signalling session that restricts screen-sharing access
 // to exactly two authorised participants: the learner who owns the help request
-// and the support person who claimed it. This leaf (T3-018-A) proves signalling
-// permissions only — not remote screen delivery or capture.
+// and the support person who claimed it.
+// T3-018-A proves signalling permissions; T3-018-B connects media and stop control.
 
 export type SharingSessionState = 'pending' | 'active' | 'revoked' | 'expired';
 
@@ -17,4 +17,15 @@ export interface SharingSession {
   /** ISO 8601 instant; 1 hour after creation. */
   readonly expiresAt: string;
   readonly revokedAt: string | null;
+}
+
+export type SignalType = 'offer' | 'answer' | 'candidate';
+
+export interface SharingSignal {
+  readonly id: number;
+  readonly sessionId: string;
+  readonly senderId: string;
+  readonly type: SignalType;
+  readonly payload: unknown;
+  readonly createdAt: string;
 }
