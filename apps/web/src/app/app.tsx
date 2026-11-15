@@ -9,7 +9,10 @@ import { AccommodationPanel } from '../features/accommodation/accommodation.tsx'
 import { HelpInbox } from '../features/human-help/help-inbox.tsx';
 import { HumanHelp } from '../features/human-help/human-help.tsx';
 import { TeacherTopics } from '../features/teacher/teacher-topics.tsx';
-import { createAnswerClient } from '../features/assistant/faq-client.ts';
+import {
+  createAnswerClient,
+  createCareerResearchClient,
+} from '../features/assistant/faq-client.ts';
 import {
   createFixtureClient,
   FIXTURE_SCENARIOS,
@@ -94,6 +97,17 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
     }
     return createFixtureClient(scenario);
   }, [sessionToken, scenario, externalConsent]);
+
+  const researchClient = useMemo(() => {
+    if (sessionToken) {
+      return createCareerResearchClient({
+        getToken: () => sessionToken,
+      });
+    }
+    return createFixtureClient(
+      scenario === 'researchLimitation' ? 'researchLimitation' : 'researchSuccess',
+    );
+  }, [sessionToken, scenario]);
 
   const t = (key: MessageKey) => lookup(locale, key).text;
 
@@ -192,6 +206,7 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
         )}
         <Assistant
           client={client}
+          researchClient={researchClient}
           mode={sessionToken ? (externalConsent ? 'online' : 'faq') : 'demo'}
           consent={externalConsent}
           {...(sessionToken
