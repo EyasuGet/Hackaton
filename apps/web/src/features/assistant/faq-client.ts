@@ -183,3 +183,87 @@ export function createFaqClient(options: {
 }): ConversationClient {
   return createAnswerClient({ ...options, getConsent: () => false });
 }
+
+export function createCareerResearchClient({
+  getToken,
+}: {
+  readonly getToken: () => string | null;
+}): ConversationClient {
+  return {
+    async ask(question: string): Promise<AskResult> {
+      const token = getToken();
+      if (!token) {
+        return { kind: 'denied' };
+      }
+
+      try {
+        const response = await fetch('/api/careers/research', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            query: question,
+            consent: true,
+          }),
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          return { kind: 'denied' };
+        }
+
+        if (!response.ok) {
+          return { kind: 'failed' };
+        }
+
+        const data = record(await response.json());
+        if (!data || typeof data.answer !== 'string') {
+          return { kind: 'failed' };
+        }
+
+        const lang = typeof data.lang === 'string' ? data.lang : 'en';
+        const rawSources = Array.isArray(data.sources) ? data.sources : [];
+        const citations: Citation[] = [];
+        for (let idx = 0; idx < rawSources.length; idx++) {
+          const s = record(rawSources[idx]);
+          if (s) {
+            const title =
+              typeof s.title === 'string' && s.title.trim() ? s.title : 'External Source';
+            const snippet =
+              typeof s.snippet === 'string' && s.snippet.trim() ? s.snippet : 'Web Reference';
+            const url = typeof s.url === 'string' ? s.url : undefined;
+            citations.push({
+              sourceId: `web-${idx + 1}`,
+              sectionId: `external-${idx + 1}`,
+              sourceTitle: title,
+              heading: snippet,
+              ...(url ? { url } : {}),
+            });
+          }
+        }
+
+        const provenanceObj = record(data.provenance);
+        const disclaimer =
+          typeof provenanceObj?.disclaimer === 'string' ? provenanceObj.disclaimer : undefined;
+
+        const reply: Reply = {
+          id: `research-${Date.now()}`,
+          text: data.answer,
+          lang,
+          createdAt: new Date().toISOString(),
+          ...(citations.length > 0 ? { citations } : {}),
+          provider: 'external_web_research',
+          provenance: {
+            kind: 'external_web_research',
+            ...(disclaimer ? { disclaimer } : {}),
+          },
+        };
+
+        return { kind: 'answer', reply };
+      } catch {
+        return { kind: 'failed' };
+      }
+    },
+  };
+}

@@ -40,6 +40,8 @@ export const en = {
   'demo.scenario.jobUnknown': 'Approved Job: Unknown vacancy (honest limitation)',
   'demo.scenario.simpleLanguageCited': 'Simple language: Cited course answer',
   'demo.scenario.simpleLanguageLimitation': 'Simple language: Honest limitation',
+  'demo.scenario.researchSuccess': 'Career research (external web sources with citations)',
+  'demo.scenario.researchLimitation': 'Career research (no external sources found)',
   'status.label': 'Service status',
   'status.checking': 'Checking the API…',
   'status.available': 'API available',
@@ -51,18 +53,26 @@ export const en = {
     'Operating in consented online answer mode. Answers are generated using authorized course materials and external AI processing.',
   'assistant.simpleLanguageNotice':
     'Operating in simple-language mode. Answers use shorter sentences and everyday words without altering facts or citations.',
+  'assistant.researchModeNotice':
+    'Operating in career web research mode. Queries are minimised and sent to external search providers with your explicit consent.',
   'assistant.empty': 'No messages yet. Ask a question about your course below.',
   'assistant.speakerLearner': 'You',
   'assistant.speakerAssistant': 'Assistant (demo)',
   'assistant.speakerFaq': 'Assistant (course FAQ)',
   'assistant.speakerOnline': 'Assistant (online AI)',
   'assistant.speakerJob': 'Assistant (approved jobs)',
+  'assistant.speakerResearch': 'Assistant (external web research)',
+  'assistant.researchProvenanceNote':
+    'Source: External web research. Information from external web sources is unverified and not part of the approved course curriculum.',
   'assistant.consentLabel': 'Allow external AI processing for course questions',
   'assistant.consentHint':
     'When enabled, your questions and relevant course passages are processed by an external AI provider. When disabled, only local approved course FAQs are used.',
   'assistant.simpleLanguageLabel': 'Use simple, direct language',
   'assistant.simpleLanguageHint':
     'Presents shorter sentences and common words while keeping full citations, source evidence, and limitations intact.',
+  'assistant.researchModeLabel': 'Enable supplementary career web research',
+  'assistant.researchModeHint':
+    'Searches external web sources for career and job information with your explicit consent. Course materials and private conversations are not sent. Results are untrusted.',
   'assistant.questionLabel': 'Your question',
   'assistant.hint': 'Press Enter to send, or Shift+Enter for a new line.',
   'assistant.send': 'Send',
@@ -304,6 +314,8 @@ export const am: Partial<Record<MessageKey, string>> = {
   'demo.scenario.jobUnknown': 'የተረጋገጠ ሥራ፡ ያልታወቀ የሥራ መደብ (የመረጃ ገደብ)',
   'demo.scenario.simpleLanguageCited': 'ቀላል ቋንቋ፦ የተጠቀሰ የትምህርት መልስ',
   'demo.scenario.simpleLanguageLimitation': 'ቀላል ቋንቋ፦ ግልጽ የመረጃ ገደብ',
+  'demo.scenario.researchSuccess': 'የሙያ ጥናት (የውጭ ድር ምንጮች ከጥቅሶች ጋር)',
+  'demo.scenario.researchLimitation': 'የሙያ ጥናት (ምንም የውጭ ምንጮች አልተገኙም)',
   'status.label': 'የአገልግሎት ሁኔታ',
   'status.checking': 'ኤፒአዩ እየተፈተሸ ነው…',
   'status.available': 'ኤፒአዩ ይገኛል',
@@ -315,18 +327,26 @@ export const am: Partial<Record<MessageKey, string>> = {
     'በተፈቀደ የመስመር ላይ AI ሁኔታ ላይ ይገኛል። መልሶች ከተፈቀዱ የትምህርት ክፍሎች እና ውጫዊ AI ማቀነባበሪያ የተገኙ ናቸው።',
   'assistant.simpleLanguageNotice':
     'በቀላል ቋንቋ ሁነታ ላይ ይሰራል። እውነታዎችን ወይም ጥቅሶችን ሳይቀይሩ መልሶች በአጫጭር ዓረፍተ ነገሮች እና የተለመዱ ቃላት ይቀርባሉ።',
+  'assistant.researchModeNotice':
+    'በሙያ ድር ጥናት ሁነታ ላይ ይሰራል። ጥያቄዎች ተቀንሰው በእርስዎ ግልጽ ፈቃድ ወደ ውጭ የፍለጋ አቅራቢዎች ይላካሉ።',
   'assistant.empty': 'እስካሁን ምንም መልእክት የለም። ስለ ትምህርትዎ ጥያቄ ከታች ይጠይቁ።',
   'assistant.speakerLearner': 'እርስዎ',
   'assistant.speakerAssistant': 'ረዳት (ሙከራ)',
   'assistant.speakerFaq': 'ረዳት (የትምህርት FAQ)',
   'assistant.speakerOnline': 'ረዳት (የመስመር ላይ AI)',
   'assistant.speakerJob': 'ረዳት (የተረጋገጡ ሥራዎች)',
+  'assistant.speakerResearch': 'ረዳት (የውጭ ድር ጥናት)',
+  'assistant.researchProvenanceNote':
+    'ምንጭ፦ የውጭ ድር ጥናት። ከውጭ ድር ምንጮች የተገኘ መረጃ ያልተረጋገጠ እና የጸደቀው የትምህርት ፕሮግራም አካል አይደለም።',
   'assistant.consentLabel': 'ለትምህርት ጥያቄዎች ውጫዊ AI ማቀነባበሪያ ይፈቀድ',
   'assistant.consentHint':
     'ሲፈቀድ ጥያቄዎ እና አግባብነት ያላቸው የትምህርት ክፍሎች በውጫዊ AI ይዘጋጃሉ። ሳይፈቀድ ሲቀር የተረጋገጠው የትምህርት FAQ ብቻ ጥቅም ላይ ይውላል።',
   'assistant.simpleLanguageLabel': 'ቀላል እና ግልጽ ቋንቋ ተጠቀም',
   'assistant.simpleLanguageHint':
     'ሙሉ ጥቅሶችን፣ የምንጭ ማስረጃዎችን እና ገደቦችን እንደያዘ አጫጭር ዓረፍተ ነገሮችን እና የተለመዱ ቃላትን ያቀርባል።',
+  'assistant.researchModeLabel': 'ተጨማሪ የሙያ ድር ጥናትን አንቃ',
+  'assistant.researchModeHint':
+    'በእርስዎ ግልጽ ፈቃድ ለሙያ እና ለስራ መረጃ የውጭ ድር ምንጮችን ይፈልጋል። የትምህርት ቁሳቁሶች እና የግል ውይይቶች አይላኩም። ውጤቶቹ ያልተረጋገጡ ናቸው።',
   'assistant.questionLabel': 'ጥያቄዎ',
   'assistant.hint': 'ለመላክ Enter ይጫኑ፤ ለአዲስ መስመር Shift+Enter ይጫኑ።',
   'assistant.send': 'ላክ',
