@@ -16,6 +16,8 @@ import {
   type FixtureScenario,
 } from '../features/assistant/fixture-client.ts';
 import { LocaleContext, lookup, T, type Locale, type MessageKey } from '../shared/i18n/i18n.tsx';
+import { loadStoredPreferences, saveStoredPreferences } from './preferences.ts';
+import { useServiceWorkerUpdate } from './service-worker.ts';
 
 type ApiStatus = 'checking' | 'available' | 'unavailable';
 
@@ -58,11 +60,25 @@ async function fetchApiStatus(signal: AbortSignal): Promise<ApiStatus> {
 /** `handoffCode` is the one-time demo sign-in code taken from the URL at startup. */
 export function App({ handoffCode = null }: { handoffCode?: string | null }) {
   const [status, setStatus] = useState<ApiStatus>('checking');
-  const [scenario, setScenario] = useState<FixtureScenario>('english');
-  const [locale, setLocale] = useState<Locale>('en');
+  const [scenario, setScenarioState] = useState<FixtureScenario>(
+    () => loadStoredPreferences().scenario ?? 'english',
+  );
+  const [locale, setLocaleState] = useState<Locale>(() => loadStoredPreferences().locale ?? 'en');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   // The demo session token lives only in memory and is shared with features that call the API.
   const [sessionToken, setSessionToken] = useState<string | null>(null);
+
+  const { updateAvailable, applyUpdate } = useServiceWorkerUpdate();
+
+  const setLocale = (newLocale: Locale) => {
+    setLocaleState(newLocale);
+    saveStoredPreferences({ locale: newLocale });
+  };
+
+  const setScenario = (newScenario: FixtureScenario) => {
+    setScenarioState(newScenario);
+    saveStoredPreferences({ scenario: newScenario });
+  };
 
   // When a valid learner session token is present, connect the Assistant to real course FAQ
   // using course-1 (Savanna Virtual Assistant) by default, while supporting fixture override.
@@ -126,6 +142,21 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
           <p role="status" aria-live="polite" className="offline-banner">
             <T k="app.offline" />
           </p>
+        )}
+        {updateAvailable && (
+          <div
+            role="status"
+            aria-live="polite"
+            aria-label={t('app.updateAvailable')}
+            className="update-banner"
+          >
+            <p>
+              <T k="app.updateAvailable" />
+            </p>
+            <button type="button" onClick={applyUpdate}>
+              <T k="app.refresh" />
+            </button>
+          </div>
         )}
         <DemoSession handoffCode={handoffCode} onSession={setSessionToken} />
         <CourseContent token={sessionToken} />
