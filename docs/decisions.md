@@ -29,6 +29,7 @@ Agreed through the design interview, synthesised 2026-11-14. [spec.md](spec.md) 
 | D21 | Employer dashboard/outreach are lowest-priority future specs | No implied permission to build a new actor model or send messages |
 | D22 | Final package, hosted MVP and explanatory deck after core completion | T3-027-D → T3-027-A/E/F; earlier HTTPS/relay test setup remains necessary for core proof. Final submission action and paid provisioning still need authorisation |
 | D23 | AfroMessage VAS aggregator for Ethiopian SMS delivery with GSM-7 / UCS-2 character budgeting | Direct SMPP requires prohibitive telco enterprise contracts and setup fees; international aggregators (Twilio) are unreliable into Ethio Telecom and costly ($0.05+/msg); AfroMessage provides a licensed local VAS route at ~0.35–0.40 ETB/segment, supporting English GSM-7 (160/153) and Amharic Ge'ez UCS-2 (70/67) with webhooks for delivery status |
+| D24 | Phone-ownership verification contract requires salted SHA-256 OTP (6-digit, 10m TTL, 3 attempts max, 60s cooldown) before SMS subscriptions | Savanna static host does not provide verified phone claims; arbitrary typed numbers cannot be trusted; prevents harassment, broadcast spam, and unauthorized number registration |
 
 ## Decisions implementation agents may make
 
@@ -82,6 +83,21 @@ Documented in [t3-003-a-sms-route.md](evidence/t3-003-a-sms-route.md). Contract 
 **Limits & downstream gates:**
 Synthetic fixtures verify payload formatting, encoding calculation, and error normalization without unconsented live dispatches. Physical handset delivery to a consenting Ethiopian destination number (`+2519...`) with provisioned credentials belongs to downstream **T3-015-B** (#84).
 
+### Phone-ownership verification route — T3-003-E, 2026-11-15
+
+**Boundary & Context:** The Savanna static starter capture (`alx-africa/Savanna-static-pages` @ `9e83ac7`) is a static DOM capture that provides no trusted identity assertions, no phone verification claims, and no authenticated SMS contact attributes. Entering an arbitrary phone number in a web UI cannot be treated as evidence of ownership. Allowing unverified numbers would enable harassment, SMS spam exhaustion, unconsented broadcast delivery, and privacy violations across learners.
+
+**Selected Contract:** A server-mediated, cryptographic One-Time Password (OTP) verification route:
+1. **Cryptographic OTP:** 6-digit cryptographically secure numeric code generated via `crypto.randomInt(0, 1000000)`.
+2. **Digest & Salt:** SHA-256 digest computed with a per-record 16-byte random salt (`crypto.randomBytes(16)`). Plaintext OTP is never stored in the database or logged. Constant-time comparison (`crypto.timingSafeEqual`) prevents timing side-channels.
+3. **Time-To-Live (TTL):** 10 minutes (600,000 ms). Expired tokens cannot be verified and must be re-requested.
+4. **Attempt Limits & Lockout:** Maximum 3 verification attempts per token. A 3rd failed attempt marks the token permanently `exhausted` (lockout); a 4th invalid attempt permanently rejects the code.
+5. **Rate Limiting & Cooldown:** Minimum 60-second cooldown between code dispatch requests for the same destination phone number.
+6. **Strict Learner Isolation:** Phone numbers are strictly scoped to the authenticated learner (`Principal.id`); support principals and other learners cannot view, query, or verify numbers belonging to another learner. Numbers receive only explicit opt-in alerts (T3-021-A/B), never unconsented broadcasts.
+7. **Safe Display:** Masked presentation (`+2519****1234` or `+2517****1234`) in logs and UI responses.
+
+**Approval:** This contract authorizes implementation of SMS job subscriptions (T3-021-A) and delivery (T3-021-B) without reopening verification architecture. See [`docs/evidence/t3-003-e-phone-verification.md`](evidence/t3-003-e-phone-verification.md).
+
 ## External gates and remaining precision checks
 
 | Gate | Current state | Required evidence / treatment |
@@ -90,7 +106,7 @@ Synthetic fixtures verify payload formatting, encoding calculation, and error no
 | Organiser feature checklist | Public page references a fuller list | Obtain checklist; map discrepancies to issues; ask before expanding scope or claiming complete conformance |
 | Hosting | No commitment confirmed | Establish HTTPS/public callbacks, database storage, secrets, and relay/network requirements; Compose remains portable |
 | SMS | AfroMessage route confirmed (T3-003-A); live credentials and physical handset probe pending (T3-015-B) | Route selected and character budgeting specified; AfroMessage adapter implemented with synthetic fixtures (T3-015-A); live delivery requires team provisioned AfroMessage token and consenting Ethiopian test destination (+251) in T3-015-B |
-| SMS ownership | No verified-phone claim or alternative verification flow confirmed | T3-003-E resolves and records approval before T3-021-A; a typed number is not proof of ownership |
+| SMS ownership | Resolved by Decision D24 and `docs/evidence/t3-003-e-phone-verification.md` | Cryptographic salted SHA-256 OTP contract (6-digit, 10m TTL, 3 attempts max, 60s cooldown) approved before T3-021-A |
 | Voice/AI | [T3-003-B selections and feasibility tests](ai-feasibility.md) recorded 2026-11-14; API integration unverified | Obtain approved access/processing/budget, then feature-specific bilingual evidence and format/citation tests; shortlist recommendations do not pass downstream quality gates. **Capacity blocker:** the recorded free-tier caps (answers 500/day, transcription 25/day, speech 10/day, shared across users) cannot support the 20-session test (T3-024-A), rehearsals and the live demo; paid quota needs explicit budget authorisation, otherwise voice stays a limited path with typed input and FAQ fallback |
 | Screen sharing | Android browser limitation known; actual infrastructure untested | Desktop cross-network proof and organiser response on mobile alternative; do not declare requirement waived |
 | Co-design devices | Meetings describe shared consultation availability; no gate run recorded | Reserve early/retest slots; record participant continuity and real NVDA/TalkBack, keyboard/zoom/sound-off device/unaided outcomes |
