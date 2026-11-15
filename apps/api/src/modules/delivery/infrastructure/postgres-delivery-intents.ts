@@ -199,7 +199,7 @@ export class PostgresDeliveryIntents {
   }
 
   /**
-   * Marks a leased intent as permanently failed; no further dispatch will be attempted.
+   * Marks a leased intent as permanently failed (dead letter); no further dispatch will be attempted.
    * Fencing check: only succeeds if the lease is still held by the caller.
    */
   async fail(id: string, workerId: string, now: Date): Promise<FailOutcome> {
@@ -249,8 +249,6 @@ export class PostgresDeliveryIntents {
     );
     return existing.rows.length === 0 ? { status: 'not_found' } : { status: 'lost_lease' };
   }
-
-  /**
    * Looks up the full intent record by ID, for inspection and test assertions.
    */
   async findById(id: string): Promise<DeliveryIntentRecord | null> {
