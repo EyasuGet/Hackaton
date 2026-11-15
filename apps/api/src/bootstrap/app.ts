@@ -27,6 +27,8 @@ import type { StaffHelp } from '../modules/help/application/staff-help.ts';
 import { registerHelpRoutes } from '../modules/help/presentation/http/help-routes.ts';
 import type { Sharing } from '../modules/sharing/application/sharing.ts';
 import { registerSharingRoutes } from '../modules/sharing/presentation/http/sharing-routes.ts';
+import type { TelegramLinkService } from '../modules/telegram/application/telegram-link-service.ts';
+import { registerTelegramRoutes } from '../modules/telegram/presentation/http/telegram-routes.ts';
 import type { Tutoring } from '../modules/tutoring/application/tutoring.ts';
 import { registerTutoringRoutes } from '../modules/tutoring/presentation/http/tutoring-routes.ts';
 
@@ -49,13 +51,45 @@ export interface AppDependencies {
   readonly accommodation?: Accommodation;
   readonly jobRepository?: JobRepository;
   readonly jobPreferences?: JobPreferences;
+  /** Optional; when omitted Telegram channel routes are not registered. */
+  readonly telegramService?: TelegramLinkService;
 }
 
 export function buildApp(
   dependencies: AppDependencies,
   options: FastifyServerOptions = {},
 ): FastifyInstance {
-  const app = Fastify(options);
+  const loggerOptions =
+    typeof options.logger === 'object' && options.logger !== null
+      ? {
+          ...options.logger,
+          redact: [
+            'req.headers["x-telegram-bot-api-secret-token"]',
+            'req.headers.authorization',
+            '*.token',
+            '*.secret',
+            '*.code',
+            ...(Array.isArray((options.logger as Record<string, unknown>).redact)
+              ? ((options.logger as Record<string, unknown>).redact as string[])
+              : []),
+          ],
+        }
+      : options.logger === true
+        ? {
+            redact: [
+              'req.headers["x-telegram-bot-api-secret-token"]',
+              'req.headers.authorization',
+              '*.token',
+              '*.secret',
+              '*.code',
+            ],
+          }
+        : options.logger;
+
+  const app = Fastify({
+    ...options,
+    ...(loggerOptions !== undefined ? { logger: loggerOptions } : {}),
+  });
 
   // Unexpected failures (for example a database outage during authentication)
   // return a fixed body: driver messages can contain connection details.
@@ -118,6 +152,9 @@ export function buildApp(
       authenticate(dependencies.resolvePrincipal),
       dependencies.accommodation,
     );
+  }
+  if (dependencies.telegramService) {
+    registerTelegramRoutes(app, dependencies.resolvePrincipal, dependencies.telegramService);
   }
   return app;
 }
