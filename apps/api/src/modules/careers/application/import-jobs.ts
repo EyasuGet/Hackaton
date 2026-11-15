@@ -48,6 +48,8 @@ export class InvalidJobError extends Error {
   }
 }
 
+import type { JobMatching } from './job-matching.ts';
+
 export class JobVersionConflictError extends Error {
   constructor(jobId: string, version: string) {
     super(
@@ -58,9 +60,11 @@ export class JobVersionConflictError extends Error {
 
 export class ImportJobs {
   readonly #repository: JobRepository;
+  readonly #matcher: JobMatching | undefined;
 
-  constructor(repository: JobRepository) {
+  constructor(repository: JobRepository, matcher?: JobMatching) {
     this.#repository = repository;
+    this.#matcher = matcher;
   }
 
   /**
@@ -76,6 +80,9 @@ export class ImportJobs {
     const outcomes: JobImportOutcome[] = [];
     for (const job of parsed.jobs) {
       const outcome = await this.#repository.importJob(job, checksumOf(job));
+      if (this.#matcher && outcome.status !== 'unchanged') {
+        await this.#matcher.matchAndEnqueue(job);
+      }
       outcomes.push(outcome);
     }
     return outcomes;

@@ -19,6 +19,8 @@ import { PostgresDemoSessionRepository } from './modules/identity/infrastructure
 import { PostgresPrincipalRepository } from './modules/identity/infrastructure/postgres-principal-repository.ts';
 import { Accommodation } from './modules/accommodation/application/accommodation.ts';
 import { PostgresAccommodationRepository } from './modules/accommodation/infrastructure/persistence/postgres-accommodation-repository.ts';
+import { JobPreferences } from './modules/careers/application/job-preferences.ts';
+import { PostgresJobPreferencesRepository } from './modules/careers/infrastructure/postgres-job-preferences-repository.ts';
 import { PostgresJobRepository } from './modules/careers/infrastructure/postgres-job-repository.ts';
 import { Help } from './modules/help/application/help.ts';
 import { StaffHelp } from './modules/help/application/staff-help.ts';
@@ -43,6 +45,7 @@ const faqProvider = new FaqProvider(content);
 const helpRepository = new PostgresHelpRepository(pool);
 const sharingRepository = new PostgresSharingRepository(pool);
 const helpRequestLookup = new PostgresHelpRequestLookup(pool);
+const jobPreferences = new JobPreferences(new PostgresJobPreferencesRepository(pool));
 
 const app = buildApp(
   {
@@ -58,6 +61,7 @@ const app = buildApp(
     sharing: new Sharing(sharingRepository, helpRequestLookup),
     accommodation: new Accommodation(new PostgresAccommodationRepository(pool)),
     jobRepository: new PostgresJobRepository(pool),
+    jobPreferences,
   },
   { logger: true },
 );
