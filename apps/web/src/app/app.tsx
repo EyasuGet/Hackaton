@@ -9,6 +9,7 @@ import { AccommodationPanel } from '../features/accommodation/accommodation.tsx'
 import { HelpInbox } from '../features/human-help/help-inbox.tsx';
 import { HumanHelp } from '../features/human-help/human-help.tsx';
 import { TeacherTopics } from '../features/teacher/teacher-topics.tsx';
+import { EmployerDashboard } from '../features/employer/employer-dashboard.tsx';
 import {
   createAnswerClient,
   createCareerResearchClient,
@@ -228,6 +229,7 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
         {sessionToken && <HelpInbox token={sessionToken} />}
         {sessionToken && <AccommodationPanel token={sessionToken} />}
         {sessionToken && <TeacherTopics token={sessionToken} />}
+        {sessionToken && <EmployerDashboard sessionToken={sessionToken} />}
       </main>
       <footer>
         <p role="status" aria-label={t('status.label')}>

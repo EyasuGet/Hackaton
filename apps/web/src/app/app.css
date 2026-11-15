@@ -553,3 +553,108 @@ button[aria-disabled='true'] {
 .suppressed-badge {
   font-weight: 600;
 }
+
+/* Employer recruitment portal styles (T3-031) */
+.employer-dashboard {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--surface-bg, #ffffff);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+}
+
+.employer-header {
+  margin-bottom: 1.5rem;
+}
+
+.privacy-banner {
+  background-color: #e8f4fd;
+  border-left: 4px solid #0288d1;
+  padding: 0.75rem 1rem;
+  margin-top: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.employer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .employer-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.employer-section {
+  background: #fdfdfd;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.vacancy-form .form-group {
+  margin-bottom: 0.75rem;
+}
+
+.vacancy-form label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.vacancy-form input,
+.vacancy-form textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.vacancy-list,
+.application-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.vacancy-card,
+.application-card {
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  background: #fff;
+  cursor: pointer;
+}
+
+.vacancy-card:hover,
+.vacancy-card.active {
+  border-color: #3b82f6;
+  background-color: #f8fafc;
+}
+
+.vacancy-meta {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  margin: 0.25rem 0;
+}
+
+.badge {
+  background: #e2e8f0;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.notice-banner {
+  background-color: #fef3c7;
+  border-left: 4px solid #f59e0b;
+  padding: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+}

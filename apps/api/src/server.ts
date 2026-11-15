@@ -37,6 +37,8 @@ import { TelegramLinkService } from './modules/telegram/application/telegram-lin
 import { PostgresTelegramLinkRepository } from './modules/telegram/infrastructure/persistence/postgres-telegram-link-repository.ts';
 import { HttpTelegramMessenger } from './modules/telegram/infrastructure/http-telegram-messenger.ts';
 import { FaqProvider } from './modules/tutoring/application/faq-provider.ts';
+import { PostgresEmployerRepository } from './modules/careers/infrastructure/postgres-employer-repository.ts';
+import { EmployerService } from './modules/careers/application/employer-service.ts';
 import { Tutoring } from './modules/tutoring/application/tutoring.ts';
 import { GeminiTranscriptionAdapter } from './modules/tutoring/infrastructure/gemini-transcription-adapter.ts';
 import { ProviderAdmissionController } from './modules/tutoring/application/provider-admission.ts';
@@ -56,6 +58,8 @@ const onlineProvider = new GeminiGroundedAnswerProvider();
 const transcription = new GeminiTranscriptionAdapter();
 const admissionController = new ProviderAdmissionController(config.providerLimits);
 const helpRepository = new PostgresHelpRepository(pool);
+const employerRepository = new PostgresEmployerRepository(pool);
+const employerService = new EmployerService(employerRepository);
 const sharingRepository = new PostgresSharingRepository(pool);
 const helpRequestLookup = new PostgresHelpRequestLookup(pool);
 const jobRepository = new PostgresJobRepository(pool);
@@ -109,6 +113,7 @@ const app = buildApp(
     jobPreferences,
     jobAnswers,
     careerResearch,
+    employerService,
     telegramService,
     admissionController,
   },
