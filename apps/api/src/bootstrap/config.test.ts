@@ -33,6 +33,7 @@ describe('loadConfig', () => {
       relay: {
         enabled: false,
       },
+      telegram: {},
     });
   });
 
@@ -71,6 +72,18 @@ describe('loadConfig', () => {
       url: 'turns:relay.example.org:5349',
       realm: 'track3.local',
       secret: 'relay-secret-123',
+    });
+  });
+
+  it('reads optional Telegram webhook and bot credentials', () => {
+    const withTelegram = {
+      ...valid,
+      TELEGRAM_WEBHOOK_SECRET: 'webhook-secret-token-123',
+      TELEGRAM_BOT_TOKEN: '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11',
+    };
+    expect(loadConfig(withTelegram).telegram).toEqual({
+      webhookSecret: 'webhook-secret-token-123',
+      botToken: '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11',
     });
   });
 

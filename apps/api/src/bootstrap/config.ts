@@ -18,6 +18,13 @@ export interface RelayConfig {
   readonly secret?: string;
 }
 
+export interface TelegramConfig {
+  /** Secret token sent by Telegram in X-Telegram-Bot-Api-Secret-Token for webhook verification. */
+  readonly webhookSecret?: string;
+  /** Bot token used for verifying WebApp initData HMAC signatures. */
+  readonly botToken?: string;
+}
+
 export interface ApiConfig {
   readonly host: string;
   readonly port: number;
@@ -28,6 +35,8 @@ export interface ApiConfig {
   readonly demoAllowedOrigins: readonly string[];
   /** Optional media relay configuration for WebRTC screen sharing across symmetric NAT. */
   readonly relay: RelayConfig;
+  /** Optional Telegram bot/webhook configuration for channel adapter. */
+  readonly telegram: TelegramConfig;
 }
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -120,6 +129,15 @@ export function loadRelayConfig(env: Env): RelayConfig {
   };
 }
 
+export function loadTelegramConfig(env: Env): TelegramConfig {
+  const webhookSecret = env.TELEGRAM_WEBHOOK_SECRET?.trim() || undefined;
+  const botToken = env.TELEGRAM_BOT_TOKEN?.trim() || undefined;
+  return {
+    ...(webhookSecret ? { webhookSecret } : {}),
+    ...(botToken ? { botToken } : {}),
+  };
+}
+
 export function loadConfig(env: Env): ApiConfig {
   return {
     host: required(env, 'API_HOST'),
@@ -128,6 +146,7 @@ export function loadConfig(env: Env): ApiConfig {
     demoMode: loadDemoMode(env),
     demoAllowedOrigins: loadDemoAllowedOrigins(env),
     relay: loadRelayConfig(env),
+    telegram: loadTelegramConfig(env),
   };
 }
 

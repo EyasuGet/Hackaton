@@ -94,8 +94,8 @@ export class PostgresTutoringRepository implements TutoringRepository {
     if (!scope.courseIds.includes(courseId)) return null;
 
     const result = await this.#pool.query<ConversationRow>(
-      `INSERT INTO tutoring_conversations (owner_id, course_id)
-       VALUES ($1, $2)
+      `INSERT INTO tutoring_conversations (owner_id, course_id, expires_at)
+       VALUES ($1, $2, now() + INTERVAL '7 days')
        RETURNING id, owner_id, course_id, created_at, updated_at, expires_at, purged_at`,
       [scope.ownerId, courseId],
     );
@@ -145,8 +145,8 @@ export class PostgresTutoringRepository implements TutoringRepository {
     // Commits immediately so no transaction remains open.
     const insertResult = await this.#pool.query<RequestRow>(
       `INSERT INTO tutoring_requests (
-         conversation_id, owner_id, course_id, request_id, question, state
-       ) VALUES ($1, $2, $3, $4, $5, 'pending')
+         conversation_id, owner_id, course_id, request_id, question, state, expires_at
+       ) VALUES ($1, $2, $3, $4, $5, 'pending', now() + INTERVAL '7 days')
        ON CONFLICT (owner_id, request_id) DO NOTHING
        RETURNING id, conversation_id, owner_id, course_id, request_id, question, state,
                  answer_text, answer_lang, error_reason, created_at, updated_at, completed_at,
