@@ -259,7 +259,11 @@ export class PostgresJobRepository implements JobRepository {
           job.expiresAt,
           job.withdrawn,
           job.provenance.kind === 'demo',
-          job.provenance,
+          {
+            ...job.provenance,
+            ...(job.employmentType ? { employmentType: job.employmentType } : {}),
+            ...(job.accessibilityNotes ? { accessibilityNotes: job.accessibilityNotes } : {}),
+          },
         ],
       );
       const row = inserted.rows[0];
@@ -274,6 +278,16 @@ export class PostgresJobRepository implements JobRepository {
   }
 
   #mapRow(row: StoredJobRow): JobRecord {
+    const prov = row.provenance as Record<string, unknown> | undefined;
+    const employmentType =
+      typeof prov?.employmentType === 'string' && prov.employmentType.trim()
+        ? prov.employmentType.trim()
+        : undefined;
+    const accessibilityNotes =
+      typeof prov?.accessibilityNotes === 'string' && prov.accessibilityNotes.trim()
+        ? prov.accessibilityNotes.trim()
+        : undefined;
+
     return {
       id: row.id,
       publicationId: row.publication_id,
@@ -291,6 +305,8 @@ export class PostgresJobRepository implements JobRepository {
       provenance: row.provenance,
       importedAt: new Date(row.imported_at),
       status: row.status,
+      ...(employmentType ? { employmentType } : {}),
+      ...(accessibilityNotes ? { accessibilityNotes } : {}),
     };
   }
 }

@@ -23,12 +23,13 @@ export interface JobAnswerResult {
 }
 
 const JOB_INTENT_PATTERN =
-  /\b(jobs?|vacanc(?:y|ies)|openings?|positions?|hiring|hire|hires|hired|employ(?:ment|er|ers)?|careers?|work opportunities?|work opportunity)\b/i;
+  /\b(jobs?|vacanc(?:y|ies)|openings?|positions?|hiring|hire|hires|hired|employ(?:ment|er|ers)?|careers?|work opportunities?|work opportunity|accommodations?|accessibility)\b/i;
 
 const JOB_APPLY_PATTERN = /\b(apply|application|applications)\b.*\b(for|to|position|job|role)\b/i;
 const SALARY_PATTERN = /\b(salary|salaries|wage|wages|pay|compensation)\b/i;
 
-const AMHARIC_JOB_PATTERN = /(ሥራ|ሥራዎች|ክፍት\s*የሥራ|ቅጥር|ማመልከቻ|ማመልከት|የሥራ\s*ዕድል|የሥራ\s*ቦታ|ደመወዝ)/u;
+const AMHARIC_JOB_PATTERN =
+  /(ሥራ|ሥራዎች|ክፍት\s*የሥራ|ቅጥር|ማመልከቻ|ማመልከት|የሥራ\s*ዕድል|የሥራ\s*ቦታ|ደመወዝ|ተደራሽነት|ማስተናገጃ)/u;
 
 function normalize(text: string): string {
   return text
@@ -208,7 +209,7 @@ export class JobAnswers {
         return job;
       }
       if (
-        (normTitle.includes('data entry') || normOrg.includes('ethio tech')) &&
+        normTitle.includes('data entry') &&
         (normQ.includes('data entry') ||
           normQ.includes('data clerk') ||
           normQ.includes('records clerk') ||
@@ -216,6 +217,21 @@ export class JobAnswers {
           normQ.includes('ዳታ') ||
           normQ.includes('ክለርክ') ||
           normQ.includes('ኢትዮ ቴክ'))
+      ) {
+        return job;
+      }
+      if (
+        normOrg.includes('ethio tech') &&
+        (normQ.includes('ethio tech') || normQ.includes('ኢትዮ ቴክ'))
+      ) {
+        return job;
+      }
+      if (
+        (normTitle.includes('software engineer') || normOrg.includes('addis software')) &&
+        (normQ.includes('software engineer') ||
+          normQ.includes('addis software') ||
+          normQ.includes('ሶፍትዌር') ||
+          normQ.includes('አዲስ ሶፍትዌር'))
       ) {
         return job;
       }
@@ -289,10 +305,20 @@ export class JobAnswers {
       normQ.includes('skill') ||
       normQ.includes('need') ||
       normQ.includes('qualif');
+    const asksAccommodations =
+      normQ.includes('accommodation') ||
+      normQ.includes('accessibility') ||
+      normQ.includes('disability') ||
+      normQ.includes('adaptive') ||
+      normQ.includes('ተደራሽነት') ||
+      normQ.includes('ማስተናገጃ');
 
     let answerText: string;
     if (lang === 'am') {
-      if (asksLocation) {
+      if (asksAccommodations) {
+        const details = job.accessibilityNotes ?? job.description;
+        answerText = `ለ'${job.title}' በ${job.organization} (${job.location}) የተመዘገቡ የተደራሽነት/ማስተናገጃ ዝርዝሮች፡ ${details}። ምንጭ፡ ${job.sourceUrl}`;
+      } else if (asksLocation) {
         answerText = `የ'${job.title}' የሥራ መደብ በ${job.organization} የሚገኘው በ${job.location} ነው። ምንጭ፡ ${job.sourceUrl}`;
       } else if (asksApply) {
         answerText = `ለ'${job.title}' የሥራ መደብ በ${job.organization} (${job.location}) በሚከተለው የተረጋገጠ ሊንክ ማመልከት ይችላሉ፡ ${job.sourceUrl}።`;
@@ -302,7 +328,10 @@ export class JobAnswers {
         answerText = `${job.organization} በአሁኑ ወቅት በ${job.location} ውስጥ ለ'${job.title}' ክፍት የሥራ መደብ አለው። መስፈርቶች፡ ${job.description}። ምንጭ፡ ${job.sourceUrl}`;
       }
     } else {
-      if (asksLocation) {
+      if (asksAccommodations) {
+        const details = job.accessibilityNotes ?? job.description;
+        answerText = `Accommodation and accessibility details for ${job.title} at ${job.organization} (${job.location}): ${details}. Approved link: ${job.sourceUrl}`;
+      } else if (asksLocation) {
         answerText = `The ${job.title} position at ${job.organization} is located in ${job.location}. Approved link: ${job.sourceUrl}`;
       } else if (asksApply) {
         answerText = `You can apply for the ${job.title} position at ${job.organization} (${job.location}) using the approved link: ${job.sourceUrl}.`;
