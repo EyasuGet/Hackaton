@@ -249,6 +249,8 @@ export class PostgresDeliveryIntents {
     );
     return existing.rows.length === 0 ? { status: 'not_found' } : { status: 'lost_lease' };
   }
+
+  /**
    * Looks up the full intent record by ID, for inspection and test assertions.
    */
   async findById(id: string): Promise<DeliveryIntentRecord | null> {
