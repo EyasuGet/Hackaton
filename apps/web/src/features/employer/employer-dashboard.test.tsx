@@ -31,11 +31,18 @@ describe('EmployerDashboard', () => {
     },
   ];
 
+  // The role /api/me reports for the signed-in principal.
+  let meRole = 'employer';
+
   beforeEach(() => {
+    meRole = 'employer';
     vi.stubGlobal(
       'fetch',
       vi.fn((url: string, options?: RequestInit) => {
         const u = typeof url === 'string' ? url : (url as URL).pathname;
+        if (u === '/api/me') {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ role: meRole }) });
+        }
         if (
           u === '/api/employer/vacancies' &&
           (!options || !options.method || options.method === 'GET')
@@ -96,7 +103,7 @@ describe('EmployerDashboard', () => {
   it('renders privacy banner stating strict privacy boundary', async () => {
     render(<EmployerDashboard sessionToken="emp-test-token" />);
 
-    expect(screen.getByRole('note', { name: /privacy boundary notice/i })).toBeTruthy();
+    expect(await screen.findByRole('note', { name: /privacy boundary notice/i })).toBeTruthy();
     expect(screen.getByText(/strict privacy boundary:/i)).toBeTruthy();
 
     await waitFor(() => {
@@ -143,5 +150,15 @@ describe('EmployerDashboard', () => {
         screen.getByRole('link', { name: /view candidate resume/i }).getAttribute('href'),
       ).toBe('https://example.com/resume.pdf');
     });
+  });
+
+  it('renders nothing and requests no vacancies for a non-employer role', async () => {
+    meRole = 'learner';
+    const { container } = render(<EmployerDashboard sessionToken="learner-token" />);
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/me', expect.anything()));
+    await Promise.resolve();
+    expect(container.innerHTML).toBe('');
+    expect(fetch).not.toHaveBeenCalledWith('/api/employer/vacancies', expect.anything());
   });
 });

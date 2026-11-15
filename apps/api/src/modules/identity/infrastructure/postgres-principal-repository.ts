@@ -67,6 +67,7 @@ export const DEMO_PRINCIPALS = [
   },
   { key: 'support', role: 'support', label: 'Demo support person', courseIds: [] },
   { key: 'teacher', role: 'teacher', label: 'Demo teacher', courseIds: ['course-1'] },
+  { key: 'employer', role: 'employer', label: 'Demo employer', courseIds: [] },
 ] as const satisfies readonly {
   key: string;
   role: Role;
