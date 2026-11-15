@@ -1,5 +1,3 @@
-// Headless assistant running inside iframe. Receives handoff code or token from parent,
-// instantiates App with authenticated client, handles close signals.
 import { useEffect, useState } from 'react';
 import { App } from '../app/app.tsx';
 import { validateMessage } from './message-protocol.ts';
@@ -12,7 +10,6 @@ export function IframeApp() {
     // Listen for init message from parent.
     function handleMessage(event: MessageEvent<unknown>) {
       if (!validateMessage(event.data)) {
-        window.parent.postMessage(event.data, '*');
         return;
       }
       const msg = event.data;
@@ -53,10 +50,9 @@ export function IframeApp() {
         overflow: 'hidden',
       }}
     >
-      <main style={{ flex: 1, overflow: 'auto', padding: '0.5rem' }}>
-        <h1>Learning assistant</h1>
+      <div style={{ flex: 1, overflow: 'auto', padding: '0.5rem' }}>
         <App handoffCode={token} />
-      </main>
+      </div>
       <footer
         style={{
           padding: '0.5rem',
