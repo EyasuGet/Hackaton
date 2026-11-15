@@ -31,12 +31,11 @@ import { PostgresHelpRepository } from './modules/help/infrastructure/persistenc
 import { Sharing } from './modules/sharing/application/sharing.ts';
 import { PostgresHelpRequestLookup } from './modules/sharing/infrastructure/persistence/postgres-help-request-lookup.ts';
 import { PostgresSharingRepository } from './modules/sharing/infrastructure/persistence/postgres-sharing-repository.ts';
-import { GeminiGroundedAnswerProvider } from './modules/tutoring/infrastructure/gemini-grounded-answer-provider.ts';
+import { createAnswerProviders } from './modules/tutoring/infrastructure/provider-factory.ts';
 import { HttpTelegramClient } from './modules/telegram/infrastructure/http-telegram-client.ts';
 import { TelegramLinkService } from './modules/telegram/application/telegram-link-service.ts';
 import { PostgresTelegramLinkRepository } from './modules/telegram/infrastructure/persistence/postgres-telegram-link-repository.ts';
 import { HttpTelegramMessenger } from './modules/telegram/infrastructure/http-telegram-messenger.ts';
-import { FaqProvider } from './modules/tutoring/application/faq-provider.ts';
 import { PostgresEmployerRepository } from './modules/careers/infrastructure/postgres-employer-repository.ts';
 import { EmployerService } from './modules/careers/application/employer-service.ts';
 import { Tutoring } from './modules/tutoring/application/tutoring.ts';
@@ -54,8 +53,7 @@ const pool = createPool(config.database, (error) =>
   app.log.warn({ code: 'code' in error ? error.code : undefined }, 'Idle database connection lost'),
 );
 const content = new ContentAccess(new PostgresLessonReader(pool), glossary);
-const faqProvider = new FaqProvider(content);
-const onlineProvider = new GeminiGroundedAnswerProvider();
+const { faqProvider, onlineProvider } = createAnswerProviders(config.ai, content);
 const transcription = new GeminiTranscriptionAdapter();
 const admissionController = new ProviderAdmissionController(config.providerLimits);
 const helpRepository = new PostgresHelpRepository(pool);

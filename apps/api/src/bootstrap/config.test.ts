@@ -35,6 +35,11 @@ describe('loadConfig', () => {
       },
       telegram: {},
       providerLimits: DEFAULT_PROVIDER_LIMITS,
+      ai: {
+        provider: 'cloud',
+        localModelUrl: 'http://localhost:11434/v1',
+        localModelName: 'qwen2.5:3b',
+      },
     });
   });
 
@@ -205,5 +210,36 @@ describe('loadConfig', () => {
     ['non-numeric rate limit', 'PROVIDER_RATE_LIMIT_MAX_REQUESTS', 'abc', 'positive integer'],
   ])('rejects %s', (_desc, envKey, value, msg) => {
     expect(() => loadConfig({ ...valid, [envKey]: value })).toThrow(msg);
+  });
+
+  describe('AI layer pluggable configuration', () => {
+    it.each(['faq', 'local', 'cloud'] as const)('accepts AI_PROVIDER=%s', (provider) => {
+      const config = loadConfig({ ...valid, AI_PROVIDER: provider });
+      expect(config.ai.provider).toBe(provider);
+    });
+
+    it('accepts custom LOCAL_MODEL_URL and LOCAL_MODEL_NAME', () => {
+      const config = loadConfig({
+        ...valid,
+        AI_PROVIDER: 'local',
+        LOCAL_MODEL_URL: 'http://custom-host:8080/v1',
+        LOCAL_MODEL_NAME: 'llama3:8b',
+      });
+      expect(config.ai).toEqual({
+        provider: 'local',
+        localModelUrl: 'http://custom-host:8080/v1',
+        localModelName: 'llama3:8b',
+      });
+    });
+
+    it.each(['unknown', 'openai', 'anthropic', 'true', '1'])(
+      'rejects invalid AI_PROVIDER=%s',
+      (invalidProvider) => {
+        expect(() => loadConfig({ ...valid, AI_PROVIDER: invalidProvider })).toThrow(ConfigError);
+        expect(() => loadConfig({ ...valid, AI_PROVIDER: invalidProvider })).toThrow(
+          'AI_PROVIDER must be one of: faq, local, cloud',
+        );
+      },
+    );
   });
 });

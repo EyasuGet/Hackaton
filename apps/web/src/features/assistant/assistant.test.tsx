@@ -1140,4 +1140,72 @@ describe('Assistant', () => {
       expect(screen.getByText(/ምንጭ፦ የውጭ ድር ጥናት። ከውጭ ድር ምንጮች የተገኘ መረጃ/i)).toBeTruthy();
     });
   });
+
+  describe('Pluggable AI layer and local model mode (T3-037)', () => {
+    it('renders local mode notice and labels assistant as local AI in mode="local"', async () => {
+      const { client, respond } = controllableClient();
+      render(<Assistant client={client} mode="local" />);
+
+      // Local mode notice with zero external data transmission
+      const note = screen.getByRole('note').textContent;
+      expect(note).toContain('Operating in local open model mode');
+      expect(note).toContain('zero external data transmission');
+
+      // External consent checkbox is omitted in local mode
+      expect(
+        screen.queryByLabelText('Allow external AI processing for course questions'),
+      ).toBeNull();
+
+      type('What tasks can AI assist with?');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+      await respond({
+        kind: 'answer',
+        reply: {
+          id: 'r-local-1',
+          text: 'AI assists with routine tasks [artificial-intelligence-and-the-future-of-va-work].',
+          lang: 'en',
+          createdAt: '2026-09-11T12:00:00.000Z',
+          provider: 'local',
+        },
+      });
+
+      const messages = screen.getAllByRole('listitem').map((item) => item.textContent);
+      expect(messages[1]).toContain('Assistant (local AI)');
+    });
+
+    it('renders bilingual Amharic notice and speaker label in local mode', async () => {
+      const { client, respond } = controllableClient();
+      render(
+        <LocaleContext value="am">
+          <Assistant client={client} mode="local" />
+        </LocaleContext>,
+      );
+
+      // Amharic local mode notice
+      const note = screen.getByRole('note').textContent;
+      expect(note).toContain('በአካባቢያዊ ክፍት ሞዴል ሁነታ ላይ ይገኛል።');
+      expect(note).toContain('ያለ ምንም ውጫዊ የውሂብ ማስተላለፍ');
+
+      // External consent checkbox is omitted in local mode
+      expect(screen.queryByLabelText('ለትምህርት ጥያቄዎች ውጫዊ AI ማቀነባበሪያ ይፈቀድ')).toBeNull();
+
+      const textarea = screen.getByLabelText('ጥያቄዎ');
+      fireEvent.change(textarea, { target: { value: 'የAI ተግባራት ምንድን ናቸው?' } });
+      fireEvent.keyDown(textarea, { key: 'Enter' });
+
+      await respond({
+        kind: 'answer',
+        reply: {
+          id: 'r-local-am-1',
+          text: 'AI መደበኛ ስራዎችን ያግዛል [breaks]።',
+          lang: 'am',
+          createdAt: '2026-09-11T12:00:00.000Z',
+          provider: 'local',
+        },
+      });
+
+      const messages = screen.getAllByRole('listitem').map((item) => item.textContent);
+      expect(messages[1]).toContain('ረዳት (የአካባቢ AI)');
+    });
+  });
 });

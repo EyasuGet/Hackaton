@@ -91,6 +91,23 @@ The Fastify backend provides strict Clean Architecture endpoints documented via 
 | `DEMO_MODE` | `true` | Enables synthetic demo credentials for hackathon evaluation |
 | `DEMO_ALLOWED_ORIGINS`| `http://localhost:5173` | Allowed host web origins for demo session handoffs |
 | `GEMINI_API_KEY` | *(optional)* | Google Gemini API key for live grounding & cloud transcription |
+| `AI_PROVIDER` | `cloud` | `cloud`, `local`, or `faq` (T3-037). Selects the AI layer |
+| `LOCAL_MODEL_URL` | `http://localhost:11434/v1` | OpenAI-compatible endpoint for local mode |
+| `LOCAL_MODEL_NAME` | `qwen2.5:3b` | Model name for local mode |
+
+---
+
+### Pluggable AI layer (cloud, local, or offline FAQ)
+
+The assistant supports three AI operational modes configured via `AI_PROVIDER` (T3-037):
+
+1. **Cloud AI (`AI_PROVIDER=cloud`, default):** Uses Google Gemini (`gemini-3.5-flash-lite`). Requires explicit learner consent before queries are sent to external cloud processing; falls back safely to verified probe recordings when `GEMINI_API_KEY` is not supplied.
+2. **Local Open Model (`AI_PROVIDER=local`):** Connects to an OpenAI-compatible local model server (Ollama, llama.cpp, vLLM) configured via `LOCAL_MODEL_URL` (default: `http://localhost:11434/v1`) and `LOCAL_MODEL_NAME` (default: `qwen2.5:3b`). Because inference runs entirely on-host with zero external data transmission, no external consent prompt is required, and the UI displays a clear on-device processing indicator. To run Ollama locally via Docker Compose:
+   ```sh
+   docker compose --profile local-ai up -d
+   docker compose --profile local-ai exec ollama ollama pull qwen2.5:3b
+   ```
+3. **Offline FAQ (`AI_PROVIDER=faq`):** 100% deterministic approved course FAQ. Operates fully offline without calling any LLM API or local model runtime.
 
 ---
 

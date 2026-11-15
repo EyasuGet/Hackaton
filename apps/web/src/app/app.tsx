@@ -76,6 +76,14 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
   // The demo session token lives only in memory and is shared with features that call the API.
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [externalConsent, setExternalConsent] = useState(false);
+  const [localMode] = useState<boolean>(
+    () =>
+      loadStoredPreferences().localMode ??
+      (typeof window !== 'undefined' &&
+        (window.location.search.includes('mode=local') ||
+          window.location.search.includes('local=true') ||
+          window.location.search.includes('provider=local'))),
+  );
 
   const { updateAvailable, applyUpdate } = useServiceWorkerUpdate();
 
@@ -217,7 +225,7 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
         <Assistant
           client={client}
           researchClient={researchClient}
-          mode={sessionToken ? (externalConsent ? 'online' : 'faq') : 'demo'}
+          mode={sessionToken ? (localMode ? 'local' : externalConsent ? 'online' : 'faq') : 'demo'}
           consent={externalConsent}
           simpleLanguage={simpleLanguage}
           onSimpleLanguageChange={setSimpleLanguage}

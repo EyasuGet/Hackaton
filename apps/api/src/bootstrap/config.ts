@@ -39,6 +39,16 @@ export interface ApiConfig {
   readonly telegram: TelegramConfig;
   /** Bounded provider admission and rate limits configuration (T3-024-C). */
   readonly providerLimits: ProviderLimitsConfig;
+  /** Pluggable AI layer configuration (T3-037). */
+  readonly ai: AiConfig;
+}
+
+export type AiProviderKind = 'faq' | 'local' | 'cloud';
+
+export interface AiConfig {
+  readonly provider: AiProviderKind;
+  readonly localModelUrl: string;
+  readonly localModelName: string;
 }
 
 export interface ProviderLimitsConfig {
@@ -241,6 +251,23 @@ export function loadProviderLimitsConfig(env: Env): ProviderLimitsConfig {
   };
 }
 
+export function loadAiConfig(env: Env): AiConfig {
+  const raw = env.AI_PROVIDER?.trim().toLowerCase();
+  const provider = (raw || 'cloud') as AiProviderKind;
+  if (provider !== 'faq' && provider !== 'local' && provider !== 'cloud') {
+    throw new ConfigError('AI_PROVIDER must be one of: faq, local, cloud');
+  }
+
+  const localModelUrl = env.LOCAL_MODEL_URL?.trim() || 'http://localhost:11434/v1';
+  const localModelName = env.LOCAL_MODEL_NAME?.trim() || 'qwen2.5:3b';
+
+  return {
+    provider,
+    localModelUrl,
+    localModelName,
+  };
+}
+
 export function loadConfig(env: Env): ApiConfig {
   return {
     host: required(env, 'API_HOST'),
@@ -251,6 +278,7 @@ export function loadConfig(env: Env): ApiConfig {
     relay: loadRelayConfig(env),
     telegram: loadTelegramConfig(env),
     providerLimits: loadProviderLimitsConfig(env),
+    ai: loadAiConfig(env),
   };
 }
 

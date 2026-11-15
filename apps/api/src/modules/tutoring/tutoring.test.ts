@@ -1802,4 +1802,91 @@ describe('Online Grounded Answer Path with Safe Fallback (T3-007-C)', () => {
       await app.close();
     });
   });
+
+  describe('Pluggable AI layer and local model mode (T3-037)', () => {
+    it('executes local model without externalConsent and returns provider: local', async () => {
+      const content = createRetrievalContentAccess();
+      const faq = new FaqProvider(content);
+      let capturedRequest: OnlineAnswerRequest | null = null;
+      const mockLocalProvider: OnlineAnswerProvider = {
+        name: 'local-ollama (qwen2.5:3b)',
+        isLocal: true,
+        isAvailable: () => true,
+        // eslint-disable-next-line @typescript-eslint/require-await
+        generateAnswer: async (req) => {
+          capturedRequest = req;
+          return {
+            answer:
+              'Local on-device grounded answer [artificial-intelligence-and-the-future-of-va-work].',
+            outcome: 'grounded_answer',
+            citedPassageIds: ['artificial-intelligence-and-the-future-of-va-work'],
+          };
+        },
+      };
+      const repo = new InMemoryTutoringRepository();
+      const tutoring = new Tutoring(repo, faq, mockLocalProvider, content);
+
+      // Call ask with externalConsent: false
+      const result = await tutoring.ask(learnerA, {
+        courseId: 'course-1',
+        requestId: 'req-local-mode-1',
+        question: 'What routine tasks can AI tools help a Virtual Assistant with?',
+        externalConsent: false,
+      });
+
+      expect(capturedRequest).not.toBeNull();
+      expect(result).not.toBeNull();
+      expect(result?.provider).toBe('local');
+      expect(result?.kind).toBe('answered');
+      expect(result?.answerText).toContain('Local on-device grounded answer');
+      expect(result?.citations).toHaveLength(1);
+
+      const record = repo.requests.find((r) => r.requestId === 'req-local-mode-1');
+      expect(record?.state).toBe('completed');
+    });
+
+    it('returns provider: local in HTTP response from POST /api/tutoring/answers', async () => {
+      const content = createRetrievalContentAccess();
+      const faq = new FaqProvider(content);
+      const mockLocalProvider: OnlineAnswerProvider = {
+        name: 'local-ollama (qwen2.5:3b)',
+        isLocal: true,
+        isAvailable: () => true,
+        // eslint-disable-next-line @typescript-eslint/require-await
+        generateAnswer: async () => ({
+          answer:
+            'Fully private local model answer [artificial-intelligence-and-the-future-of-va-work].',
+          outcome: 'grounded_answer',
+          citedPassageIds: ['artificial-intelligence-and-the-future-of-va-work'],
+        }),
+      };
+      const repo = new InMemoryTutoringRepository();
+      const tutoring = new Tutoring(repo, faq, mockLocalProvider, content);
+      const app = createTestApp(tutoring, content);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tutoring/answers',
+        headers: { authorization: `Bearer ${learnerAToken}` },
+        payload: {
+          courseId: 'course-1',
+          requestId: 'http-local-req-1',
+          question: 'What routine tasks can AI tools help a Virtual Assistant with?',
+          externalConsent: false,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json<{
+        provider: string;
+        answer: string;
+        citations: Array<{ sectionId: string }>;
+      }>();
+      expect(body.provider).toBe('local');
+      expect(body.answer).toContain('Fully private local model answer');
+      expect(body.citations).toHaveLength(1);
+
+      await app.close();
+    });
+  });
 });

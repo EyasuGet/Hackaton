@@ -22,6 +22,8 @@ export interface OnlineAnswerResponse {
 
 export interface OnlineAnswerProvider {
   readonly name: string;
+  /** True when the provider runs locally on-host without external data transmission. */
+  readonly isLocal?: boolean;
   /** Reports whether the external provider is currently configured and operational. */
   isAvailable(): boolean;
   /** Generates an answer strictly grounded in the supplied passages. */

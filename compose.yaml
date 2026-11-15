@@ -1,9 +1,10 @@
-# Local PostgreSQL for development and integration tests, with optional full demo stack.
+# Local PostgreSQL for development and integration tests, with optional full demo stack and local open AI model.
 # Values come from the root .env (see .env.example).
 #
 # Usage:
 #   docker compose up -d                  # Starts standalone db for local pnpm dev
 #   docker compose --profile demo up     # Starts full stack (db + seed + api + web)
+#   docker compose --profile local-ai up # Starts local Ollama open model runtime
 
 services:
   db:
@@ -98,9 +99,25 @@ services:
     networks:
       - local_net
 
+  # Optional local open model runtime (T3-037).
+  # Run `docker compose --profile local-ai up` to spin up Ollama with local model support.
+  # Pull the recommended small multilingual model: `docker compose --profile local-ai exec ollama ollama pull qwen2.5:3b`.
+  ollama:
+    image: ollama/ollama:latest
+    profiles:
+      - local-ai
+    ports:
+      # Loopback only: Ollama is exposed only to the local API process.
+      - 127.0.0.1:11434:11434
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - local_net
+
 networks:
   local_net:
     driver: bridge
 
 volumes:
   db-data:
+  ollama-data:

@@ -103,7 +103,10 @@ export function createAnswerClient({
         const lang = typeof data.lang === 'string' ? data.lang : 'en';
         const citations = parseCitations(data.citations);
         const provider =
-          data.provider === 'online' || data.provider === 'faq' || data.provider === 'job'
+          data.provider === 'online' ||
+          data.provider === 'faq' ||
+          data.provider === 'job' ||
+          data.provider === 'local'
             ? data.provider
             : undefined;
         const isSimple = data.simpleLanguage === true || simpleLanguage;
