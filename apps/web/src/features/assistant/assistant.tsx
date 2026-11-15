@@ -562,22 +562,6 @@ export function Assistant({
         </div>
       )}
 
-      <div className="assistant-research-control">
-        <label htmlFor={ids.researchMode}>
-          <input
-            id={ids.researchMode}
-            type="checkbox"
-            checked={isResearchMode}
-            aria-describedby={ids.researchModeHint}
-            onChange={(e) => setResearchMode(e.target.checked)}
-          />
-          <T k="assistant.researchModeLabel" />
-        </label>
-        <p id={ids.researchModeHint} className="hint">
-          <T k="assistant.researchModeHint" />
-        </p>
-      </div>
-
       {/* Speech preferences and cloud consent (T3-011) */}
       <div
         className="speech-settings"
@@ -889,6 +873,21 @@ export function Assistant({
               <T k={VOICE_PROBLEM_TEXT[voiceProblem]} />
             </p>
           )}
+        </div>
+        <div className="assistant-research-control">
+          <label htmlFor={ids.researchMode}>
+            <input
+              id={ids.researchMode}
+              type="checkbox"
+              checked={isResearchMode}
+              aria-describedby={ids.researchModeHint}
+              onChange={(e) => setResearchMode(e.target.checked)}
+            />
+            <T k="assistant.researchModeLabel" />
+          </label>
+          <p id={ids.researchModeHint} className="hint">
+            <T k="assistant.researchModeHint" />
+          </p>
         </div>
         <div className="actions">
           {/* aria-disabled keeps the button focusable, so keyboard focus is not lost while sending. */}

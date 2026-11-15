@@ -97,7 +97,7 @@ const REPLY_TEXT: Record<
     'faq',
   ],
   english: ['This is a demo reply from a test fixture, not a tutor answer.', 'en'],
-  amharic: ['ይህ የሙከራ መልስ ነው፤ እውነተኛ የትምህርት መልስ አይደለም።', 'am'],
+  amharic: ['ይህ የሙከራ መልስ ነው። እውነተኛ የትምህርት መልስ አይደለም።', 'am'],
   // Starts right-to-left so dir="auto" must resolve to RTL; English and Amharic are embedded.
   mixed: ['«مرحبا بكم» تعني “welcome” بالإنجليزية፤ و«እንኳን ደህና መጡ» بالأمهرية.', 'ar'],
   markup: [
