@@ -219,6 +219,15 @@ Publication order places explicit prerequisites before dependants. These columns
 
 ## Epic sign-off and verification records
 
+### [T3-004 · #103](https://github.com/EyasuGet/Hackaton/issues/103) — Enforce learner identity and per-user/course access [✓]
+
+Integrated epic verification and acceptance sign-off: [`docs/evidence/t3-004-epic-closure.md`](evidence/t3-004-epic-closure.md).
+
+#### Child checklist
+- [✓] [T3-004-A — Resolve demo principals and enforce resource scope](https://github.com/EyasuGet/Hackaton/issues/8)
+- [✓] [T3-004-B — Later: implement the real Savanna identity handoff](https://github.com/EyasuGet/Hackaton/issues/102)
+- [✓] [T3-004-C — Establish protected synthetic demo sessions](https://github.com/EyasuGet/Hackaton/issues/9)
+
 ### [T3-026 · #63](https://github.com/EyasuGet/Hackaton/issues/63) — Prove clean installation, Savanna integration and portable interfaces [✓]
 
 Integrated epic verification and acceptance sign-off: [`docs/evidence/t3-026-epic-closure.md`](evidence/t3-026-epic-closure.md).

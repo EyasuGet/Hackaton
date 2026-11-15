@@ -1,7 +1,9 @@
-// Resolves the bearer credential on a request to a principal. Demo tokens are the
-// only credential this build accepts; with demo mode off nothing authenticates,
-// so demo access can never stand in for real deployment authentication.
+// Resolves the bearer credential on a request to a principal.
+// When a host identity adapter is configured, it resolves real host session tokens.
+// In demo mode, it resolves synthetic demo session and bearer tokens.
+// With demo mode off and no host session, nothing authenticates.
 import { createHash } from 'node:crypto';
+import type { HostIdentityAdapter } from '../domain/host-identity-adapter.ts';
 import type { Principal } from '../domain/principal.ts';
 import type { PrincipalRepository } from './principal-repository.ts';
 
@@ -14,19 +16,30 @@ export class ResolvePrincipal {
   readonly #repository: PrincipalRepository;
   readonly #demoMode: boolean;
   readonly #now: () => Date;
+  readonly #hostAdapter: HostIdentityAdapter | undefined;
 
   constructor(
     repository: PrincipalRepository,
     demoMode: boolean,
     now: () => Date = () => new Date(),
+    hostAdapter?: HostIdentityAdapter,
   ) {
     this.#repository = repository;
     this.#demoMode = demoMode;
     this.#now = now;
+    this.#hostAdapter = hostAdapter;
   }
 
-  /** Returns null for an unknown token, or for any token while demo mode is off. */
+  /**
+   * Returns the authenticated Principal for a bearer token.
+   * If a host identity adapter is provided, checks host sessions first.
+   * Falls back to demo tokens if demo mode is enabled.
+   */
   async execute(token: string): Promise<Principal | null> {
+    if (this.#hostAdapter) {
+      const hostPrincipal = await this.#hostAdapter.resolveSession(token);
+      if (hostPrincipal) return hostPrincipal;
+    }
     if (!this.#demoMode) return null;
     return this.#repository.findDemoByTokenDigest(digestToken(token), this.#now());
   }
