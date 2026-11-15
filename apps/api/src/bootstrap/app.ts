@@ -20,6 +20,7 @@ import { registerDemoSessionRoutes } from '../modules/identity/presentation/http
 import type { Accommodation } from '../modules/accommodation/application/accommodation.ts';
 import { registerAccommodationRoutes } from '../modules/accommodation/presentation/http/accommodation-routes.ts';
 import type { JobRepository } from '../modules/careers/application/import-jobs.ts';
+import type { JobPreferences } from '../modules/careers/application/job-preferences.ts';
 import { registerCareersRoutes } from '../modules/careers/presentation/http/careers-routes.ts';
 import type { Help } from '../modules/help/application/help.ts';
 import type { StaffHelp } from '../modules/help/application/staff-help.ts';
@@ -47,6 +48,7 @@ export interface AppDependencies {
   /** Optional; when omitted accommodation and job listing routes are not registered. */
   readonly accommodation?: Accommodation;
   readonly jobRepository?: JobRepository;
+  readonly jobPreferences?: JobPreferences;
 }
 
 export function buildApp(
@@ -102,12 +104,15 @@ export function buildApp(
   if (dependencies.sharing) {
     registerSharingRoutes(app, authenticate(dependencies.resolvePrincipal), dependencies.sharing);
   }
-  if (dependencies.accommodation && dependencies.jobRepository) {
+  if (dependencies.jobRepository) {
     registerCareersRoutes(
       app,
       authenticate(dependencies.resolvePrincipal),
       dependencies.jobRepository,
+      dependencies.jobPreferences,
     );
+  }
+  if (dependencies.accommodation) {
     registerAccommodationRoutes(
       app,
       authenticate(dependencies.resolvePrincipal),

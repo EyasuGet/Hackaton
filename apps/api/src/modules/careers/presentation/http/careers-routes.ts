@@ -1,14 +1,16 @@
-// HTTP presentation routes for career job listings (T3-022-A).
-// Authenticated learners may browse active approved jobs to select one for an
-// accommodation request. No personal data or course-restricted content is exposed.
+// HTTP presentation routes for career job listings and job preferences (T3-020-A, T3-022-A).
+// Authenticated learners may browse active approved jobs and manage their alert subscriptions.
+// Learner ownership is strictly enforced: third parties cannot see or modify subscriptions.
 import type { FastifyInstance, preHandlerAsyncHookHandler } from 'fastify';
-import { requireRole } from '../../../identity/presentation/http/authentication.ts';
+import { principalOf, requireRole } from '../../../identity/presentation/http/authentication.ts';
+import type { JobPreferences } from '../../application/job-preferences.ts';
 import type { JobRepository } from '../../application/import-jobs.ts';
 
 export function registerCareersRoutes(
   app: FastifyInstance,
   authenticated: preHandlerAsyncHookHandler,
   jobRepository: JobRepository,
+  jobPreferences?: JobPreferences,
 ) {
   const learnerOnly = { preHandler: [authenticated, requireRole('learner')] };
 
@@ -26,4 +28,56 @@ export function registerCareersRoutes(
       })),
     };
   });
+
+  if (jobPreferences) {
+    // Lists subscriptions owned by the requesting learner.
+    app.get('/api/careers/subscriptions', learnerOnly, async (request) => {
+      const principal = principalOf(request);
+      const subscriptions = await jobPreferences.listOwned(principal);
+      return { subscriptions };
+    });
+
+    // Subscribes a learner to category/location-filtered alerts.
+    app.post<{
+      Body: {
+        channel?: string;
+        destination?: string;
+        categories?: string[];
+        locations?: string[];
+      };
+    }>('/api/careers/subscriptions', learnerOnly, async (request, reply) => {
+      const { channel, destination, categories, locations } = request.body ?? {};
+      if (typeof channel !== 'string' || typeof destination !== 'string') {
+        return reply.code(400).send({ error: 'channel and destination are required' });
+      }
+      const principal = principalOf(request);
+      const subscription = await jobPreferences.subscribe(principal, {
+        channel,
+        destination,
+        categories: Array.isArray(categories) ? categories : [],
+        locations: Array.isArray(locations) ? locations : [],
+      });
+      if (!subscription) {
+        return reply.code(400).send({ error: 'invalid_subscription' });
+      }
+      return reply.code(201).send({ subscription });
+    });
+
+    // Unsubscribes an owned alert subscription, cancelling queued intents and pruning unused contact.
+    app.delete<{
+      Params: { id: string };
+    }>('/api/careers/subscriptions/:id', learnerOnly, async (request, reply) => {
+      const principal = principalOf(request);
+      const outcome = await jobPreferences.unsubscribe(principal, request.params.id);
+      if (!outcome) {
+        return reply.code(404).send({ error: 'subscription_not_found' });
+      }
+      return reply.code(200).send({
+        status: 'unsubscribed',
+        subscription: outcome.subscription,
+        cancelledIntentsCount: outcome.cancelledIntentsCount,
+        contactRemoved: outcome.contactRemoved,
+      });
+    });
+  }
 }
