@@ -118,6 +118,20 @@ describe('migrate', () => {
 
     await expect(migrate(pool, edited)).rejects.toThrow('0002_seed_note.sql was modified');
   });
+
+  it('accepts the recorded earlier version of 0008 and still refuses other edits to it', async () => {
+    // A database that ran the in-place edit of 0008 (6721457) before it was restored.
+    const name = '0008_tutoring_expiry.sql';
+    const restored = await writeMigrations({ [name]: 'SELECT 1;' });
+    await migrate(pool, []);
+    const record = 'INSERT INTO schema_migrations (name, checksum) VALUES ($1, $2)';
+    const superseded = '9adfa1cfa1d09a5858b29eb5aaa16d426feff58936f2dcc14b1d46cf85909747';
+    await pool.query(record, [name, superseded]);
+    expect(await migrate(pool, restored)).toEqual([]);
+
+    await pool.query('UPDATE schema_migrations SET checksum = $1 WHERE name = $2', ['other', name]);
+    await expect(migrate(pool, restored)).rejects.toThrow(`${name} was modified`);
+  });
 });
 
 describe('checkReadiness', () => {

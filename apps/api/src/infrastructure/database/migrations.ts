@@ -12,6 +12,16 @@ export interface Migration {
   readonly checksum: string;
 }
 
+/**
+ * Earlier contents of files that were edited after being applied somewhere. Both
+ * versions stay valid so every existing database keeps migrating; the edit itself
+ * moved to a new migration. Never add an entry to excuse a new edit.
+ */
+const SUPERSEDED_CHECKSUMS: Readonly<Record<string, readonly string[]>> = {
+  // 6721457 added column defaults to 0008 in place; they now live in 0022 (T3-052).
+  '0008_tutoring_expiry.sql': ['9adfa1cfa1d09a5858b29eb5aaa16d426feff58936f2dcc14b1d46cf85909747'],
+};
+
 /** Shipped migrations; the path resolves the same from src/ and the compiled dist/. */
 export const MIGRATIONS_DIR = new URL(
   '../../../src/infrastructure/database/migrations/',
@@ -58,7 +68,10 @@ export async function migrate(pool: pg.Pool, migrations: readonly Migration[]): 
     for (const migration of migrations) {
       const checksum = applied.get(migration.name);
       if (checksum !== undefined) {
-        if (checksum !== migration.checksum) {
+        if (
+          checksum !== migration.checksum &&
+          !SUPERSEDED_CHECKSUMS[migration.name]?.includes(checksum)
+        ) {
           throw new Error(
             `Applied migration ${migration.name} was modified; add a new migration instead`,
           );
