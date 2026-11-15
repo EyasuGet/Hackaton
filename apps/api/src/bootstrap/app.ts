@@ -24,6 +24,8 @@ import type { JobRepository } from '../modules/careers/application/import-jobs.t
 import type { JobPreferences } from '../modules/careers/application/job-preferences.ts';
 import type { CareerResearchService } from '../modules/careers/application/career-research.ts';
 import { registerCareersRoutes } from '../modules/careers/presentation/http/careers-routes.ts';
+import { registerEmployerRoutes } from '../modules/careers/presentation/http/employer-routes.ts';
+import type { EmployerService } from '../modules/careers/application/employer-service.ts';
 import type { Help } from '../modules/help/application/help.ts';
 import type { StaffHelp } from '../modules/help/application/staff-help.ts';
 import { registerHelpRoutes } from '../modules/help/presentation/http/help-routes.ts';
@@ -64,6 +66,8 @@ export interface AppDependencies {
   readonly jobAnswers?: JobAnswers;
   /** Optional; when omitted career research routes are not registered (T3-028-A). */
   readonly careerResearch?: CareerResearchService;
+  /** Optional; when omitted employer dashboard routes are not registered (T3-031). */
+  readonly employerService?: EmployerService;
   /** Optional; when omitted Telegram channel routes are not registered. */
   readonly telegramService?: TelegramLinkService;
   /** Optional; when omitted SMS subscription routes are not registered. */
@@ -171,6 +175,9 @@ export function buildApp(
       dependencies.jobAnswers,
       dependencies.careerResearch,
     );
+  }
+  if (dependencies.employerService) {
+    registerEmployerRoutes(app, dependencies.employerService, dependencies.resolvePrincipal);
   }
   if (dependencies.accommodation) {
     registerAccommodationRoutes(
