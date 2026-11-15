@@ -1,3 +1,9 @@
+import {
+  isSchemaOrgJobPosting,
+  parseSchemaOrgJobPosting,
+  toSchemaOrgJobPosting,
+  type SchemaOrgJobPosting,
+} from './schema-org-job-posting.ts';
 // Approved job domain model and strict validation (T3-019-A).
 // Parsing collects every error before returning, ensuring malformed files
 // fail visibly without mutating stored data.
@@ -18,6 +24,8 @@ export type JobProvenance =
       readonly source: string;
       readonly verifiedAt: string;
       readonly note?: string;
+      readonly employmentType?: string;
+      readonly accessibilityNotes?: string;
     };
 
 export interface Job {
@@ -33,6 +41,8 @@ export interface Job {
   readonly expiresAt: Date;
   readonly withdrawn: boolean;
   readonly provenance: JobProvenance;
+  readonly employmentType?: string;
+  readonly accessibilityNotes?: string;
 }
 
 export type JobStatus = 'active' | 'expired' | 'withdrawn';
@@ -148,14 +158,31 @@ function parseProvenance(check: Checker, value: unknown, path: string): JobProve
     };
   }
   if (value.kind === 'partner') {
-    check.keys(value, path, ['kind', 'source', 'verifiedAt', 'note']);
+    check.keys(value, path, [
+      'kind',
+      'source',
+      'verifiedAt',
+      'note',
+      'employmentType',
+      'accessibilityNotes',
+    ]);
     const verifiedAt = check.date(value, 'verifiedAt', path);
     const note = value.note !== undefined ? check.text(value, 'note', path, MAX_NOTE) : undefined;
+    const employmentType =
+      typeof value.employmentType === 'string' && value.employmentType.trim()
+        ? value.employmentType.trim()
+        : undefined;
+    const accessibilityNotes =
+      typeof value.accessibilityNotes === 'string' && value.accessibilityNotes.trim()
+        ? value.accessibilityNotes.trim()
+        : undefined;
     return {
       kind: 'partner',
       source: check.text(value, 'source', path, 200),
       verifiedAt: verifiedAt ? verifiedAt.toISOString() : '',
       ...(note ? { note } : {}),
+      ...(employmentType ? { employmentType } : {}),
+      ...(accessibilityNotes ? { accessibilityNotes } : {}),
     };
   }
   check.errors.push(`${path}.kind must be "demo", "organiser" or "partner"`);
@@ -182,6 +209,8 @@ export function parseJob(input: unknown, path = 'job'): ParseJobResult {
     'expiresAt',
     'withdrawn',
     'provenance',
+    'employmentType',
+    'accessibilityNotes',
   ]);
 
   const id = check.matching(input, 'id', path, ID_PATTERN, ID_DESCRIPTION);
@@ -226,6 +255,12 @@ export function parseJob(input: unknown, path = 'job'): ParseJobResult {
       expiresAt,
       withdrawn,
       provenance,
+      ...(typeof input.employmentType === 'string' && input.employmentType.trim()
+        ? { employmentType: input.employmentType.trim() }
+        : {}),
+      ...(typeof input.accessibilityNotes === 'string' && input.accessibilityNotes.trim()
+        ? { accessibilityNotes: input.accessibilityNotes.trim() }
+        : {}),
     },
   };
 }
@@ -239,7 +274,9 @@ export function parseJobFile(input: unknown): ParseJobFileResult {
     ? input
     : isObject(input) && Array.isArray(input.jobs)
       ? input.jobs
-      : [input];
+      : isObject(input) && Array.isArray(input['@graph'])
+        ? input['@graph']
+        : [input];
 
   if (rawList.length === 0) {
     return { ok: false, errors: ['job file contains no jobs'] };
@@ -251,7 +288,9 @@ export function parseJobFile(input: unknown): ParseJobFileResult {
 
   rawList.forEach((item, index) => {
     const path = rawList.length > 1 ? `jobs[${index}]` : 'job';
-    const result = parseJob(item, path);
+    const result = isSchemaOrgJobPosting(item)
+      ? parseSchemaOrgJobPosting(item, path)
+      : parseJob(item, path);
     if (!result.ok) {
       allErrors.push(...result.errors);
     } else {
@@ -308,3 +347,10 @@ export function resolveJobStatus(
   if (job.withdrawn) return 'withdrawn';
   return job.expiresAt.getTime() <= asOf.getTime() ? 'expired' : 'active';
 }
+
+export {
+  isSchemaOrgJobPosting,
+  parseSchemaOrgJobPosting,
+  toSchemaOrgJobPosting,
+  type SchemaOrgJobPosting,
+};
