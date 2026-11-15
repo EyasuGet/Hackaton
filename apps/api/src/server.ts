@@ -27,7 +27,9 @@ import { PostgresJobPreferencesRepository } from './modules/careers/infrastructu
 import { PostgresJobRepository } from './modules/careers/infrastructure/postgres-job-repository.ts';
 import { Help } from './modules/help/application/help.ts';
 import { StaffHelp } from './modules/help/application/staff-help.ts';
+import { HelpScreenshots } from './modules/help/application/help-screenshots.ts';
 import { PostgresHelpRepository } from './modules/help/infrastructure/persistence/postgres-help-repository.ts';
+import { PostgresHelpScreenshotRepository } from './modules/help/infrastructure/persistence/postgres-help-screenshot-repository.ts';
 import { Sharing } from './modules/sharing/application/sharing.ts';
 import { PostgresHelpRequestLookup } from './modules/sharing/infrastructure/persistence/postgres-help-request-lookup.ts';
 import { PostgresSharingRepository } from './modules/sharing/infrastructure/persistence/postgres-sharing-repository.ts';
@@ -110,6 +112,7 @@ const app = buildApp(
     content,
     help: new Help(helpRepository),
     staffHelp: new StaffHelp(helpRepository),
+    helpScreenshots: new HelpScreenshots(new PostgresHelpScreenshotRepository(pool)),
     sharing: new Sharing(sharingRepository, helpRequestLookup),
     accommodation: new Accommodation(new PostgresAccommodationRepository(pool)),
     jobRepository,

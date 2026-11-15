@@ -131,3 +131,90 @@ describe('HumanHelp component (T3-016-A)', () => {
     expect(screen.queryByText(/what will be shared with support staff/i)).toBeNull();
   });
 });
+
+describe('phone-friendly sharing (T3-048)', () => {
+  const PNG = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'shot.png', {
+    type: 'image/png',
+  });
+
+  function openComposer() {
+    // jsdom has no object URLs; the preview only needs some URL.
+    URL.createObjectURL = () => 'blob:preview';
+    URL.revokeObjectURL = () => {};
+    wrap(<HumanHelp token="tok" />);
+    fireEvent.click(screen.getByRole('button', { name: /request help/i }));
+  }
+
+  function choose(file: File) {
+    fireEvent.change(screen.getByLabelText('Attach a screenshot (optional)'), {
+      target: { files: [file] },
+    });
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    document.body.innerHTML = '';
+  });
+
+  it('adds the visible conversation as editable text, never the unsent question', () => {
+    const page = document.createElement('div');
+    page.innerHTML = `
+      <ol class="messages">
+        <li class="message"><p class="speaker">You</p><p class="message-text">What is a VA?</p></li>
+        <li class="message"><p class="speaker">Assistant (demo)</p><p class="message-text">A demo reply.</p></li>
+      </ol>
+      <textarea>Private unsent question</textarea>`;
+    document.body.append(page);
+    openComposer();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Share what I see in the assistant' }));
+
+    const context = screen.getByLabelText<HTMLTextAreaElement>(/your context/i).value;
+    expect(context).toBe(
+      'What I see in the assistant:\nYou: What is a VA?\nAssistant (demo): A demo reply.',
+    );
+    expect(context).not.toContain('Private unsent question');
+  });
+
+  it('previews a chosen screenshot and lets the learner remove it before sending', () => {
+    openComposer();
+
+    choose(PNG);
+    expect(screen.getByRole('img', { name: 'Screenshot you chose' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove screenshot' }));
+    expect(screen.queryByRole('img', { name: 'Screenshot you chose' })).toBeNull();
+  });
+
+  it('refuses an image over 1 MB without attaching it', () => {
+    openComposer();
+
+    choose(new File([new Uint8Array(1024 * 1024 + 1)], 'big.png', { type: 'image/png' }));
+
+    expect(screen.getByRole('status').textContent).toContain('larger than 1 MB');
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  it('attaches the screenshot only after confirmation, and can remove it while waiting', async () => {
+    vi.spyOn(helpApi, 'submitHelpRequest').mockResolvedValue({
+      kind: 'submitted',
+      request: FAKE_REQUEST,
+    });
+    const attach = vi.spyOn(helpApi, 'attachScreenshot').mockResolvedValue(true);
+    const remove = vi.spyOn(helpApi, 'removeScreenshot').mockResolvedValue(true);
+    openComposer();
+    fireEvent.change(screen.getByLabelText(/your context/i), { target: { value: 'Help' } });
+    choose(PNG);
+    fireEvent.click(screen.getByRole('button', { name: /review before sending/i }));
+    expect(screen.getByText('This screenshot will be shared with your request:')).toBeTruthy();
+    expect(attach).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
+    await waitFor(() => expect(attach).toHaveBeenCalledWith('tok', FAKE_REQUEST.id, PNG));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove screenshot' }));
+    await waitFor(() => expect(remove).toHaveBeenCalledWith('tok', FAKE_REQUEST.id));
+    expect(await screen.findByText('The screenshot was removed.')).toBeTruthy();
+  });
+});

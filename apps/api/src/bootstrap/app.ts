@@ -27,6 +27,7 @@ import { registerCareersRoutes } from '../modules/careers/presentation/http/care
 import { registerEmployerRoutes } from '../modules/careers/presentation/http/employer-routes.ts';
 import type { EmployerService } from '../modules/careers/application/employer-service.ts';
 import type { Help } from '../modules/help/application/help.ts';
+import type { HelpScreenshots } from '../modules/help/application/help-screenshots.ts';
 import type { StaffHelp } from '../modules/help/application/staff-help.ts';
 import { registerHelpRoutes } from '../modules/help/presentation/http/help-routes.ts';
 import type { Sharing } from '../modules/sharing/application/sharing.ts';
@@ -57,6 +58,8 @@ export interface AppDependencies {
   /** Optional; when omitted the help routes are not registered (for tests that do not exercise them). */
   readonly help?: Help;
   readonly staffHelp?: StaffHelp;
+  /** Optional; when omitted the help screenshot routes are not registered. */
+  readonly helpScreenshots?: HelpScreenshots;
   /** Optional; when omitted sharing session routes are not registered. */
   readonly sharing?: Sharing;
   /** Optional; when omitted accommodation and job listing routes are not registered. */
@@ -161,6 +164,7 @@ export function buildApp(
       authenticate(dependencies.resolvePrincipal),
       dependencies.help,
       dependencies.staffHelp,
+      dependencies.helpScreenshots,
     );
   }
   if (dependencies.sharing) {
