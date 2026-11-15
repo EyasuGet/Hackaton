@@ -8,7 +8,12 @@ export interface DemoIdentity {
 }
 
 export type ExchangeResult =
-  | { readonly kind: 'session'; readonly token: string; readonly identity: DemoIdentity }
+  | {
+      readonly kind: 'session';
+      readonly token: string;
+      readonly expiresAt: Date;
+      readonly identity: DemoIdentity;
+    }
   | { readonly kind: 'invalid' | 'origin' | 'failed' };
 
 /**
@@ -26,6 +31,16 @@ export function takeHandoffCode(): string | null {
   return code;
 }
 
+/**
+ * The server's expiry as a deadline on this device's clock, measured from the
+ * response's Date header, so a phone with a wrong clock still warns on time.
+ */
+function localDeadline(response: Response, expiresAt: string): Date {
+  const serverNow = Date.parse(response.headers.get('date') ?? '');
+  const remaining = Date.parse(expiresAt) - (Number.isNaN(serverNow) ? Date.now() : serverNow);
+  return new Date(Date.now() + remaining);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -41,7 +56,12 @@ export async function exchangeHandoff(code: string): Promise<ExchangeResult> {
     if (response.status === 401 || response.status === 400) return { kind: 'invalid' };
     if (response.status === 403) return { kind: 'origin' };
     const body: unknown = await response.json();
-    if (!response.ok || !isRecord(body) || typeof body.token !== 'string')
+    if (
+      !response.ok ||
+      !isRecord(body) ||
+      typeof body.token !== 'string' ||
+      typeof body.expiresAt !== 'string'
+    )
       return { kind: 'failed' };
 
     const me = await fetch('/api/me', { headers: { authorization: `Bearer ${body.token}` } });
@@ -49,9 +69,29 @@ export async function exchangeHandoff(code: string): Promise<ExchangeResult> {
     if (!me.ok || !isRecord(identity)) return { kind: 'failed' };
     const { label, role } = identity;
     if (typeof label !== 'string' || typeof role !== 'string') return { kind: 'failed' };
-    return { kind: 'session', token: body.token, identity: { label, role } };
+    return {
+      kind: 'session',
+      token: body.token,
+      expiresAt: localDeadline(response, body.expiresAt),
+      identity: { label, role },
+    };
   } catch {
     return { kind: 'failed' };
+  }
+}
+
+/** Gives the session a fresh lifetime. Resolves its new local deadline, or null if it has ended. */
+export async function extendSession(token: string): Promise<Date | null> {
+  try {
+    const response = await fetch('/api/demo/session/extend', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    const body: unknown = await response.json();
+    if (!response.ok || !isRecord(body) || typeof body.expiresAt !== 'string') return null;
+    return localDeadline(response, body.expiresAt);
+  } catch {
+    return null;
   }
 }
 

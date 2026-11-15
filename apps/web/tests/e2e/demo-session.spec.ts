@@ -37,3 +37,36 @@ test('a sign-in link works once, then the learner can sign out', async ({ page }
   await expect(signInStatus).toContainText('You have signed out');
   await expect(signInStatus).toBeFocused();
 });
+
+test('a session expiring mid-form loses no typed text', async ({ page }) => {
+  await page.clock.install();
+  await page.goto(`/#handoff=${newHandoffCode('learner-a')}`);
+  const signInStatus = page.getByRole('status', { name: 'Sign-in status' });
+  const sessionAlert = page.getByRole('region', { name: 'Demo sign-in' }).getByRole('alert');
+  await expect(signInStatus).toContainText('Signed in as Demo learner A');
+
+  await page.getByLabel('Your question').fill('Synthetic unsent question');
+  await page.getByRole('button', { name: 'Request help' }).click();
+  await page.getByLabel('Your context (what you want to share)').fill('Synthetic help draft');
+
+  // Warned before expiry, with time to act; extending keeps the session.
+  await page.clock.fastForward('01:55:30');
+  await expect(sessionAlert).toContainText('ends in less than 5 minutes');
+  await page.getByRole('button', { name: 'Stay signed in' }).click();
+  await expect(sessionAlert).toHaveCount(0);
+
+  // Ignoring the next warning lets the session expire; the forms close.
+  await page.clock.fastForward('02:00:00');
+  await expect(signInStatus).toContainText('Your session has ended');
+  await expect(page.getByLabel('Your context (what you want to share)')).toHaveCount(0);
+
+  // Signing in again on this device brings every typed word back.
+  const next = await page.context().newPage();
+  await next.goto(`/#handoff=${newHandoffCode('learner-a')}`);
+  await expect(next.getByLabel('Your question')).toHaveValue('Synthetic unsent question');
+  await next.getByRole('button', { name: 'Request help' }).click();
+  await expect(next.getByLabel('Your context (what you want to share)')).toHaveValue(
+    'Synthetic help draft',
+  );
+  await expect(next.getByText('Draft saved on this device only.').first()).toBeVisible();
+});

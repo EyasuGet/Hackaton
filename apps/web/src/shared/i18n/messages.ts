@@ -39,6 +39,8 @@ export const en = {
   'app.updated': 'App updated to the latest version.',
   'app.translationDraft':
     'This translation is a draft awaiting review by a native speaker. Untranslated text is shown in English.',
+  'draft.savedOnDevice': 'Draft saved on this device only. Anyone who uses this device can see it.',
+  'draft.clear': 'Clear draft',
   'demo.heading': 'Demo mode',
   'demo.notice':
     'Replies come from labelled test fixtures. This is not a tutor, and no answer is real.',
@@ -321,6 +323,8 @@ export const am: Partial<Record<MessageKey, string>> = {
   'app.refresh': 'አድስ',
   'app.updated': 'መተግበሪያው ወደ አዲሱ ስሪት ተዘምኗል።',
   'app.translationDraft': 'ይህ ትርጉም በአፍ መፍቻ ተናጋሪ ገና ያልተገመገመ ረቂቅ ነው። ያልተተረጎመ ጽሑፍ በእንግሊዝኛ ይታያል።',
+  'draft.savedOnDevice': 'ረቂቁ በዚህ መሣሪያ ላይ ብቻ ተቀምጧል። ይህን መሣሪያ የሚጠቀም ማንኛውም ሰው ሊያየው ይችላል።',
+  'draft.clear': 'ረቂቁን አጽዳ',
   'demo.heading': 'የሙከራ ሁኔታ',
   'demo.notice': 'መልሶች ከተሰየሙ የሙከራ ናሙናዎች የመጡ ናቸው። ይህ እውነተኛ አስተማሪ አይደለም፤ የትኛውም መልስ እውነተኛ አይደለም።',
   'demo.scenarioLabel': 'የሙከራ መልስ ዓይነት',

@@ -7,6 +7,7 @@
 // No screen capture is requested in this leaf (spec R05).
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { T } from '../../shared/i18n/i18n.tsx';
+import { DraftNotice, useDraft } from '../../shared/drafts/drafts.tsx';
 import { cancelHelpRequest, submitHelpRequest, type HelpRequest } from './help-api.ts';
 
 type Phase =
@@ -24,7 +25,7 @@ function requestKey(): string {
 
 export function HumanHelp({ token }: { readonly token: string }) {
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useDraft('help');
   const inFlight = useRef(false);
   const statusRef = useRef<HTMLParagraphElement>(null);
   const ids = {
@@ -54,6 +55,7 @@ export function HumanHelp({ token }: { readonly token: string }) {
     inFlight.current = false;
 
     if (result.kind === 'submitted' || result.kind === 'existing') {
+      setDraft('');
       setPhase({ kind: 'waiting', request: result.request });
       // Move focus to the status region so screen readers announce the new state.
       statusRef.current?.focus();
@@ -125,6 +127,7 @@ export function HumanHelp({ token }: { readonly token: string }) {
             dir="auto"
             aria-required="true"
           />
+          <DraftNotice value={draft} onClear={() => setDraft('')} />
           <div className="actions">
             <button type="submit" disabled={!draft.trim()}>
               <T k="help.reviewButton" />

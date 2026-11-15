@@ -344,6 +344,41 @@ describe('demo sessions', () => {
     expect((await get('/api/me', session)).statusCode).toBe(401);
   });
 
+  async function extend(token: string) {
+    const app = appWithDemoMode(true);
+    try {
+      return await app.inject({
+        method: 'POST',
+        url: '/api/demo/session/extend',
+        headers: { authorization: `Bearer ${token}` },
+      });
+    } finally {
+      await app.close();
+    }
+  }
+
+  it('extends an active session to a fresh full lifetime', async () => {
+    const session = await sessionFor('learner-a');
+    clock = new Date(clock.getTime() + SESSION_TTL_MS - 60_000);
+
+    const extended = await extend(session);
+
+    expect(extended.statusCode).toBe(200);
+    expect(extended.json()).toEqual({
+      expiresAt: new Date(clock.getTime() + SESSION_TTL_MS).toISOString(),
+    });
+    clock = new Date(clock.getTime() + SESSION_TTL_MS - 60_000);
+    expect((await get('/api/me', session)).statusCode).toBe(200);
+  });
+
+  it('cannot revive an expired session by extending it', async () => {
+    const session = await sessionFor('learner-a');
+    clock = new Date(clock.getTime() + SESSION_TTL_MS);
+
+    expect((await extend(session)).statusCode).toBe(401);
+    expect((await get('/api/me', session)).statusCode).toBe(401);
+  });
+
   it('ends the session on sign-out', async () => {
     const session = await sessionFor('learner-a');
     const app = appWithDemoMode(true);
