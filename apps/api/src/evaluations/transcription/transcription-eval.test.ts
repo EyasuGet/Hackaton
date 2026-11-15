@@ -15,7 +15,11 @@ import {
   formatEvalSummary,
   runTranscriptionEval,
 } from './evaluator.ts';
-import type { TranscriptionInput, TranscriptionOutcome, TranscriptionPort } from '../../modules/tutoring/application/ports/transcription-port.ts';
+import type {
+  TranscriptionInput,
+  TranscriptionOutcome,
+  TranscriptionPort,
+} from '../../modules/tutoring/application/ports/transcription-port.ts';
 
 // ---------------------------------------------------------------------------
 // Recorded adapter: returns pre-defined transcripts by case ID, encoded in the
@@ -34,10 +38,10 @@ class RecordedTranscriptionAdapter implements TranscriptionPort {
     return true;
   }
 
-  async transcribe(input: TranscriptionInput): Promise<TranscriptionOutcome> {
+  transcribe(input: TranscriptionInput): Promise<TranscriptionOutcome> {
     // The evaluator passes the case ID as the base64 audio value in unit tests.
     const outcome = this.#recordings.get(input.audioBase64);
-    return outcome ?? { status: 'provider_error' };
+    return Promise.resolve(outcome ?? { status: 'provider_error' });
   }
 }
 
@@ -48,7 +52,8 @@ class RecordedTranscriptionAdapter implements TranscriptionPort {
 const ENGLISH_CASE: TranscriptionCase = {
   id: 'tc-tx-001-en-greeting',
   category: 'supported_en',
-  audioDescription: 'Speak clearly in English: "Good morning. My name is Sarah and I am looking for a customer service job."',
+  audioDescription:
+    'Speak clearly in English: "Good morning. My name is Sarah and I am looking for a customer service job."',
   expectedTranscript: 'Good morning. My name is Sarah and I am looking for a customer service job.',
   expectedLang: 'en',
   expectedSubstrings: ['good morning', 'customer service'],
@@ -280,12 +285,10 @@ describe('runTranscriptionEval', () => {
     recordings.set(BILINGUAL_CASE.id, { status: 'provider_error' });
     const adapter = new RecordedTranscriptionAdapter(recordings);
     const cases = [ENGLISH_CASE, AMHARIC_CASE, BILINGUAL_CASE];
-    const summary = await runTranscriptionEval(
-      adapter,
-      cases,
-      audioMapFromCases(cases),
-      { supportedAccuracyMin: 0.8, latencyMaxMs: 10_000 },
-    );
+    const summary = await runTranscriptionEval(adapter, cases, audioMapFromCases(cases), {
+      supportedAccuracyMin: 0.8,
+      latencyMaxMs: 10_000,
+    });
     expect(summary.meetsThresholds).toBe(false);
     expect(summary.accuracyRate).toBeCloseTo(1 / 3);
   });

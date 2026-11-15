@@ -16,7 +16,11 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join, basename, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { TranscriptionCase } from './schema.ts';
-import { DEFAULT_TRANSCRIPTION_THRESHOLDS, formatEvalSummary, runTranscriptionEval } from './evaluator.ts';
+import {
+  DEFAULT_TRANSCRIPTION_THRESHOLDS,
+  formatEvalSummary,
+  runTranscriptionEval,
+} from './evaluator.ts';
 import { GeminiTranscriptionAdapter } from '../../modules/tutoring/infrastructure/gemini-transcription-adapter.ts';
 
 const REPO_ROOT = fileURLToPath(new URL('../../../../../../', import.meta.url));
@@ -39,7 +43,7 @@ async function main(): Promise<void> {
   }
 
   const datasetJson = await readFile(DATASET_PATH, 'utf-8');
-  const cases: TranscriptionCase[] = JSON.parse(datasetJson);
+  const cases = JSON.parse(datasetJson) as unknown as TranscriptionCase[];
 
   // Discover audio files in the audio directory (not committed to git).
   let audioFiles: string[] = [];
@@ -47,7 +51,9 @@ async function main(): Promise<void> {
     audioFiles = await readdir(AUDIO_DIR);
   } catch {
     console.warn(`WARN: audio directory not found at ${AUDIO_DIR}`);
-    console.warn('Place audio recordings at fixtures/evaluations/transcription/audio/<case-id>.<ext>');
+    console.warn(
+      'Place audio recordings at fixtures/evaluations/transcription/audio/<case-id>.<ext>',
+    );
     console.warn('Audio files must not be committed to source control.');
     process.exit(1);
   }
@@ -67,11 +73,18 @@ async function main(): Promise<void> {
 
   const missingAudio = cases.filter((c) => !audioByCase.has(c.id)).map((c) => c.id);
   if (missingAudio.length > 0) {
-    console.warn(`WARN: No audio supplied for ${missingAudio.length} case(s): ${missingAudio.join(', ')}`);
+    console.warn(
+      `WARN: No audio supplied for ${missingAudio.length} case(s): ${missingAudio.join(', ')}`,
+    );
   }
 
   const adapter = new GeminiTranscriptionAdapter(apiKey);
-  const summary = await runTranscriptionEval(adapter, cases, audioByCase, DEFAULT_TRANSCRIPTION_THRESHOLDS);
+  const summary = await runTranscriptionEval(
+    adapter,
+    cases,
+    audioByCase,
+    DEFAULT_TRANSCRIPTION_THRESHOLDS,
+  );
 
   console.log('');
   console.log('## Transcription Evaluation Evidence — T3-010-C');

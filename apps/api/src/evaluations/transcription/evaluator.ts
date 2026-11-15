@@ -59,10 +59,30 @@ export async function runTranscriptionEval(
       continue;
     }
 
-    const failureReason = evaluateTranscript(tc, outcome.transcript, outcome.detectedLang, latencyMs, thresholds);
-    const item: TranscriptionEvalItem = failureReason !== undefined
-      ? { case: tc, transcript: outcome.transcript, detectedLang: outcome.detectedLang, latencyMs, passed: false, failureReason }
-      : { case: tc, transcript: outcome.transcript, detectedLang: outcome.detectedLang, latencyMs, passed: true };
+    const failureReason = evaluateTranscript(
+      tc,
+      outcome.transcript,
+      outcome.detectedLang,
+      latencyMs,
+      thresholds,
+    );
+    const item: TranscriptionEvalItem =
+      failureReason !== undefined
+        ? {
+            case: tc,
+            transcript: outcome.transcript,
+            detectedLang: outcome.detectedLang,
+            latencyMs,
+            passed: false,
+            failureReason,
+          }
+        : {
+            case: tc,
+            transcript: outcome.transcript,
+            detectedLang: outcome.detectedLang,
+            latencyMs,
+            passed: true,
+          };
     results.push(item);
   }
 
@@ -99,7 +119,11 @@ function evaluateTranscript(
     }
   }
 
-  if (tc.expectedLang !== 'unknown' && detectedLang !== 'unknown' && detectedLang !== tc.expectedLang) {
+  if (
+    tc.expectedLang !== 'unknown' &&
+    detectedLang !== 'unknown' &&
+    detectedLang !== tc.expectedLang
+  ) {
     return `lang_mismatch:expected=${tc.expectedLang},got=${detectedLang}`;
   }
 
