@@ -193,7 +193,9 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
           client={client}
           mode={sessionToken ? (externalConsent ? 'online' : 'faq') : 'demo'}
           consent={externalConsent}
-          onConsentChange={sessionToken ? (consented) => setExternalConsent(consented) : undefined}
+          {...(sessionToken
+            ? { onConsentChange: (consented: boolean) => setExternalConsent(consented) }
+            : {})}
         />
         {sessionToken && <HumanHelp token={sessionToken} />}
         {sessionToken && <HelpInbox token={sessionToken} />}
