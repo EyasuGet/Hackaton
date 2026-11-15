@@ -1,14 +1,16 @@
-// Application service for Telegram identity linking and revocation (T3-012-A / T3-019-C).
+// Application service for Telegram identity linking and revocation (T3-012-A / T3-019-C / T3-020-B).
 // Manages single-use link codes, expiry, replay prevention, private chat enforcement,
-// update authenticity verification, rate limits, job question routing, and unlinking.
+// update authenticity verification, rate limits, job question routing, job alert unsubscription, and unlinking.
 import { createHash, randomBytes } from 'node:crypto';
 import type { JobAnswers, JobCitation } from '../../careers/application/job-answers.ts';
-import type { Principal } from '../../identity/domain/principal.ts';
+import type { JobPreferencesRepository } from '../../careers/application/ports/job-preferences-repository.ts';
+import { ownedScope, type Principal } from '../../identity/domain/principal.ts';
 import {
   isPrivateChat,
   type TelegramIdentity,
   type TelegramUpdate,
 } from '../domain/telegram-identity.ts';
+import type { TelegramClient } from './ports/telegram-client.ts';
 import type {
   ConsumeLinkResult,
   LinkFailureReason,
@@ -16,6 +18,7 @@ import type {
 } from './ports/telegram-link-repository.ts';
 import { type RateLimiter, SlidingWindowRateLimiter } from './rate-limiter.ts';
 import { verifyWebhookSecret } from './telegram-authenticity.ts';
+import { TELEGRAM_JOB_UNSUBSCRIBE_CALLBACK_DATA } from './telegram-job-alert-dispatcher.ts';
 
 /** Link code time-to-live: 15 minutes. */
 export const TELEGRAM_LINK_CODE_TTL_MS = 15 * 60 * 1000;
@@ -55,6 +58,8 @@ export interface TelegramLinkServiceOptions {
   readonly rateLimiter?: RateLimiter | undefined;
   readonly sender?: TelegramSender | undefined;
   readonly now?: (() => Date) | undefined;
+  readonly jobPreferencesRepository?: JobPreferencesRepository | undefined;
+  readonly telegramClient?: TelegramClient | undefined;
 }
 
 export interface IssuedTelegramLinkCode {
@@ -98,6 +103,12 @@ export type WebhookHandlingResult =
       readonly replayed?: boolean | undefined;
     }
   | {
+      readonly status: 'unsubscribed';
+      readonly unlinked: boolean;
+      readonly channel: string;
+      readonly principal?: Principal | undefined;
+    }
+  | {
       readonly status: 'answered';
       readonly answer: string;
       readonly citations: readonly JobCitation[];
@@ -129,6 +140,8 @@ export class TelegramLinkService {
   readonly #jobAnswers?: JobAnswers | undefined;
   readonly #rateLimiter: RateLimiter;
   readonly #sender?: TelegramSender | undefined;
+  readonly #jobPreferencesRepository?: JobPreferencesRepository | undefined;
+  readonly #telegramClient?: TelegramClient | undefined;
   readonly #now: () => Date;
 
   constructor(repository: TelegramLinkRepository, options: TelegramLinkServiceOptions = {}) {
@@ -136,6 +149,8 @@ export class TelegramLinkService {
     this.#webhookSecret = options.webhookSecret;
     this.#botToken = options.botToken;
     this.#jobAnswers = options.jobAnswers;
+    this.#jobPreferencesRepository = options.jobPreferencesRepository;
+    this.#telegramClient = options.telegramClient;
     this.#now = options.now ?? (() => new Date());
     this.#rateLimiter = options.rateLimiter ?? new SlidingWindowRateLimiter(15, 60_000, this.#now);
     this.#sender =
@@ -227,16 +242,21 @@ export class TelegramLinkService {
 
   /**
    * Unlinks an active Telegram identity for a learner principal.
-   * Revokes subsequent protected access immediately.
+   * Revokes subsequent protected access immediately and cancels any queued Telegram alerts.
    */
   async unlinkByLearner(learner: Principal): Promise<boolean> {
     if (learner.role !== 'learner') return false;
-    return this.#repository.unlinkByLearnerId(learner.id, this.#now());
+    const unlinked = await this.#repository.unlinkByLearnerId(learner.id, this.#now());
+    const scope = ownedScope(learner);
+    if (unlinked && scope && this.#jobPreferencesRepository) {
+      await this.#jobPreferencesRepository.unsubscribeAll(scope, 'telegram', this.#now());
+    }
+    return unlinked;
   }
 
   /**
    * Unlinks an active Telegram identity directly from Telegram (e.g. /unlink command).
-   * Only permitted from private chats.
+   * Only permitted from private chats. Immediately suppresses queued Telegram alerts.
    */
   async unlinkByTelegram(params: {
     readonly telegramUserId: string | number;
@@ -244,7 +264,13 @@ export class TelegramLinkService {
   }): Promise<boolean> {
     if (params.chatType !== 'private') return false;
     const telegramUserId = String(params.telegramUserId).trim();
-    return this.#repository.unlinkByTelegramUserId(telegramUserId, this.#now());
+    const principal = await this.resolveLearner(telegramUserId);
+    const unlinked = await this.#repository.unlinkByTelegramUserId(telegramUserId, this.#now());
+    const scope = principal ? ownedScope(principal) : null;
+    if (unlinked && scope && this.#jobPreferencesRepository) {
+      await this.#jobPreferencesRepository.unsubscribeAll(scope, 'telegram', this.#now());
+    }
+    return unlinked;
   }
 
   /**
@@ -274,8 +300,13 @@ export class TelegramLinkService {
 
   /**
    * Processes an incoming Telegram update (e.g. from a webhook).
+<<<<<<< HEAD
+   * Verifies authenticity, enforces private chats, and handles /start <code>, /unlink,
+   * /unsubscribe commands, and callback queries for job alert unsubscribes.
+=======
    * Verifies authenticity, enforces private chats, replay protection, rate limits,
    * handles /start <code>, /unlink, and answers approved job questions.
+>>>>>>> main
    */
   async handleWebhookUpdate(
     update: TelegramUpdate,
@@ -284,6 +315,37 @@ export class TelegramLinkService {
     // 1. Verify webhook secret if configured
     if (this.#webhookSecret && !verifyWebhookSecret(secretHeader, this.#webhookSecret)) {
       return { status: 'unauthorized' };
+    }
+
+    // Handle callback query (inline button clicks)
+    if (update?.callbackQuery) {
+      const cb = update.callbackQuery;
+      if (cb.from?.isBot) {
+        return { status: 'rejected', reason: 'bots_not_allowed' };
+      }
+      if (cb.data === TELEGRAM_JOB_UNSUBSCRIBE_CALLBACK_DATA) {
+        const principal = await this.resolveLearner(cb.from.id);
+        if (principal) {
+          const scope = ownedScope(principal);
+          if (scope && this.#jobPreferencesRepository) {
+            await this.#jobPreferencesRepository.unsubscribeAll(scope, 'telegram', this.#now());
+          }
+          if (this.#telegramClient) {
+            await this.#telegramClient.answerCallbackQuery?.({
+              callbackQueryId: cb.id,
+              text: 'Unsubscribed from job alerts',
+            });
+            if (cb.message?.chat.id) {
+              await this.#telegramClient.sendMessage({
+                chatId: String(cb.message.chat.id),
+                text: 'You have unsubscribed from job alerts.',
+              });
+            }
+          }
+          return { status: 'unsubscribed', unlinked: false, channel: 'telegram', principal };
+        }
+        return { status: 'unauthenticated' };
+      }
     }
 
     const message = update?.message;
@@ -334,7 +396,32 @@ export class TelegramLinkService {
       return { status: 'unlinked', unlinked };
     }
 
-    // 6. Replay check by update_id for incoming questions / updates
+    // 6. Handle unsubscribe command: /unsubscribe or /unsub
+    if (/^\/(?:unsubscribe|unsub|stop)(?:@\w+)?$/i.test(text)) {
+      const principal = await this.resolveLearner(message.from.id);
+      if (principal) {
+        const scope = ownedScope(principal);
+        if (scope && this.#jobPreferencesRepository) {
+          await this.#jobPreferencesRepository.unsubscribeAll(scope, 'telegram', this.#now());
+        }
+        if (this.#telegramClient) {
+          await this.#telegramClient.sendMessage({
+            chatId: String(message.chat.id),
+            text: 'You have unsubscribed from job alerts.',
+          });
+        }
+        return { status: 'unsubscribed', unlinked: false, channel: 'telegram', principal };
+      }
+      if (this.#telegramClient) {
+        await this.#telegramClient.sendMessage({
+          chatId: String(message.chat.id),
+          text: 'No active linked account found.',
+        });
+      }
+      return { status: 'unauthenticated' };
+    }
+
+    // 7. Replay check by update_id for incoming questions / updates
     if (update.updateId && update.updateId > 0) {
       const cached = await this.#repository.findProcessedUpdate(update.updateId);
       if (cached) {

@@ -46,13 +46,16 @@ export function registerCareersRoutes(
       };
     }>('/api/careers/subscriptions', learnerOnly, async (request, reply) => {
       const { channel, destination, categories, locations } = request.body ?? {};
-      if (typeof channel !== 'string' || typeof destination !== 'string') {
+      if (typeof channel !== 'string') {
+        return reply.code(400).send({ error: 'channel is required' });
+      }
+      if (channel.toLowerCase() !== 'telegram' && typeof destination !== 'string') {
         return reply.code(400).send({ error: 'channel and destination are required' });
       }
       const principal = principalOf(request);
       const subscription = await jobPreferences.subscribe(principal, {
         channel,
-        destination,
+        destination: destination ?? '',
         categories: Array.isArray(categories) ? categories : [],
         locations: Array.isArray(locations) ? locations : [],
       });

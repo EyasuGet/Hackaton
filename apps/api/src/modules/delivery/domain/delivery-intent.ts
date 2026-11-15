@@ -90,9 +90,10 @@ export type ReleaseOutcome =
 /** What a channel adapter reports back after attempting to send. */
 export type DispatchOutcome =
   | { readonly status: 'sent' }
-  | { readonly status: 'failed' }
-  /** Adapter could not confirm delivery — the message may or may not have been sent. */
-  | { readonly status: 'uncertain' };
+  | { readonly status: 'failed'; readonly reason?: string | undefined }
+  | { readonly status: 'uncertain'; readonly reason?: string | undefined }
+  | { readonly status: 'retry'; readonly reason?: string | undefined }
+  | { readonly status: 'cancelled'; readonly reason?: string | undefined };
 
 export type FailOutcome =
   | { readonly status: 'failed' }
@@ -101,6 +102,10 @@ export type FailOutcome =
 
 export type MarkUncertainOutcome =
   | { readonly status: 'uncertain' }
+  | { readonly status: 'lost_lease' }
+  | { readonly status: 'not_found' };
+export type CancelLeasedOutcome =
+  | { readonly status: 'cancelled' }
   | { readonly status: 'lost_lease' }
   | { readonly status: 'not_found' };
 export function dedupDigest(dedupKey: string): string {

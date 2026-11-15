@@ -162,6 +162,24 @@ class InMemoryJobPreferencesRepository implements JobPreferencesRepository {
     });
   }
 
+  unsubscribeAll(scope: OwnedScope, channel: string, now: Date = new Date()): Promise<number> {
+    let count = 0;
+    const targetChannel = channel.toLowerCase();
+    for (const [id, sub] of this.#subscriptions.entries()) {
+      if (sub.learnerId === scope.ownerId && sub.channel === targetChannel && sub.active) {
+        this.#subscriptions.set(id, {
+          ...sub,
+          active: false,
+          updatedAt: now,
+          unsubscribedAt: now,
+        });
+        count++;
+      }
+    }
+    this.#contacts.delete(`${scope.ownerId}:${targetChannel}`);
+    return Promise.resolve(count);
+  }
+
   listOwned(scope: OwnedScope): Promise<readonly JobSubscription[]> {
     const list = Array.from(this.#subscriptions.values())
       .filter((s) => s.learnerId === scope.ownerId)

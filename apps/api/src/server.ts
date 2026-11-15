@@ -30,6 +30,7 @@ import { Sharing } from './modules/sharing/application/sharing.ts';
 import { PostgresHelpRequestLookup } from './modules/sharing/infrastructure/persistence/postgres-help-request-lookup.ts';
 import { PostgresSharingRepository } from './modules/sharing/infrastructure/persistence/postgres-sharing-repository.ts';
 import { GeminiGroundedAnswerProvider } from './evaluations/grounding/provider-adapter.ts';
+import { HttpTelegramClient } from './modules/telegram/infrastructure/http-telegram-client.ts';
 import { TelegramLinkService } from './modules/telegram/application/telegram-link-service.ts';
 import { PostgresTelegramLinkRepository } from './modules/telegram/infrastructure/persistence/postgres-telegram-link-repository.ts';
 import { FaqProvider } from './modules/tutoring/application/faq-provider.ts';
@@ -55,12 +56,16 @@ const helpRepository = new PostgresHelpRepository(pool);
 const sharingRepository = new PostgresSharingRepository(pool);
 const helpRequestLookup = new PostgresHelpRequestLookup(pool);
 const jobRepository = new PostgresJobRepository(pool);
-const jobPreferences = new JobPreferences(new PostgresJobPreferencesRepository(pool));
-const jobAnswers = new JobAnswers(jobRepository);
+const jobPreferencesRepo = new PostgresJobPreferencesRepository(pool);
 const telegramLinkRepository = new PostgresTelegramLinkRepository(pool);
+const telegramClient = new HttpTelegramClient({ botToken: config.telegram.botToken });
+const jobPreferences = new JobPreferences(jobPreferencesRepo, telegramLinkRepository);
+const jobAnswers = new JobAnswers(jobRepository);
 const telegramService = new TelegramLinkService(telegramLinkRepository, {
   webhookSecret: config.telegram.webhookSecret,
   botToken: config.telegram.botToken,
+  jobPreferencesRepository: jobPreferencesRepo,
+  telegramClient,
   jobAnswers,
 });
 

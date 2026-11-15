@@ -7,6 +7,7 @@ import {
   DEFAULT_CLAIM_BATCH_SIZE,
   DEFAULT_LEASE_DURATION_MS,
   MAX_ATTEMPT_COUNT,
+  type CancelLeasedOutcome,
   type ClaimOptions,
   type ClaimedDeliveryIntent,
   type CompleteOutcome,
@@ -23,11 +24,12 @@ export interface DeliveryIntentsPort {
   release(id: string, workerId: string): Promise<ReleaseOutcome>;
   fail(id: string, workerId: string, now: Date): Promise<FailOutcome>;
   markUncertain(id: string, workerId: string): Promise<MarkUncertainOutcome>;
+  cancel?(id: string, workerId: string): Promise<CancelLeasedOutcome>;
 }
 
-/** Port: a channel adapter that attempts to send a claimed intent. */
+/** Port: a channel dispatcher that attempts to deliver a claimed intent. */
 export interface DispatchPort {
-  dispatch(intent: ClaimedDeliveryIntent): Promise<DispatchOutcome>;
+  dispatch(intent: ClaimedDeliveryIntent, now?: Date): Promise<DispatchOutcome>;
 }
 
 export type ProcessAction = 'complete' | 'release' | 'abandon' | 'fail';
@@ -169,14 +171,23 @@ export class DeliveryWorker {
   /**
    * Claims due work and dispatches each intent through the supplied channel adapter.
    * - Exceeded-attempt intents are marked failed without dispatch.
+<<<<<<< HEAD
+   * - Pre-send cancellation (suppression) updates status to cancelled.
+   * - Thrown errors or unconfirmed outcomes are marked uncertain.
+   * - Transient errors release the lease for bounded retry.
+   * - Work processing runs outside any database transaction.
+=======
    * - A thrown adapter error is treated as uncertain (message may or may not have been sent).
    * - Each dispatch call runs outside any database transaction.
+>>>>>>> main
    */
   async dispatchBatch(now: Date, dispatchPort: DispatchPort): Promise<DispatchBatchResult> {
     const claimed = await this.claimDue(now);
     let sent = 0;
     let failed = 0;
     let uncertain = 0;
+    let retried = 0;
+    let cancelled = 0;
     let exceeded = 0;
 
     for (const intent of claimed) {
@@ -188,7 +199,7 @@ export class DeliveryWorker {
 
       let outcome: DispatchOutcome;
       try {
-        outcome = await dispatchPort.dispatch(intent);
+        outcome = await dispatchPort.dispatch(intent, now);
       } catch {
         // Adapter threw: we cannot confirm delivery; record as uncertain so the
         // record is preserved for audit rather than silently abandoned.
@@ -198,17 +209,46 @@ export class DeliveryWorker {
       }
 
       if (outcome.status === 'sent') {
-        await this.#intents.complete(intent.id, this.workerId, now);
-        sent++;
+        const res = await this.#intents.complete(intent.id, this.workerId, now);
+        if (res.status === 'completed') sent++;
       } else if (outcome.status === 'failed') {
-        await this.#intents.fail(intent.id, this.workerId, now);
-        failed++;
-      } else {
-        await this.#intents.markUncertain(intent.id, this.workerId);
-        uncertain++;
+        const res = await this.#intents.fail(intent.id, this.workerId, now);
+        if (res.status === 'failed') failed++;
+      } else if (outcome.status === 'uncertain') {
+        const res = await this.#intents.markUncertain(intent.id, this.workerId);
+        if (res.status === 'uncertain') uncertain++;
+      } else if (outcome.status === 'retry') {
+        const res = await this.#intents.release(intent.id, this.workerId);
+        if (res.status === 'released') retried++;
+      } else if (outcome.status === 'cancelled') {
+        if (this.#intents.cancel) {
+          const res = await this.#intents.cancel(intent.id, this.workerId);
+          if (res.status === 'cancelled') cancelled++;
+        } else {
+          await this.#intents.complete(intent.id, this.workerId, now);
+          cancelled++;
+        }
       }
     }
 
-    return { claimed: claimed.length, sent, failed, uncertain, exceeded };
+    return {
+      claimed: claimed.length,
+      sent,
+      failed,
+      uncertain,
+      retried,
+      cancelled,
+      exceeded,
+    };
   }
+}
+
+export interface DispatchBatchResult {
+  readonly claimed: number;
+  readonly sent: number;
+  readonly failed: number;
+  readonly uncertain: number;
+  readonly retried: number;
+  readonly cancelled: number;
+  readonly exceeded: number;
 }
