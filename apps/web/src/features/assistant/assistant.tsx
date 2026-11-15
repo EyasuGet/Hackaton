@@ -34,6 +34,7 @@ interface Entry {
     readonly kind: string;
     readonly disclaimer?: string;
   };
+  readonly simpleLanguage?: boolean;
 }
 
 type Problem = 'empty' | 'denied' | 'failed';
@@ -102,6 +103,9 @@ export interface AssistantProps {
   readonly onCloudConsentChange?: (consented: boolean) => void;
   readonly consent?: boolean;
   readonly onConsentChange?: (consented: boolean) => void;
+  readonly simpleLanguage?: boolean;
+  readonly onSimpleLanguageChange?: (enabled: boolean) => void;
+  readonly defaultSimpleLanguage?: boolean;
   readonly audioRecorder?: AudioRecorder;
   readonly researchMode?: boolean;
   readonly onResearchModeChange?: (enabled: boolean) => void;
@@ -118,6 +122,9 @@ export function Assistant({
   onCloudConsentChange,
   consent,
   onConsentChange,
+  simpleLanguage,
+  onSimpleLanguageChange,
+  defaultSimpleLanguage = false,
   audioRecorder,
   researchMode,
   onResearchModeChange,
@@ -126,6 +133,12 @@ export function Assistant({
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
+  const [internalSimpleLanguage, setInternalSimpleLanguage] = useState(defaultSimpleLanguage);
+  const isSimpleLanguage = simpleLanguage ?? internalSimpleLanguage;
+  const handleSimpleLanguageChange = (checked: boolean) => {
+    setInternalSimpleLanguage(checked);
+    onSimpleLanguageChange?.(checked);
+  };
 
   // Voice recording & review state (T3-010-B)
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
@@ -172,6 +185,8 @@ export function Assistant({
     heading: useId(),
     consent: useId(),
     consentHint: useId(),
+    simpleLanguage: useId(),
+    simpleLanguageHint: useId(),
     speechEngine: useId(),
     voiceRegion: useId(),
     voiceProblem: useId(),
@@ -425,7 +440,9 @@ export function Assistant({
     let result: AskResult;
     try {
       const activeClient = isResearchMode && researchClient ? researchClient : client;
-      result = await activeClient.ask(question);
+      result = isSimpleLanguage
+        ? await activeClient.ask(question, { simpleLanguage: true })
+        : await activeClient.ask(question);
     } catch {
       // The contract says ask() must not reject; if one does, never leave the form stuck.
       result = { kind: 'failed' };
@@ -455,6 +472,7 @@ export function Assistant({
         createdAt: reply.createdAt,
         ...(reply.citations ? { citations: reply.citations } : {}),
         ...(reply.provider ? { provider: reply.provider } : {}),
+        ...((reply.simpleLanguage ?? isSimpleLanguage) ? { simpleLanguage: true } : {}),
         ...(reply.provenance ? { provenance: reply.provenance } : {}),
       },
     ]);
@@ -542,6 +560,12 @@ export function Assistant({
             </p>
           )}
         </>
+      )}
+
+      {isSimpleLanguage && (
+        <p className="assistant-simple-language-notice" role="note">
+          <T k="assistant.simpleLanguageNotice" />
+        </p>
       )}
 
       {onConsentChange && (
@@ -873,6 +897,21 @@ export function Assistant({
               <T k={VOICE_PROBLEM_TEXT[voiceProblem]} />
             </p>
           )}
+        </div>
+        <div className="assistant-simple-language-control">
+          <label htmlFor={ids.simpleLanguage}>
+            <input
+              id={ids.simpleLanguage}
+              type="checkbox"
+              checked={isSimpleLanguage}
+              aria-describedby={ids.simpleLanguageHint}
+              onChange={(e) => handleSimpleLanguageChange(e.target.checked)}
+            />
+            <T k="assistant.simpleLanguageLabel" />
+          </label>
+          <p id={ids.simpleLanguageHint} className="hint">
+            <T k="assistant.simpleLanguageHint" />
+          </p>
         </div>
         <div className="assistant-research-control">
           <label htmlFor={ids.researchMode}>

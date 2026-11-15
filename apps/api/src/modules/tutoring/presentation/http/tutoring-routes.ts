@@ -20,6 +20,7 @@ interface ClaimRequestBody {
   question: string;
   conversationId?: string;
   externalConsent?: boolean;
+  simpleLanguage?: boolean;
 }
 
 export function registerTutoringRoutes(
@@ -34,7 +35,8 @@ export function registerTutoringRoutes(
     request: FastifyRequest<{ Body: ClaimRequestBody }>,
     reply: FastifyReply,
   ) {
-    const { courseId, requestId, question, conversationId, externalConsent } = request.body ?? {};
+    const { courseId, requestId, question, conversationId, externalConsent, simpleLanguage } =
+      request.body ?? {};
 
     if (!courseId || typeof courseId !== 'string' || courseId.trim() === '') {
       return reply.code(400).send({ error: 'invalid_course_id' });
@@ -66,6 +68,7 @@ export function registerTutoringRoutes(
           question: question.trim(),
           ...(conversationId !== undefined ? { conversationId } : {}),
           externalConsent: externalConsent === true,
+          simpleLanguage: simpleLanguage === true,
         },
         { signal: request.signal },
       );
@@ -81,6 +84,7 @@ export function registerTutoringRoutes(
         kind: result.kind,
         provider: result.provider,
         citations: result.citations,
+        ...(result.simpleLanguage ? { simpleLanguage: true } : {}),
       });
     } catch (err: unknown) {
       if (err instanceof TutoringError) {

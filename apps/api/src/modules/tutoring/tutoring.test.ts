@@ -19,7 +19,10 @@ import type {
 import { JobAnswers } from '../careers/application/job-answers.ts';
 import type { JobRecord } from '../careers/domain/job.ts';
 import { FaqProvider } from './application/faq-provider.ts';
-import type { OnlineAnswerProvider } from './application/ports/online-answer-provider.ts';
+import type {
+  OnlineAnswerProvider,
+  OnlineAnswerRequest,
+} from './application/ports/online-answer-provider.ts';
 import type {
   ClaimRequestInput,
   ClaimResult,
@@ -1687,6 +1690,114 @@ describe('Online Grounded Answer Path with Safe Fallback (T3-007-C)', () => {
       expect(unknownBody.kind).toBe('insufficient_evidence');
       expect(unknownBody.citations).toEqual([]);
       expect(unknownBody.answer).toContain('External web search is not used');
+
+      await app.close();
+    });
+  });
+
+  describe('Learner-Selected Simple-Language Mode (T3-029)', () => {
+    it('passes simpleLanguage flag to online answer provider and returns simpleLanguage: true in result', async () => {
+      const content = createRetrievalContentAccess();
+      const faq = new FaqProvider(content);
+      let capturedRequest: OnlineAnswerRequest | undefined;
+      const mockOnline: OnlineAnswerProvider = {
+        name: 'mock-simple',
+        isAvailable: () => true,
+        // eslint-disable-next-line @typescript-eslint/require-await
+        generateAnswer: async (req) => {
+          capturedRequest = req;
+          return {
+            answer:
+              'AI tools help virtual assistants with easy everyday tasks [artificial-intelligence-and-the-future-of-va-work].',
+            outcome: 'grounded_answer',
+            citedPassageIds: ['artificial-intelligence-and-the-future-of-va-work'],
+          };
+        },
+      };
+      const repo = new InMemoryTutoringRepository();
+      const tutoring = new Tutoring(repo, faq, mockOnline, content);
+
+      const result = await tutoring.ask(learnerA, {
+        courseId: 'course-1',
+        requestId: 'simple-lang-req-1',
+        question: 'What routine tasks can AI tools help a Virtual Assistant with?',
+        externalConsent: true,
+        simpleLanguage: true,
+      });
+
+      expect(capturedRequest?.simpleLanguage).toBe(true);
+      expect(result).not.toBeNull();
+      expect(result?.simpleLanguage).toBe(true);
+      expect(result?.answerText).toContain('easy everyday tasks');
+      expect(result?.citations).toHaveLength(1);
+      expect(result?.citations[0]?.sectionId).toBe(
+        'artificial-intelligence-and-the-future-of-va-work',
+      );
+    });
+
+    it('preserves citations and honest limitation when simpleLanguage is requested for missing evidence', async () => {
+      const content = createRetrievalContentAccess();
+      const faq = new FaqProvider(content);
+      const online = new GeminiGroundedAnswerProvider();
+      const repo = new InMemoryTutoringRepository();
+      const tutoring = new Tutoring(repo, faq, online, content);
+
+      const result = await tutoring.ask(learnerA, {
+        courseId: 'course-1',
+        requestId: 'simple-lang-missing',
+        question: 'What is the hourly rate in US dollars?',
+        externalConsent: true,
+        simpleLanguage: true,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result?.simpleLanguage).toBe(true);
+      expect(result?.kind).toBe('insufficient_evidence');
+      expect(result?.citations).toEqual([]);
+      expect(result?.answerText).toContain('do not have an approved course answer');
+    });
+
+    it('returns simpleLanguage: true in HTTP response from POST /api/tutoring/answers', async () => {
+      const content = createRetrievalContentAccess();
+      const faq = new FaqProvider(content);
+      const mockOnline: OnlineAnswerProvider = {
+        name: 'mock-simple-http',
+        isAvailable: () => true,
+        // eslint-disable-next-line @typescript-eslint/require-await
+        generateAnswer: async () => ({
+          answer: 'Short plain answer [artificial-intelligence-and-the-future-of-va-work].',
+          outcome: 'grounded_answer',
+          citedPassageIds: ['artificial-intelligence-and-the-future-of-va-work'],
+        }),
+      };
+      const repo = new InMemoryTutoringRepository();
+      const tutoring = new Tutoring(repo, faq, mockOnline, content);
+      const app = createTestApp(tutoring, content);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tutoring/answers',
+        headers: { authorization: `Bearer ${learnerAToken}` },
+        payload: {
+          courseId: 'course-1',
+          requestId: 'http-simple-req-1',
+          question: 'What routine tasks can AI tools help a Virtual Assistant with?',
+          externalConsent: true,
+          simpleLanguage: true,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json<{
+        provider: string;
+        simpleLanguage: boolean;
+        answer: string;
+        citations: Array<{ sectionId: string }>;
+      }>();
+      expect(body.provider).toBe('online');
+      expect(body.simpleLanguage).toBe(true);
+      expect(body.answer).toContain('Short plain answer');
+      expect(body.citations).toHaveLength(1);
 
       await app.close();
     });

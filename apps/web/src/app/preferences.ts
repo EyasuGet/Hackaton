@@ -9,6 +9,7 @@ export const PREFERENCES_STORAGE_KEY = 'track3.preferences';
 export interface UserPreferences {
   readonly locale?: Locale | undefined;
   readonly scenario?: FixtureScenario | undefined;
+  readonly simpleLanguage?: boolean | undefined;
 }
 
 export function loadStoredPreferences(storage: Storage = localStorage): UserPreferences {
@@ -19,9 +20,12 @@ export function loadStoredPreferences(storage: Storage = localStorage): UserPref
     const locale = parsed.locale === 'en' || parsed.locale === 'am' ? parsed.locale : undefined;
     const scenario =
       typeof parsed.scenario === 'string' ? (parsed.scenario as FixtureScenario) : undefined;
+    const simpleLanguage =
+      typeof parsed.simpleLanguage === 'boolean' ? parsed.simpleLanguage : undefined;
     return {
       ...(locale !== undefined ? { locale } : {}),
       ...(scenario !== undefined ? { scenario } : {}),
+      ...(simpleLanguage !== undefined ? { simpleLanguage } : {}),
     };
   } catch {
     return {};

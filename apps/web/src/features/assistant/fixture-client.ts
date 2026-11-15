@@ -1,12 +1,14 @@
 // Deterministic, explicitly labelled demo replies for building and testing the
 // interface before the real tutor exists. Includes cited FAQ scenarios (T3-007-A).
 import type { MessageKey } from '../../shared/i18n/i18n.tsx';
-import type { AskResult, Citation, ConversationClient } from './conversation.ts';
+import type { AskOptions, AskResult, Citation, ConversationClient } from './conversation.ts';
 
 /** Each scenario and the dictionary key of its label in the demo selector. */
 export const FIXTURE_SCENARIOS = {
   faqCited: 'demo.scenario.faqCited',
   faqLimitation: 'demo.scenario.faqLimitation',
+  simpleLanguageCited: 'demo.scenario.simpleLanguageCited',
+  simpleLanguageLimitation: 'demo.scenario.simpleLanguageLimitation',
   english: 'demo.scenario.english',
   amharic: 'demo.scenario.amharic',
   mixed: 'demo.scenario.mixed',
@@ -68,6 +70,8 @@ const RESEARCH_CITATION: Citation = {
 const REPLY_TEXT: Record<
   | 'faqCited'
   | 'faqLimitation'
+  | 'simpleLanguageCited'
+  | 'simpleLanguageLimitation'
   | 'english'
   | 'amharic'
   | 'mixed'
@@ -95,6 +99,18 @@ const REPLY_TEXT: Record<
     'en',
     [],
     'faq',
+  ],
+  simpleLanguageCited: [
+    'A virtual assistant helps people with online tasks. They can be software like a chatbot or a person working from home.',
+    'en',
+    [SAVANNA_CITATION],
+    'online',
+  ],
+  simpleLanguageLimitation: [
+    'I do not have an approved answer for that question in the course lessons.',
+    'en',
+    [],
+    'online',
   ],
   english: ['This is a demo reply from a test fixture, not a tutor answer.', 'en'],
   amharic: ['ይህ የሙከራ መልስ ነው። እውነተኛ የትምህርት መልስ አይደለም።', 'am'],
@@ -146,11 +162,15 @@ let nextReplyId = 1;
 
 export function createFixtureClient(scenario: FixtureScenario): ConversationClient {
   return {
-    async ask(): Promise<AskResult> {
+    async ask(_question: string, options?: AskOptions): Promise<AskResult> {
       if (scenario === 'slow') await wait(SLOW_REPLY_MS);
       if (scenario === 'denied' || scenario === 'failed') return { kind: scenario };
       const [text, lang, citations, provider] =
         REPLY_TEXT[scenario === 'slow' ? 'english' : scenario];
+      const isSimple =
+        scenario === 'simpleLanguageCited' ||
+        scenario === 'simpleLanguageLimitation' ||
+        options?.simpleLanguage === true;
       return {
         kind: 'answer',
         reply: {
@@ -160,6 +180,7 @@ export function createFixtureClient(scenario: FixtureScenario): ConversationClie
           createdAt: FIXTURE_REPLY_CREATED_AT,
           ...(citations && citations.length > 0 ? { citations } : {}),
           ...(provider ? { provider } : {}),
+          ...(isSimple ? { simpleLanguage: true } : {}),
         },
       };
     },

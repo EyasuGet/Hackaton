@@ -352,6 +352,39 @@ describe('Final Automated Accessibility & Desktop Task Checks (T3-025-A)', () =>
       expect(results).toHaveNoViolations();
     });
 
+    it('passes axe audit in simple-language mode in English and Amharic', async () => {
+      const { client } = controllableClient();
+      const { container, rerender } = render(
+        <LocaleContext value="en">
+          <main>
+            <Assistant client={client} defaultSimpleLanguage={true} />
+          </main>
+        </LocaleContext>,
+      );
+
+      const checkbox = screen.getByLabelText<HTMLInputElement>('Use simple, direct language');
+      expect(checkbox.checked).toBe(true);
+      expect(screen.getByText(/Operating in simple-language mode/)).toBeDefined();
+
+      let results = await axe(container);
+      expect(results).toHaveNoViolations();
+
+      rerender(
+        <LocaleContext value="am">
+          <main>
+            <Assistant client={client} defaultSimpleLanguage={true} />
+          </main>
+        </LocaleContext>,
+      );
+
+      const amharicCheckbox = screen.getByLabelText<HTMLInputElement>('ቀላል እና ግልጽ ቋንቋ ተጠቀም');
+      expect(amharicCheckbox.checked).toBe(true);
+      expect(screen.getByText(/በቀላል ቋንቋ ሁነታ ላይ ይሰራል/)).toBeDefined();
+
+      results = await axe(container);
+      expect(results).toHaveNoViolations();
+    });
+
     it('passes axe audit during active sending state', async () => {
       const { client } = controllableClient();
       const { container } = render(

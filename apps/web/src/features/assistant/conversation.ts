@@ -23,6 +23,7 @@ export interface Reply {
     readonly kind: 'external_web_research' | 'demo' | 'faq' | 'course' | 'job';
     readonly disclaimer?: string;
   };
+  readonly simpleLanguage?: boolean;
 }
 
 /**
@@ -47,9 +48,13 @@ export type TranscriptionResult =
   | { readonly kind: 'unavailable' }
   | { readonly kind: 'failed' };
 
+export interface AskOptions {
+  readonly simpleLanguage?: boolean;
+}
+
 export interface ConversationClient {
   /** Must not reject: report failures as `{ kind: 'failed' }`. */
-  ask(question: string): Promise<AskResult>;
+  ask(question: string, options?: AskOptions): Promise<AskResult>;
   /** Optional audio transcription endpoint (T3-010-B). */
   transcribe?(audioBase64: string, mimeType: string): Promise<TranscriptionResult>;
 }
