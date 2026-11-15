@@ -35,6 +35,7 @@ import {
   type CompleteOutcome,
   type DeliveryIntentRecord,
   type FailOutcome,
+  type MarkUncertainOutcome,
   type NewDeliveryIntent,
   type ReleaseOutcome,
 } from '../../modules/delivery/domain/delivery-intent.ts';
@@ -862,6 +863,22 @@ class InMemoryDeliveryIntents implements DeliveryIntentsPort {
       completedAt: now,
     };
     return Promise.resolve({ status: 'failed' });
+  }
+
+  markUncertain(id: string, workerId: string): Promise<MarkUncertainOutcome> {
+    const index = this.items.findIndex((i) => i.id === id);
+    if (index === -1) return Promise.resolve({ status: 'not_found' });
+    const item = this.items[index]!;
+    if (item.status !== 'leased' || item.claimedBy !== workerId) {
+      return Promise.resolve({ status: 'lost_lease' });
+    }
+    this.items[index] = {
+      ...item,
+      status: 'uncertain',
+      claimedBy: null,
+      leaseExpiresAt: null,
+    };
+    return Promise.resolve({ status: 'uncertain' });
   }
 
   scrubExpired(now: Date): { cancelled: number; deleted: number } {
