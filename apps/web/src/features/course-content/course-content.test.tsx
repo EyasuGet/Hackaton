@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CourseContent } from './course-content.tsx';
 
@@ -86,7 +86,8 @@ describe('CourseContent', () => {
     await searchAndOpen();
 
     const heading = await screen.findByRole('heading', { level: 3, name: RESULT.heading });
-    expect(document.activeElement).toBe(heading);
+    // Focus moves in an effect after the heading renders; wait for it rather than racing it.
+    await waitFor(() => expect(document.activeElement).toBe(heading));
     expect(screen.getByText(SECTION.text)).toBeTruthy();
     expect(screen.getByText(/Synthetic demo lesson/)).toBeTruthy();
 
