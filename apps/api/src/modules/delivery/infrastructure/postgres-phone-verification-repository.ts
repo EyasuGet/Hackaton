@@ -131,6 +131,15 @@ export class PostgresPhoneVerificationRepository implements PhoneVerificationRep
     }
   }
 
+  async purgeExpired(now: Date): Promise<number> {
+    const result = await this.#pool.query(
+      `DELETE FROM phone_verification_codes
+        WHERE expires_at <= $1 OR status IN ('exhausted', 'expired')`,
+      [now],
+    );
+    return result.rowCount ?? 0;
+  }
+
   #mapRow(row: StoredPhoneVerificationRow): PhoneVerificationCode {
     return new PhoneVerificationCode({
       id: row.id,
