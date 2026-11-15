@@ -1,7 +1,7 @@
 // Provider factory selecting tutoring answer providers based on AI_PROVIDER (T3-037).
 // Supports 'faq', 'local' (Ollama/open model), or 'cloud' (Gemini).
 import type { ContentAccess } from '../../content/application/content-access.ts';
-import { GeminiGroundedAnswerProvider } from '../../../evaluations/grounding/provider-adapter.ts';
+import { GeminiGroundedAnswerProvider } from './gemini-grounded-answer-provider.ts';
 import { FaqProvider } from '../application/faq-provider.ts';
 import type { OnlineAnswerProvider } from '../application/ports/online-answer-provider.ts';
 import { LocalOllamaAnswerProvider } from './local-ollama-provider.ts';

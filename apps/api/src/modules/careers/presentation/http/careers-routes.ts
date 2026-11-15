@@ -1,3 +1,4 @@
+import { toSchemaOrgJobPosting } from '../../domain/schema-org-job-posting.ts';
 import type { FastifyInstance, preHandlerAsyncHookHandler } from 'fastify';
 import { principalOf, requireRole } from '../../../identity/presentation/http/authentication.ts';
 import {
@@ -31,6 +32,44 @@ export function registerCareersRoutes(
         sourceUrl,
       })),
     };
+  });
+  // Retrieves a single approved job by ID (T3-044).
+  // Supports content negotiation:
+  // - Accept: application/ld+json returns schema.org JobPosting JSON-LD.
+  // - Accept: application/json (or default) returns standard JobDetail JSON.
+  app.get<{
+    Params: { id: string };
+  }>('/api/jobs/:id', learnerOnly, async (request, reply) => {
+    const { id } = request.params;
+    const job = await jobRepository.getJob(id);
+    if (!job) {
+      return reply.code(404).send({ error: 'not_found' });
+    }
+
+    const accept = request.headers.accept;
+    if (accept && accept.includes('application/ld+json')) {
+      const jsonLd = toSchemaOrgJobPosting(job);
+      return reply
+        .code(200)
+        .header('content-type', 'application/ld+json; charset=utf-8')
+        .send(jsonLd);
+    }
+
+    return reply.code(200).send({
+      id: job.id,
+      title: job.title,
+      organization: job.organization,
+      category: job.category,
+      location: job.location,
+      description: job.description,
+      sourceUrl: job.sourceUrl,
+      postedAt: job.postedAt.toISOString(),
+      expiresAt: job.expiresAt.toISOString(),
+      status: job.status,
+      version: job.version,
+      ...(job.employmentType ? { employmentType: job.employmentType } : {}),
+      ...(job.accessibilityNotes ? { accessibilityNotes: job.accessibilityNotes } : {}),
+    });
   });
 
   if (jobPreferences) {

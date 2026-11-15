@@ -63,8 +63,13 @@ const sharingRepository = new PostgresSharingRepository(pool);
 const helpRequestLookup = new PostgresHelpRequestLookup(pool);
 const jobRepository = new PostgresJobRepository(pool);
 const jobPreferencesRepo = new PostgresJobPreferencesRepository(pool);
-const careerResearch = new CareerResearchService(new MockCareerResearchProvider());
 const jobAnswers = new JobAnswers(jobRepository);
+// External career research is disabled when no real search provider is configured (D08).
+// Synthetic mock provider is only mounted in explicit demo mode.
+const careerResearch = config.demoMode
+  ? new CareerResearchService(new MockCareerResearchProvider())
+  : undefined;
+// Single shared Tutoring instance for both web and Telegram channels, fully configured with jobAnswers:
 const tutoring = new Tutoring(
   new PostgresTutoringRepository(pool),
   faqProvider,
@@ -110,7 +115,7 @@ const app = buildApp(
     jobRepository,
     jobPreferences,
     jobAnswers,
-    careerResearch,
+    ...(careerResearch ? { careerResearch } : {}),
     employerService,
     telegramService,
     admissionController,

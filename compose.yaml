@@ -1,15 +1,21 @@
-# Local PostgreSQL and optional local Ollama for development and integration tests.
-# Values come from the root .env (see .env.example); the password has no default on purpose.
+# Local PostgreSQL for development and integration tests, with optional full demo stack and local open AI model.
+# Values come from the root .env (see .env.example).
+#
+# Usage:
+#   docker compose up -d                  # Starts standalone db for local pnpm dev
+#   docker compose --profile demo up     # Starts full stack (db + seed + api + web)
+#   docker compose --profile local-ai up # Starts local Ollama open model runtime
+
 services:
   db:
     image: postgres:18.7-alpine
     environment:
-      POSTGRES_DB: ${DATABASE_NAME:?Set DATABASE_NAME in .env}
-      POSTGRES_USER: ${DATABASE_USER:?Set DATABASE_USER in .env}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in .env}
+      POSTGRES_DB: ${DATABASE_NAME:-track3}
+      POSTGRES_USER: ${DATABASE_USER:-track3}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-demo-password}
     ports:
       # Loopback only: the database is not exposed to the local network.
-      - 127.0.0.1:${DATABASE_PORT:?Set DATABASE_PORT in .env}:5432
+      - 127.0.0.1:${DATABASE_PORT:-5432}:5432
     volumes:
       - db-data:/var/lib/postgresql
     healthcheck:
@@ -17,6 +23,81 @@ services:
       interval: 2s
       timeout: 3s
       retries: 15
+    networks:
+      - local_net
+
+  seed:
+    profiles:
+      - demo
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: ['node', 'apps/api/src/demo-seed-all.ts']
+    environment:
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DATABASE_NAME:-track3}
+      DATABASE_USER: ${DATABASE_USER:-track3}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-demo-password}
+      DEMO_MODE: 'true'
+      DEMO_ALLOWED_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173'
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - local_net
+    restart: 'no'
+
+  api:
+    profiles:
+      - demo
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 3000
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DATABASE_NAME:-track3}
+      DATABASE_USER: ${DATABASE_USER:-track3}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-demo-password}
+      DEMO_MODE: 'true'
+      DEMO_ALLOWED_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173'
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      db:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/api/ready || exit 1']
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - local_net
+
+  web:
+    profiles:
+      - demo
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:5173:5173'
+    environment:
+      API_HOST: api
+      API_PORT: 3000
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - local_net
 
   # Optional local open model runtime (T3-037).
   # Run `docker compose --profile local-ai up` to spin up Ollama with local model support.
@@ -30,6 +111,12 @@ services:
       - 127.0.0.1:11434:11434
     volumes:
       - ollama-data:/root/.ollama
+    networks:
+      - local_net
+
+networks:
+  local_net:
+    driver: bridge
 
 volumes:
   db-data:

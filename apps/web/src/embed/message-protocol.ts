@@ -4,8 +4,11 @@
 export interface EmbedConfig {
   readonly token: string;
   readonly origin: string;
-  readonly allow?: string;
-  readonly sandbox?: string;
+  readonly course?: string | undefined;
+  readonly lang?: string | undefined;
+  readonly position?: 'bottom-right' | 'bottom-left' | undefined;
+  readonly allow?: string | undefined;
+  readonly sandbox?: string | undefined;
 }
 
 export type EmbedMessage =

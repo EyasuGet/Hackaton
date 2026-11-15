@@ -3028,11 +3028,22 @@
                         "type": "object",
                         "required": ["title", "url", "domain", "snippet", "retrievedAt"],
                         "properties": {
-                          "title": { "type": "string" },
-                          "url": { "type": "string" },
-                          "domain": { "type": "string" },
-                          "snippet": { "type": "string" },
-                          "retrievedAt": { "type": "string", "format": "date-time" }
+                          "title": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "domain": {
+                            "type": "string"
+                          },
+                          "snippet": {
+                            "type": "string"
+                          },
+                          "retrievedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
                         }
                       }
                     }
@@ -4997,6 +5008,77 @@
           }
         }
       }
+    },
+    "/api/jobs/{id}": {
+      "get": {
+        "tags": ["Careers"],
+        "summary": "Get approved job listing by ID",
+        "description": "Retrieves an approved job listing by its stable identifier. Returns schema.org JobPosting JSON-LD when Accept: application/ld+json is requested, or standard JSON representation when application/json or default is requested.",
+        "operationId": "getJobById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Job identifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Found job listing in JSON or JSON-LD format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDetail"
+                }
+              },
+              "application/ld+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaOrgJobPosting"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: learner role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Job not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5977,6 +6059,188 @@
           "optedIn": {
             "type": "boolean",
             "example": true
+          }
+        }
+      },
+      "JobDetail": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "organization",
+          "category",
+          "location",
+          "description",
+          "sourceUrl",
+          "postedAt",
+          "expiresAt",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "job-va-specialist-01"
+          },
+          "title": {
+            "type": "string",
+            "example": "Virtual Assistant Specialist"
+          },
+          "organization": {
+            "type": "string",
+            "example": "Savanna Digital Services"
+          },
+          "category": {
+            "type": "string",
+            "example": "administrative"
+          },
+          "location": {
+            "type": "string",
+            "example": "Addis Ababa"
+          },
+          "description": {
+            "type": "string",
+            "example": "Responsible for managing executive calendars..."
+          },
+          "sourceUrl": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://digitalbridge.et/jobs/job-va-specialist-01"
+          },
+          "postedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-01T08:00:00.000Z"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-12-31T23:59:59.000Z"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "expired", "withdrawn"],
+            "example": "active"
+          },
+          "version": {
+            "type": "string",
+            "example": "starter-1.0"
+          },
+          "employmentType": {
+            "type": "string",
+            "example": "FULL_TIME"
+          },
+          "accessibilityNotes": {
+            "type": "string",
+            "example": "Screen reader support and remote work accommodations"
+          }
+        }
+      },
+      "SchemaOrgJobPosting": {
+        "type": "object",
+        "required": [
+          "@context",
+          "@type",
+          "title",
+          "description",
+          "datePosted",
+          "validThrough",
+          "hiringOrganization",
+          "jobLocation"
+        ],
+        "properties": {
+          "@context": {
+            "type": "string",
+            "example": "https://schema.org"
+          },
+          "@type": {
+            "type": "string",
+            "example": "JobPosting"
+          },
+          "identifier": {
+            "type": "string",
+            "example": "job-va-specialist-01"
+          },
+          "title": {
+            "type": "string",
+            "example": "Virtual Assistant Specialist"
+          },
+          "description": {
+            "type": "string",
+            "example": "Responsible for managing executive calendars..."
+          },
+          "datePosted": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-01T08:00:00.000Z"
+          },
+          "validThrough": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-12-31T23:59:59.000Z"
+          },
+          "hiringOrganization": {
+            "type": "object",
+            "required": ["@type", "name"],
+            "properties": {
+              "@type": {
+                "type": "string",
+                "example": "Organization"
+              },
+              "name": {
+                "type": "string",
+                "example": "Savanna Digital Services"
+              },
+              "sameAs": {
+                "type": "string",
+                "format": "uri",
+                "example": "https://digitalbridge.et/jobs/job-va-specialist-01"
+              }
+            }
+          },
+          "jobLocation": {
+            "type": "object",
+            "required": ["@type", "address"],
+            "properties": {
+              "@type": {
+                "type": "string",
+                "example": "Place"
+              },
+              "address": {
+                "type": "object",
+                "required": ["@type", "addressLocality"],
+                "properties": {
+                  "@type": {
+                    "type": "string",
+                    "example": "PostalAddress"
+                  },
+                  "addressLocality": {
+                    "type": "string",
+                    "example": "Addis Ababa"
+                  },
+                  "addressCountry": {
+                    "type": "string",
+                    "example": "ET"
+                  }
+                }
+              }
+            }
+          },
+          "employmentType": {
+            "type": "string",
+            "example": "FULL_TIME"
+          },
+          "occupationalCategory": {
+            "type": "string",
+            "example": "administrative"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://digitalbridge.et/jobs/job-va-specialist-01"
+          },
+          "accessibilityRequirements": {
+            "type": "string",
+            "example": "Screen reader support and remote work accommodations"
           }
         }
       }
