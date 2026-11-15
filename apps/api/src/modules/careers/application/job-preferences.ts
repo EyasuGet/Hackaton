@@ -1,7 +1,10 @@
 // Application use case for learner job alert preferences (T3-020-A).
 // Strictly enforces learner ownership: only learner principals may view,
 // create, and unsubscribe their own alert subscriptions.
+// When PhoneVerificationService is configured, SMS subscriptions require
+// verified Ethiopian phone ownership proof (Decision D24, T3-021-A).
 import { ownedScope, type Principal } from '../../identity/domain/principal.ts';
+import type { PhoneVerificationService } from '../../delivery/application/phone-verification-service.ts';
 import type { CreateSubscriptionInput, JobSubscription } from '../domain/job-preferences.ts';
 import type {
   JobPreferencesRepository,
@@ -10,14 +13,20 @@ import type {
 
 export class JobPreferences {
   readonly #repository: JobPreferencesRepository;
+  readonly #phoneVerificationService?: PhoneVerificationService | undefined;
 
-  constructor(repository: JobPreferencesRepository) {
+  constructor(
+    repository: JobPreferencesRepository,
+    phoneVerificationService?: PhoneVerificationService,
+  ) {
     this.#repository = repository;
+    this.#phoneVerificationService = phoneVerificationService;
   }
 
   /**
    * Subscribes a learner to job alert notifications with category/location preferences.
    * Rejects non-learner principals or invalid input (empty destination/channel).
+   * If channel is 'sms' and phone verification is configured, rejects unverified destinations.
    */
   async subscribe(
     principal: Principal,
@@ -27,6 +36,16 @@ export class JobPreferences {
     const scope = ownedScope(principal);
     if (!scope) return null;
     if (!input.channel.trim() || !input.destination.trim()) return null;
+
+    if (input.channel.trim().toLowerCase() === 'sms' && this.#phoneVerificationService) {
+      const isVerified = await this.#phoneVerificationService.isPhoneVerified(
+        principal,
+        input.destination,
+      );
+      if (!isVerified) {
+        return null;
+      }
+    }
 
     return this.#repository.subscribe(scope, input, now);
   }
