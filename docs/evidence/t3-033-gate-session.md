@@ -1,6 +1,6 @@
 # T3-033 — Co-designer gate session record
 
-**Status: NOT RUN.** Fill this in during the session. Until it is filled in, the gate's human requirement is unproven.
+**Status: REPORTED PASS (2026-11-15).** The team reported in the project's working session that the co-designer verified the main task works, and that the team tested all conditions. This record holds what was reported; per-condition details (devices, AT versions, timings, quotes) were not supplied and are marked *not recorded*. Add them here if available.
 **Issue:** [#205](https://github.com/EyasuGet/Hackaton/issues/205) · **Gate:** "A co-designer completes the main task unaided, with NVDA, TalkBack, keyboard only, 200 per cent zoom, and sound off."
 **Script:** follow [`docs/co-design-task.md`](../co-design-task.md) for booking, consent wording, roles and privacy rules. This sheet adds only what the gate needs.
 
@@ -36,11 +36,11 @@ Run the whole task under each condition. Use the co-designer's own device and se
 
 | # | Condition | Device, OS, browser, AT and version | Steps 1–5 (Unaided / Assisted / Failed) | Time | Barriers and hints given | Co-designer score 1–5 |
 |---|---|---|---|---|---|---|
-| 1 | NVDA (Windows, Chrome or Firefox) | | | | | |
-| 2 | TalkBack (Android phone) | | | | | |
-| 3 | Keyboard only, no mouse or touch | | | | | |
-| 4 | 200 % browser zoom | | | | | |
-| 5 | Sound off (every result available as text) | | | | | |
+| 1 | NVDA (Windows, Chrome or Firefox) | not recorded | Reported pass | not recorded | None reported | not recorded |
+| 2 | TalkBack (Android phone) | not recorded | Reported pass | not recorded | None reported | not recorded |
+| 3 | Keyboard only, no mouse or touch | not recorded | Reported pass | not recorded | None reported | not recorded |
+| 4 | 200 % browser zoom | not recorded | Reported pass | not recorded | None reported | not recorded |
+| 5 | Sound off (every result available as text) | not recorded | Reported pass | not recorded | None reported | not recorded |
 
 ## Co-designer's words
 
@@ -56,6 +56,6 @@ Record verbatim where consented, otherwise paraphrased:
 |---|---|---|---|
 | | | | |
 
-**Gate result:** ☐ Pass (all five conditions unaided) ☐ Fail. Record the reason and next session date.
+**Gate result:** ☑ Pass, as reported by the team (EyasuGet) on 2026-11-15: "we have tested everything and co-designer have verified that everything works". Supporting team test: TalkBack on an Android phone over the LAN demo stack, with Amharic tutoring, cited answers and quotes, and refusal of off-topic questions; no barriers were reported. ☐ Fail.
 
 Once filled in, copy each condition's result into the **Human check** column of [`docs/conformance.md`](../conformance.md).
