@@ -209,11 +209,14 @@ class InMemoryHelpRepository implements HelpRepository {
     return Promise.resolve(optedIn);
   }
 
-  cancelPendingIntentsForHelpRequest(_helpRequestId: string): Promise<number> {
+  cancelPendingIntentsForHelpRequest(helpRequestId: string): Promise<number> {
+    void helpRequestId;
     return Promise.resolve(0);
   }
 
-  cancelPendingIntentsForLearner(_learnerId: string, _channel: string): Promise<number> {
+  cancelPendingIntentsForLearner(learnerId: string, channel: string): Promise<number> {
+    void learnerId;
+    void channel;
     return Promise.resolve(0);
   }
 }
