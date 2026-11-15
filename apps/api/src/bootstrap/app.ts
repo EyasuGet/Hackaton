@@ -19,6 +19,7 @@ import {
 import { registerDemoSessionRoutes } from '../modules/identity/presentation/http/demo-session-routes.ts';
 import type { Accommodation } from '../modules/accommodation/application/accommodation.ts';
 import { registerAccommodationRoutes } from '../modules/accommodation/presentation/http/accommodation-routes.ts';
+import type { JobAnswers } from '../modules/careers/application/job-answers.ts';
 import type { JobRepository } from '../modules/careers/application/import-jobs.ts';
 import type { JobPreferences } from '../modules/careers/application/job-preferences.ts';
 import { registerCareersRoutes } from '../modules/careers/presentation/http/careers-routes.ts';
@@ -49,6 +50,7 @@ export interface AppDependencies {
   readonly accommodation?: Accommodation;
   readonly jobRepository?: JobRepository;
   readonly jobPreferences?: JobPreferences;
+  readonly jobAnswers?: JobAnswers;
 }
 
 export function buildApp(
@@ -110,6 +112,7 @@ export function buildApp(
       authenticate(dependencies.resolvePrincipal),
       dependencies.jobRepository,
       dependencies.jobPreferences,
+      dependencies.jobAnswers,
     );
   }
   if (dependencies.accommodation) {

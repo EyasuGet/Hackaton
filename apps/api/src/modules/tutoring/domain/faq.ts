@@ -5,6 +5,7 @@ export interface FaqCitation {
   readonly sectionId: string;
   readonly sourceTitle: string;
   readonly heading: string;
+  readonly url?: string;
 }
 
 export interface FaqEntry {

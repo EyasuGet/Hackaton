@@ -14,7 +14,15 @@ import {
   MIGRATIONS_DIR,
 } from '../../infrastructure/database/migrations.ts';
 import { ImportJobs, InvalidJobError, JobVersionConflictError } from './application/import-jobs.ts';
+import { JobAnswers } from './application/job-answers.ts';
 import { PostgresJobRepository } from './infrastructure/postgres-job-repository.ts';
+import { buildApp } from '../../bootstrap/app.ts';
+import { DemoRecords } from '../demo-records/demo-records.ts';
+import { DemoSessions } from '../identity/application/demo-sessions.ts';
+import { ResolvePrincipal, digestToken } from '../identity/application/resolve-principal.ts';
+import { ContentAccess } from '../content/application/content-access.ts';
+import { Tutoring } from '../tutoring/application/tutoring.ts';
+import type { Principal } from '../identity/domain/principal.ts';
 
 const config = loadDatabaseConfig(process.env);
 const testDatabase = `track3_test_${randomUUID().replaceAll('-', '')}`;
@@ -213,5 +221,180 @@ describe('importing approved jobs (T3-019-A)', () => {
     expect(withdrawnAfter).toHaveLength(1);
     expect(withdrawnAfter[0]?.id).toBe('job-va-specialist-01');
     expect(withdrawnAfter[0]?.status).toBe('withdrawn');
+  });
+});
+
+describe('answering job questions using approved records (T3-019-B)', () => {
+  const learnerToken = 'l'.repeat(43);
+  const supportToken = 's'.repeat(43);
+  const learnerPrincipal: Principal = {
+    id: '00000000-0000-0000-0000-000000000001',
+    role: 'learner',
+    label: 'Learner One',
+    demo: true,
+    courseIds: ['course-1'],
+  };
+  const supportPrincipal: Principal = {
+    id: '00000000-0000-0000-0000-000000000002',
+    role: 'support',
+    label: 'Support Staff',
+    demo: true,
+    courseIds: ['course-1'],
+  };
+
+  const tokenMap: Record<string, Principal> = {
+    [digestToken(learnerToken)]: learnerPrincipal,
+    [digestToken(supportToken)]: supportPrincipal,
+  };
+
+  function createTestApp(jobAnswers: JobAnswers) {
+    const resolvePrincipal = new ResolvePrincipal(
+      {
+        findDemoByTokenDigest: (digest) => Promise.resolve(tokenMap[digest] ?? null),
+      },
+      true,
+    );
+
+    return buildApp({
+      checkReadiness: () => Promise.resolve({ ready: true }),
+      resolvePrincipal,
+      demoRecords: new DemoRecords({
+        list: () => Promise.resolve([]),
+        find: () => Promise.resolve(null),
+      }),
+      demoSessions: new DemoSessions(
+        {
+          createHandoff: () => Promise.resolve(false),
+          consumeHandoff: () => Promise.resolve(null),
+          createSession: () => Promise.resolve(),
+          revokeSession: () => Promise.resolve(false),
+        },
+        true,
+      ),
+      demoAllowedOrigins: [],
+      tutoring: new Tutoring({
+        createConversation: () => Promise.resolve(null),
+        findConversation: () => Promise.resolve(null),
+        claimRequest: () => Promise.resolve(null),
+        findRequestById: () => Promise.resolve(null),
+        findRequestByRequestId: () => Promise.resolve(null),
+        listHistory: () => Promise.resolve([]),
+        recordOutcome: () => Promise.resolve(null),
+        clearHistory: () => Promise.resolve(),
+        purgeExpired: () => Promise.resolve(0),
+      }),
+      content: new ContentAccess(
+        {
+          search: () => Promise.resolve([]),
+          resolve: () => Promise.resolve({ kind: 'not_found' }),
+        },
+        [],
+      ),
+      jobRepository: repository,
+      jobAnswers,
+    });
+  }
+
+  it('answers active job questions from PostgreSQL citing approved records', async () => {
+    const activeRaw = await fixture('demo-va-specialist.json');
+    const expiredRaw = await fixture('demo-expired-data-clerk.json');
+    await importJobs.execute(activeRaw);
+    await importJobs.execute(expiredRaw);
+
+    const jobAnswers = new JobAnswers(repository);
+    const asOf = new Date('2026-11-15T10:00:00.000Z');
+
+    const result = await jobAnswers.answer(
+      learnerPrincipal,
+      'Are there any Virtual Assistant Specialist jobs open in Addis Ababa?',
+      asOf,
+    );
+
+    expect(result.kind).toBe('answered');
+    expect(result.answerText).toContain('Virtual Assistant Specialist');
+    expect(result.answerText).toContain('Savanna Digital Services');
+    expect(result.answerText).toContain('Addis Ababa');
+    expect(result.answerText).toContain('managing executive calendars');
+    expect(result.answerText).toContain('https://digitalbridge.et/jobs/job-va-specialist-01');
+    expect(result.citations).toHaveLength(1);
+    expect(result.citations[0]?.sourceId).toBe('job-va-specialist-01');
+    expect(result.citations[0]?.url).toBe('https://digitalbridge.et/jobs/job-va-specialist-01');
+  });
+
+  it('acknowledges expired job status explicitly from PostgreSQL', async () => {
+    const expiredRaw = await fixture('demo-expired-data-clerk.json');
+    await importJobs.execute(expiredRaw);
+
+    const jobAnswers = new JobAnswers(repository);
+    const asOf = new Date('2026-11-15T10:00:00.000Z');
+
+    const result = await jobAnswers.answer(
+      learnerPrincipal,
+      'Is the Data Entry and Records Clerk job open?',
+      asOf,
+    );
+
+    expect(result.kind).toBe('answered');
+    expect(result.answerText).toContain(
+      'expired on 2026-10-01 and is no longer open for applications',
+    );
+    expect(result.citations[0]?.sourceId).toBe('job-data-clerk-02');
+  });
+
+  it('serves job answers over POST /api/careers/answers and enforces learner permissions', async () => {
+    const activeRaw = await fixture('demo-va-specialist.json');
+    const expiredRaw = await fixture('demo-expired-data-clerk.json');
+    await importJobs.execute(activeRaw);
+    await importJobs.execute(expiredRaw);
+
+    const jobAnswers = new JobAnswers(repository);
+    const app = createTestApp(jobAnswers);
+
+    // 1. Unauthenticated -> 401
+    const unauth = await app.inject({
+      method: 'POST',
+      url: '/api/careers/answers',
+      payload: { question: 'What jobs are available?' },
+    });
+    expect(unauth.statusCode).toBe(401);
+
+    // 2. Non-learner role -> 403
+    const forbidden = await app.inject({
+      method: 'POST',
+      url: '/api/careers/answers',
+      headers: { authorization: `Bearer ${supportToken}` },
+      payload: { question: 'What jobs are available?' },
+    });
+    expect(forbidden.statusCode).toBe(403);
+
+    // 3. Missing/invalid question -> 400
+    const badReq = await app.inject({
+      method: 'POST',
+      url: '/api/careers/answers',
+      headers: { authorization: `Bearer ${learnerToken}` },
+      payload: { question: '' },
+    });
+    expect(badReq.statusCode).toBe(400);
+
+    // 4. Authenticated learner valid request -> 200 with citations and source link
+    const valid = await app.inject({
+      method: 'POST',
+      url: '/api/careers/answers',
+      headers: { authorization: `Bearer ${learnerToken}` },
+      payload: { question: 'What are the requirements for Virtual Assistant Specialist?' },
+    });
+    expect(valid.statusCode).toBe(200);
+    const body = valid.json<{
+      kind: string;
+      answerText: string;
+      citations: Array<{ sourceId: string; url: string }>;
+    }>();
+    expect(body.kind).toBe('answered');
+    expect(body.answerText).toContain('Requirements for Virtual Assistant Specialist');
+    expect(body.citations).toHaveLength(1);
+    expect(body.citations[0]?.sourceId).toBe('job-va-specialist-01');
+    expect(body.citations[0]?.url).toBe('https://digitalbridge.et/jobs/job-va-specialist-01');
+
+    await app.close();
   });
 });

@@ -14,6 +14,9 @@ export const FIXTURE_SCENARIOS = {
   slow: 'demo.scenario.slow',
   denied: 'demo.scenario.denied',
   failed: 'demo.scenario.failed',
+  jobActive: 'demo.scenario.jobActive',
+  jobExpired: 'demo.scenario.jobExpired',
+  jobUnknown: 'demo.scenario.jobUnknown',
 } as const satisfies Record<string, MessageKey>;
 
 export type FixtureScenario = keyof typeof FIXTURE_SCENARIOS;
@@ -35,28 +38,72 @@ const SAVANNA_CITATION: Citation = {
   heading: 'Introduction',
 };
 
+const VA_JOB_CITATION: Citation = {
+  sourceId: 'job-va-specialist-01',
+  sectionId: 'requirements',
+  sourceTitle: 'Savanna Digital Services — Virtual Assistant Specialist',
+  heading: 'Addis Ababa (Active)',
+  url: 'https://digitalbridge.et/jobs/job-va-specialist-01',
+};
+
+const DATA_CLERK_CITATION: Citation = {
+  sourceId: 'job-data-clerk-02',
+  sectionId: 'status',
+  sourceTitle: 'Ethio Tech Solutions — Data Entry and Records Clerk',
+  heading: 'Addis Ababa (Expired)',
+  url: 'https://digitalbridge.et/jobs/job-data-clerk-02',
+};
+
 // Amharic wording needs competent-speaker review with the translations (T3-006-C).
 const REPLY_TEXT: Record<
-  'faqCited' | 'faqLimitation' | 'english' | 'amharic' | 'mixed' | 'markup',
-  [text: string, lang: string, citations?: readonly Citation[]]
+  | 'faqCited'
+  | 'faqLimitation'
+  | 'english'
+  | 'amharic'
+  | 'mixed'
+  | 'markup'
+  | 'jobActive'
+  | 'jobExpired'
+  | 'jobUnknown',
+  [text: string, lang: string, citations?: readonly Citation[], provider?: 'online' | 'faq' | 'job']
 > = {
   faqCited: [
     'Virtual Assistant can mean AI software assistants such as chatbots or human remote professionals providing business support online.',
     'en',
     [SAVANNA_CITATION],
+    'faq',
   ],
   faqLimitation: [
     'I do not have an approved course answer for that question in the materials.',
     'en',
     [],
+    'faq',
   ],
   english: ['This is a demo reply from a test fixture, not a tutor answer.', 'en'],
   amharic: ['ይህ የሙከራ መልስ ነው። እውነተኛ የትምህርት መልስ አይደለም።', 'am'],
   // Starts right-to-left so dir="auto" must resolve to RTL; English and Amharic are embedded.
-  mixed: ['«مرحبا بكم» تعني “welcome” بالإنجليزية، و«እንኳን ደህና መጡ» بالأمهرية.', 'ar'],
+  mixed: ['«مرحبا بكم» تعني “welcome” بالإنجليزية፣ و«እንኳን ደህና መጡ» بالأمهرية.', 'ar'],
   markup: [
     'Demo text with markup that must stay inert: <img src="x" onerror="alert(1)"> <script>alert(2)</script>',
     'en',
+  ],
+  jobActive: [
+    'Savanna Digital Services has an active opening for a Virtual Assistant Specialist in Addis Ababa. Requirements: managing executive calendars, client correspondence in English and Amharic, digital document filing, and basic web research, proficiency with remote productivity tools. Approved link: https://digitalbridge.et/jobs/job-va-specialist-01',
+    'en',
+    [VA_JOB_CITATION],
+    'job',
+  ],
+  jobExpired: [
+    'The Data Entry and Records Clerk position at Ethio Tech Solutions (Addis Ababa) expired on 2026-10-01 and is no longer open for applications.',
+    'en',
+    [DATA_CLERK_CITATION],
+    'job',
+  ],
+  jobUnknown: [
+    'I do not have an approved job record for that position or organization. External web search is not used.',
+    'en',
+    [],
+    'job',
   ],
 };
 
@@ -73,7 +120,8 @@ export function createFixtureClient(scenario: FixtureScenario): ConversationClie
     async ask(): Promise<AskResult> {
       if (scenario === 'slow') await wait(SLOW_REPLY_MS);
       if (scenario === 'denied' || scenario === 'failed') return { kind: scenario };
-      const [text, lang, citations] = REPLY_TEXT[scenario === 'slow' ? 'english' : scenario];
+      const [text, lang, citations, provider] =
+        REPLY_TEXT[scenario === 'slow' ? 'english' : scenario];
       return {
         kind: 'answer',
         reply: {
@@ -82,6 +130,7 @@ export function createFixtureClient(scenario: FixtureScenario): ConversationClie
           lang,
           createdAt: FIXTURE_REPLY_CREATED_AT,
           ...(citations && citations.length > 0 ? { citations } : {}),
+          ...(provider ? { provider } : {}),
         },
       };
     },

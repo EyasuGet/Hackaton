@@ -114,7 +114,9 @@ test.describe('T3-026-B: Embed inside Savanna static page structure', () => {
 
     // Trigger the simulated static-page.js template swap.
     await page.evaluate(() => {
-      (window as Window & { __savannaTriggerTemplateSwap?: () => void }).__savannaTriggerTemplateSwap?.();
+      (
+        window as Window & { __savannaTriggerTemplateSwap?: () => void }
+      ).__savannaTriggerTemplateSwap?.();
     });
 
     // The embed iframe is on document.body, outside the swapped container;

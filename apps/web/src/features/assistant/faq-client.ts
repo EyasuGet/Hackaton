@@ -25,6 +25,7 @@ function parseCitations(raw: unknown): Citation[] {
         sectionId: rec.sectionId,
         sourceTitle: rec.sourceTitle,
         heading: rec.heading,
+        ...(typeof rec.url === 'string' ? { url: rec.url } : {}),
       });
     }
   }
@@ -91,7 +92,9 @@ export function createAnswerClient({
         const lang = typeof data.lang === 'string' ? data.lang : 'en';
         const citations = parseCitations(data.citations);
         const provider =
-          data.provider === 'online' || data.provider === 'faq' ? data.provider : undefined;
+          data.provider === 'online' || data.provider === 'faq' || data.provider === 'job'
+            ? data.provider
+            : undefined;
 
         const reply: Reply = {
           id,
