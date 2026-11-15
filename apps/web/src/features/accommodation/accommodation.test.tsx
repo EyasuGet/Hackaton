@@ -32,6 +32,10 @@ const FAKE_REQUEST: AccommodationRequest = {
   expiresAt: new Date(Date.now() + 7 * 86400 * 1000).toISOString(),
   updatedAt: new Date().toISOString(),
   cancelledAt: null,
+  claimedBy: null,
+  claimedAt: null,
+  resolvedBy: null,
+  resolvedAt: null,
 };
 
 afterEach(cleanup);

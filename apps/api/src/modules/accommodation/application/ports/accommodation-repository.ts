@@ -1,8 +1,13 @@
-// Storage port for accommodation requests. All learner reads include owner scope
+// Storage port for accommodation requests (T3-022-A, T3-022-B). All learner reads include owner scope
 // so another learner's requests are never returned, even when their ID is known.
-// A coordinator (support role) may access content by ID via coordinatorFindById.
+// A coordinator (support role) may access content by ID via coordinatorFindById, claim requests,
+// exchange replies, and resolve requests.
 import type { OwnedScope } from '../../../identity/domain/principal.ts';
-import type { AccommodationRequest } from '../../domain/accommodation-request.ts';
+import type {
+  AccommodationQueueItem,
+  AccommodationReply,
+  AccommodationRequest,
+} from '../../domain/accommodation-request.ts';
 
 export interface SubmitAccommodationInput {
   /** Caller-supplied idempotency key unique for this owner. */
@@ -17,6 +22,14 @@ export type SubmitAccommodationResult =
   | { readonly kind: 'submitted'; readonly request: AccommodationRequest }
   | { readonly kind: 'existing'; readonly request: AccommodationRequest }
   | { readonly kind: 'job_not_found' };
+
+export type ClaimAccommodationResult =
+  | { readonly kind: 'claimed'; readonly request: AccommodationRequest }
+  | { readonly kind: 'already_claimed'; readonly request: AccommodationRequest };
+
+export type AddAccommodationReplyResult =
+  | { readonly kind: 'added'; readonly reply: AccommodationReply }
+  | { readonly kind: 'existing'; readonly reply: AccommodationReply };
 
 export interface AccommodationRepository {
   /**
@@ -50,4 +63,47 @@ export interface AccommodationRepository {
    * Returns null when the id does not exist or has expired.
    */
   coordinatorFindById(id: string): Promise<AccommodationRequest | null>;
+
+  /**
+   * Lists non-expired waiting requests for the coordinator queue (without raw support description).
+   */
+  listQueue(): Promise<readonly AccommodationQueueItem[]>;
+
+  /**
+   * Lists non-expired requests for coordinator tracking (newest first).
+   */
+  listForCoordinator(): Promise<readonly AccommodationRequest[]>;
+
+  /**
+   * Atomically claims a waiting request for the given coordinator.
+   */
+  claimRequest(id: string, coordinatorId: string): Promise<ClaimAccommodationResult | null>;
+
+  /**
+   * Adds a reply to an accommodation request thread (idempotent on clientReplyId).
+   */
+  addReply(
+    accommodationRequestId: string,
+    authorId: string,
+    clientReplyId: string,
+    body: string,
+  ): Promise<AddAccommodationReplyResult | null>;
+
+  /**
+   * Lists replies for an accommodation request in chronological order.
+   */
+  listReplies(accommodationRequestId: string): Promise<readonly AccommodationReply[]>;
+
+  /**
+   * Marks unread replies (by others) on the request as read for readerId.
+   */
+  markRepliesRead(accommodationRequestId: string, readerId: string): Promise<void>;
+
+  /**
+   * Transitions a claimed request to resolved.
+   */
+  resolveRequest(
+    accommodationRequestId: string,
+    coordinatorId: string,
+  ): Promise<AccommodationRequest | null>;
 }
