@@ -1,13 +1,14 @@
-// Background delivery worker (T3-014-B).
-// Claims bounded batches of due work under a time-bounded lease.
-// Work processing occurs completely outside any database transaction, guaranteeing
-// that downstream dispatch and network calls never hold database transactions or locks.
 import {
   DEFAULT_CLAIM_BATCH_SIZE,
   DEFAULT_LEASE_DURATION_MS,
+  MAX_ATTEMPT_COUNT,
+  type CancelLeasedOutcome,
   type ClaimOptions,
   type ClaimedDeliveryIntent,
   type CompleteOutcome,
+  type DispatchOutcome,
+  type FailOutcome,
+  type MarkUncertainOutcome,
   type ReleaseOutcome,
 } from '../domain/delivery-intent.ts';
 
@@ -16,6 +17,14 @@ export interface DeliveryIntentsPort {
   claimDueWork(options: ClaimOptions): Promise<ClaimedDeliveryIntent[]>;
   complete(id: string, workerId: string, now: Date): Promise<CompleteOutcome>;
   release(id: string, workerId: string): Promise<ReleaseOutcome>;
+  fail(id: string, workerId: string, now: Date): Promise<FailOutcome>;
+  markUncertain(id: string, workerId: string): Promise<MarkUncertainOutcome>;
+  cancel?(id: string, workerId: string): Promise<CancelLeasedOutcome>;
+}
+
+/** Port: a channel dispatcher that attempts to deliver a claimed intent. */
+export interface DispatchPort {
+  dispatch(intent: ClaimedDeliveryIntent, now: Date): Promise<DispatchOutcome>;
 }
 
 export type ProcessAction = 'complete' | 'release' | 'abandon';
@@ -98,4 +107,83 @@ export class DeliveryWorker {
 
     return { claimed: claimed.length, completed, released, abandoned };
   }
+
+  /**
+   * Claims due work and dispatches each intent through the supplied channel adapter.
+   * - Exceeded-attempt intents are marked failed without dispatch.
+   * - Pre-send cancellation (suppression) updates status to cancelled.
+   * - Thrown errors or unconfirmed outcomes are marked uncertain.
+   * - Transient errors release the lease for bounded retry.
+   * - Work processing runs outside any database transaction.
+   */
+  async dispatchBatch(now: Date, dispatchPort: DispatchPort): Promise<DispatchBatchResult> {
+    const claimed = await this.claimDue(now);
+    let sent = 0;
+    let failed = 0;
+    let uncertain = 0;
+    let retried = 0;
+    let cancelled = 0;
+    let exceeded = 0;
+
+    for (const intent of claimed) {
+      if (intent.attemptCount > MAX_ATTEMPT_COUNT) {
+        await this.#intents.fail(intent.id, this.workerId, now);
+        exceeded++;
+        continue;
+      }
+
+      let outcome: DispatchOutcome;
+      try {
+        outcome = await dispatchPort.dispatch(intent, now);
+      } catch {
+        // Adapter threw: we cannot confirm delivery; record as uncertain so the
+        // record is preserved for audit rather than silently abandoned.
+        await this.#intents.markUncertain(intent.id, this.workerId);
+        uncertain++;
+        continue;
+      }
+
+      if (outcome.status === 'sent') {
+        const res = await this.#intents.complete(intent.id, this.workerId, now);
+        if (res.status === 'completed') sent++;
+      } else if (outcome.status === 'failed') {
+        const res = await this.#intents.fail(intent.id, this.workerId, now);
+        if (res.status === 'failed') failed++;
+      } else if (outcome.status === 'uncertain') {
+        const res = await this.#intents.markUncertain(intent.id, this.workerId);
+        if (res.status === 'uncertain') uncertain++;
+      } else if (outcome.status === 'retry') {
+        const res = await this.#intents.release(intent.id, this.workerId);
+        if (res.status === 'released') retried++;
+      } else if (outcome.status === 'cancelled') {
+        if (this.#intents.cancel) {
+          const res = await this.#intents.cancel(intent.id, this.workerId);
+          if (res.status === 'cancelled') cancelled++;
+        } else {
+          await this.#intents.complete(intent.id, this.workerId, now);
+          cancelled++;
+        }
+      }
+    }
+
+    return {
+      claimed: claimed.length,
+      sent,
+      failed,
+      uncertain,
+      retried,
+      cancelled,
+      exceeded,
+    };
+  }
+}
+
+export interface DispatchBatchResult {
+  readonly claimed: number;
+  readonly sent: number;
+  readonly failed: number;
+  readonly uncertain: number;
+  readonly retried: number;
+  readonly cancelled: number;
+  readonly exceeded: number;
 }

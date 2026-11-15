@@ -156,6 +156,53 @@ export class PostgresJobPreferencesRepository implements JobPreferencesRepositor
     }
   }
 
+  async unsubscribeAll(
+    scope: OwnedScope,
+    channel: string,
+    now: Date = new Date(),
+  ): Promise<number> {
+    const client = await this.#pool.connect();
+    try {
+      await client.query('BEGIN');
+      const trimmedChannel = channel.trim().toLowerCase();
+
+      // 1. Mark all active subscriptions for this learner and channel as inactive
+      const updateRes = await client.query(
+        `UPDATE job_subscriptions
+            SET active = false,
+                unsubscribed_at = $3,
+                updated_at = $3
+          WHERE learner_id = $1 AND channel = $2 AND active = true`,
+        [scope.ownerId, trimmedChannel, now],
+      );
+      const unsubscribedCount = updateRes.rowCount ?? 0;
+
+      // 2. Cancel any pending delivery intents for this learner and channel
+      await client.query(
+        `UPDATE delivery_intents
+            SET status = 'cancelled',
+                content_ref = NULL
+          WHERE recipient_id = $1 AND channel = $2 AND status = 'pending'`,
+        [scope.ownerId, trimmedChannel],
+      );
+
+      // 3. Remove contact destination for this channel
+      await client.query(
+        `DELETE FROM job_alert_contacts
+          WHERE learner_id = $1 AND channel = $2`,
+        [scope.ownerId, trimmedChannel],
+      );
+
+      await client.query('COMMIT');
+      return unsubscribedCount;
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async listOwned(scope: OwnedScope): Promise<readonly JobSubscription[]> {
     const result = await this.#pool.query<StoredSubscriptionRow>(
       `SELECT s.id,

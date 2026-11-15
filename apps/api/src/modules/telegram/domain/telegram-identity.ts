@@ -27,9 +27,17 @@ export interface TelegramMessage {
   readonly text?: string | undefined;
 }
 
+export interface TelegramCallbackQuery {
+  readonly id: string;
+  readonly from: TelegramUser;
+  readonly message?: TelegramMessage | undefined;
+  readonly data?: string | undefined;
+}
+
 export interface TelegramUpdate {
   readonly updateId: number;
   readonly message?: TelegramMessage | undefined;
+  readonly callbackQuery?: TelegramCallbackQuery | undefined;
 }
 
 export interface TelegramIdentity {

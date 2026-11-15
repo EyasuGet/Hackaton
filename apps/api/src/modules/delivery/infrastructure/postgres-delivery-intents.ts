@@ -10,12 +10,15 @@ import {
   MAX_CLAIM_BATCH_SIZE,
   dedupDigest,
   dedupExpiry,
+  type CancelLeasedOutcome,
   type ClaimOptions,
   type ClaimedDeliveryIntent,
   type CompleteOutcome,
   type DeliveryIntentRecord,
   type DeliveryIntentStatus,
   type EnqueueOutcome,
+  type FailOutcome,
+  type MarkUncertainOutcome,
   type NewDeliveryIntent,
   type ReleaseOutcome,
 } from '../domain/delivery-intent.ts';
@@ -187,6 +190,85 @@ export class PostgresDeliveryIntents {
 
     if ((result.rowCount ?? 0) > 0) {
       return { status: 'released' };
+    }
+
+    const existing = await this.#pool.query<{ id: string }>(
+      'SELECT id FROM delivery_intents WHERE id = $1',
+      [id],
+    );
+    return existing.rows.length === 0 ? { status: 'not_found' } : { status: 'lost_lease' };
+  }
+
+  /**
+   * Marks a leased intent as permanently failed; no further dispatch will be attempted.
+   * Fencing check: only succeeds if the lease is still held by the caller.
+   */
+  async fail(id: string, workerId: string, now: Date): Promise<FailOutcome> {
+    const result = await this.#pool.query(
+      `UPDATE delivery_intents
+       SET status = 'failed',
+           claimed_by = NULL,
+           lease_expires_at = NULL,
+           completed_at = $3
+       WHERE id = $1 AND status = 'leased' AND claimed_by = $2`,
+      [id, workerId, now],
+    );
+
+    if ((result.rowCount ?? 0) > 0) {
+      return { status: 'failed' };
+    }
+
+    const existing = await this.#pool.query<{ id: string }>(
+      'SELECT id FROM delivery_intents WHERE id = $1',
+      [id],
+    );
+    return existing.rows.length === 0 ? { status: 'not_found' } : { status: 'lost_lease' };
+  }
+
+  /**
+   * Records that dispatch was attempted but outcome is unknown (e.g. network timeout).
+   * The message may or may not have been received by the learner.
+   * Fencing check: only succeeds if the lease is still held by the caller.
+   */
+  async markUncertain(id: string, workerId: string): Promise<MarkUncertainOutcome> {
+    const result = await this.#pool.query(
+      `UPDATE delivery_intents
+       SET status = 'uncertain',
+           claimed_by = NULL,
+           lease_expires_at = NULL
+       WHERE id = $1 AND status = 'leased' AND claimed_by = $2`,
+      [id, workerId],
+    );
+
+    if ((result.rowCount ?? 0) > 0) {
+      return { status: 'uncertain' };
+    }
+
+    const existing = await this.#pool.query<{ id: string }>(
+      'SELECT id FROM delivery_intents WHERE id = $1',
+      [id],
+    );
+    return existing.rows.length === 0 ? { status: 'not_found' } : { status: 'lost_lease' };
+  }
+
+  /**
+   * Cancels a leased intent (e.g. pre-send check detected that recipient unsubscribed,
+   * unlinked their channel identity, or the referenced content expired).
+   * Fencing check: only succeeds if the lease is still held by the caller.
+   */
+  async cancel(id: string, workerId: string): Promise<CancelLeasedOutcome> {
+    const result = await this.#pool.query(
+      `UPDATE delivery_intents
+       SET status = 'cancelled',
+           content_ref = NULL,
+           claimed_by = NULL,
+           lease_expires_at = NULL
+       WHERE id = $1 AND status = 'leased' AND claimed_by = $2`,
+      [id, workerId],
+    );
+
+    if ((result.rowCount ?? 0) > 0) {
+      return { status: 'cancelled' };
     }
 
     const existing = await this.#pool.query<{ id: string }>(

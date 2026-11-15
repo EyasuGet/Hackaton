@@ -44,6 +44,26 @@ interface WebhookUpdatePayload {
     readonly date: number;
     readonly text?: string;
   };
+  readonly callback_query?: {
+    readonly id: string;
+    readonly from: {
+      readonly id: number | string;
+      readonly is_bot?: boolean;
+      readonly first_name?: string;
+      readonly last_name?: string;
+      readonly username?: string;
+    };
+    readonly message?: {
+      readonly message_id: number;
+      readonly chat: {
+        readonly id: number | string;
+        readonly type: string;
+      };
+      readonly date: number;
+      readonly text?: string;
+    };
+    readonly data?: string;
+  };
 }
 
 export function registerTelegramRoutes(
@@ -183,6 +203,31 @@ export function registerTelegramRoutes(
               },
               date: payload.message.date,
               text: payload.message.text,
+            }
+          : undefined,
+        callbackQuery: payload?.callback_query
+          ? {
+              id: payload.callback_query.id,
+              from: {
+                id: String(payload.callback_query.from.id),
+                isBot: Boolean(payload.callback_query.from.is_bot),
+                firstName: payload.callback_query.from.first_name,
+                lastName: payload.callback_query.from.last_name,
+                username: payload.callback_query.from.username,
+              },
+              message: payload.callback_query.message
+                ? {
+                    messageId: payload.callback_query.message.message_id,
+                    chat: {
+                      id: String(payload.callback_query.message.chat.id),
+                      type:
+                        (payload.callback_query.message.chat.type as TelegramChatType) || 'private',
+                    },
+                    date: payload.callback_query.message.date,
+                    text: payload.callback_query.message.text,
+                  }
+                : undefined,
+              data: payload.callback_query.data,
             }
           : undefined,
       };

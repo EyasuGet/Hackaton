@@ -35,6 +35,17 @@ export interface JobPreferencesRepository {
   ): Promise<UnsubscribeResult | null>;
 
   /**
+   * Unsubscribes a learner from all active subscriptions on the specified channel,
+   * cancels any queued pending delivery intents for this learner and channel,
+   * and removes the contact destination.
+   */
+  unsubscribeAll(
+    scope: OwnedScope,
+    channel: string,
+    now?: Date,
+  ): Promise<number>;
+
+  /**
    * Lists all subscriptions owned by the requesting learner, newest first.
    */
   listOwned(scope: OwnedScope): Promise<readonly JobSubscription[]>;
