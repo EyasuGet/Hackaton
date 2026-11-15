@@ -19,4 +19,16 @@ export default defineConfig(
   },
   // Plain JavaScript config files are not part of any tsconfig project.
   { files: ['**/*.js'], extends: [tseslint.configs.disableTypeChecked] },
+  {
+    files: ['apps/web/public/sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        caches: 'readonly',
+        fetch: 'readonly',
+        URL: 'readonly',
+        Response: 'readonly',
+      },
+    },
+  },
 );

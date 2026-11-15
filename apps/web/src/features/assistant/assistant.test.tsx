@@ -3,6 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LocaleContext } from '../../shared/i18n/i18n.tsx';
 import { Assistant } from './assistant.tsx';
 import type { AskResult, ConversationClient } from './conversation.ts';
+import {
+  BrowserSpeechSynthesizer,
+  CloudSpeechSynthesizer,
+  type SpeechCallbacks,
+  type SpeechSynthesizer,
+} from './speech-adapter.ts';
 
 afterEach(cleanup);
 
@@ -15,6 +21,90 @@ const englishAnswer: AskResult = {
     createdAt: '2026-09-11T12:00:00.000Z',
   },
 };
+
+const citedEnglishAnswer: AskResult = {
+  kind: 'answer',
+  reply: {
+    id: 'r-cited',
+    text: 'Photosynthesis makes sugar.',
+    lang: 'en',
+    createdAt: '2026-09-11T12:00:00.000Z',
+    citations: [
+      {
+        sourceId: 'bio-1',
+        sectionId: 'sec-1',
+        sourceTitle: 'Biology Basics',
+        heading: 'Photosynthesis Section',
+      },
+    ],
+  },
+};
+
+function controllableSpeechSynthesizer(options?: {
+  isSupported?: boolean | ((lang: string) => boolean);
+  fail?: boolean;
+}) {
+  const isSupportedFn = (lang: string): boolean => {
+    if (typeof options?.isSupported === 'function') {
+      return options.isSupported(lang);
+    }
+    return options?.isSupported ?? true;
+  };
+
+  const speakMock = vi.fn();
+  const pauseMock = vi.fn();
+  const resumeMock = vi.fn();
+  const stopMock = vi.fn();
+  let lastCallbacks: SpeechCallbacks | undefined;
+
+  const synthesizer: SpeechSynthesizer = {
+    id: 'test-synth',
+    name: 'Test Synthesizer',
+    requiresConsent: false,
+    isSupported: vi.fn((lang: string): boolean => isSupportedFn(lang)),
+    speak: vi.fn(
+      (text: string, opts: { lang: string; signal?: AbortSignal }, callbacks?: SpeechCallbacks) => {
+        speakMock(text, opts);
+        lastCallbacks = callbacks;
+        if (options?.fail) {
+          callbacks?.onError?.(new Error('Synthetic speech engine failure'));
+          return Promise.resolve({
+            pause: pauseMock,
+            resume: resumeMock,
+            stop: stopMock,
+            state: 'idle' as const,
+          });
+        }
+        callbacks?.onStart?.();
+        return Promise.resolve({
+          pause: () => {
+            pauseMock();
+            callbacks?.onPause?.();
+          },
+          resume: () => {
+            resumeMock();
+            callbacks?.onResume?.();
+          },
+          stop: () => {
+            stopMock();
+            callbacks?.onEnd?.();
+          },
+          state: 'playing' as const,
+        });
+      },
+    ),
+  };
+
+  return {
+    synthesizer,
+    speakMock,
+    pauseMock,
+    resumeMock,
+    stopMock,
+    triggerEnd: () => lastCallbacks?.onEnd?.(),
+    triggerError: (err: Error) => lastCallbacks?.onError?.(err),
+  };
+}
 
 /** A client whose replies the test releases explicitly, to observe the pending state. */
 function controllableClient() {
@@ -220,5 +310,367 @@ describe('Assistant', () => {
 
     const prefix = screen.getByRole('status', { name: 'የውይይት ማሳወቂያዎች' }).querySelector('span');
     expect([prefix?.textContent, prefix?.getAttribute('lang')]).toEqual(['ረዳት፦ ', 'am']);
+  });
+
+  describe('Spoken answers (T3-011)', () => {
+    async function clickButton(button: HTMLElement) {
+      await act(async () => {
+        fireEvent.click(button);
+        await Promise.resolve();
+      });
+    }
+
+    it('starts speech playback only on learner action, never autoplaying', async () => {
+      const { client, respond } = controllableClient();
+      const { synthesizer, speakMock } = controllableSpeechSynthesizer();
+      render(<Assistant client={client} speechSynthesizer={synthesizer} />);
+
+      type('What is photosynthesis?');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+      await respond(citedEnglishAnswer);
+
+      // Playback must not start automatically on reply arrival
+      expect(speakMock).not.toHaveBeenCalled();
+
+      // Keyboard-operable play button exists
+      const playButton = screen.getByRole('button', { name: /Read answer aloud/i });
+      expect(playButton).toBeDefined();
+
+      // Starts only on deliberate learner action
+      await clickButton(playButton);
+      expect(speakMock).toHaveBeenCalledTimes(1);
+      expect(speakMock).toHaveBeenCalledWith('Photosynthesis makes sugar.', { lang: 'en' });
+    });
+
+    it('provides keyboard-operable play, pause, resume, and stop controls', async () => {
+      const { client, respond } = controllableClient();
+      const { synthesizer, pauseMock, resumeMock, stopMock } = controllableSpeechSynthesizer();
+      render(<Assistant client={client} speechSynthesizer={synthesizer} />);
+
+      type('What is photosynthesis?');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+      await respond(englishAnswer);
+
+      // 1. Play
+      const playButton = screen.getByRole('button', { name: /Read answer aloud/i });
+      await clickButton(playButton);
+
+      expect(screen.getByRole('button', { name: 'Pause speech' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Stop speech' })).toBeDefined();
+      expect(screen.getByText('Playing audio…')).toBeDefined();
+
+      // 2. Pause
+      await clickButton(screen.getByRole('button', { name: 'Pause speech' }));
+      expect(pauseMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('button', { name: 'Resume speech' })).toBeDefined();
+      expect(screen.getByText('Audio paused')).toBeDefined();
+
+      // 3. Resume
+      await clickButton(screen.getByRole('button', { name: 'Resume speech' }));
+      expect(resumeMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('button', { name: 'Pause speech' })).toBeDefined();
+      expect(screen.getByText('Playing audio…')).toBeDefined();
+
+      // 4. Stop
+      await clickButton(screen.getByRole('button', { name: 'Stop speech' }));
+      expect(stopMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('button', { name: /Read answer aloud/i })).toBeDefined();
+    });
+
+    it('stops speech playback on window navigation and component unmount', async () => {
+      const { client, respond } = controllableClient();
+      const { synthesizer, stopMock } = controllableSpeechSynthesizer();
+      const { unmount } = render(<Assistant client={client} speechSynthesizer={synthesizer} />);
+
+      type('Question');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+      await respond(englishAnswer);
+
+      await clickButton(screen.getByRole('button', { name: /Read answer aloud/i }));
+      expect(screen.getByRole('button', { name: 'Pause speech' })).toBeDefined();
+
+      // Navigation event (popstate) stops playback
+      fireEvent(window, new Event('popstate'));
+      expect(stopMock).toHaveBeenCalledTimes(1);
+
+      // Starting playback again and unmounting also calls stop
+      await clickButton(screen.getByRole('button', { name: /Read answer aloud/i }));
+      unmount();
+      expect(stopMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('stops ongoing speech and does not obscure new-message announcements when a new reply arrives', async () => {
+      const { client, respond } = controllableClient();
+      const { synthesizer, stopMock } = controllableSpeechSynthesizer();
+      render(<Assistant client={client} speechSynthesizer={synthesizer} />);
+
+      // First question & answer
+      type('First question');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+      await respond(englishAnswer);
+
+      // Start reading answer 1 aloud
+      await clickButton(screen.getByRole('button', { name: /Read answer aloud/i }));
+      expect(screen.getByText('Playing audio…')).toBeDefined();
+
+      // Second question sent and received
+      type('Second question');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+      await respond({
+        kind: 'answer',
+        reply: {
+          id: 'r2',
+          text: 'Second answer arrived.',
+          lang: 'en',
+          createdAt: '2026-09-11T12:01:00.000Z',
+        },
+      });
+
+      // Ongoing playback stopped immediately so it does not obscure announcements
+      expect(stopMock).toHaveBeenCalled();
+      // Conversation update polite announcement contains the second reply
+      expect(updates().textContent).toBe('Assistant: Second answer arrived.');
+    });
+
+    it('enforces consent for cloud speech synthesis before sending text, and respects consent changes', async () => {
+      const { client, respond } = controllableClient();
+      const cloudSpeakMock = vi.fn();
+      const cloudSynth: SpeechSynthesizer = {
+        id: 'cloud',
+        name: 'Cloud Synthesizer',
+        requiresConsent: true,
+        isSupported: () => true,
+        speak: vi.fn((text, opts) => {
+          cloudSpeakMock(text, opts);
+          return Promise.resolve({
+            pause: () => {},
+            resume: () => {},
+            stop: () => {},
+            state: 'playing' as const,
+          });
+        }),
+      };
+
+      const onConsentChange = vi.fn();
+      render(
+        <Assistant
+          client={client}
+          cloudSynthesizer={cloudSynth}
+          defaultSpeechEngine="cloud"
+          defaultCloudConsent={false}
+          onCloudConsentChange={onConsentChange}
+        />,
+      );
+
+      type('Question');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+      await respond(citedEnglishAnswer);
+
+      // Unconsented cloud synthesis shows disclosure
+      expect(
+        screen.getByText(
+          /Cloud speech synthesis sends the answer text to an external speech provider/i,
+        ),
+      ).toBeDefined();
+
+      // Attempting to read aloud without consent warns learner and blocks cloud provider call
+      await clickButton(screen.getByRole('button', { name: /Read answer aloud/i }));
+      expect(cloudSpeakMock).not.toHaveBeenCalled();
+      expect(
+        screen.getByRole('alert', {
+          name: '',
+        }).textContent,
+      ).toContain('Cloud speech synthesis requires your explicit consent');
+
+      // Citations and text remain completely visible
+      expect(screen.getAllByText('Photosynthesis makes sugar.').length).toBeGreaterThan(0);
+      expect(screen.getByText(/Biology Basics — Photosynthesis Section/)).toBeDefined();
+
+      // Explicit learner consent
+      await clickButton(screen.getByRole('button', { name: 'I consent to cloud speech' }));
+      expect(onConsentChange).toHaveBeenCalledWith(true);
+      expect(screen.getByText('Cloud speech consent active')).toBeDefined();
+
+      // Now reading aloud invokes cloud synthesizer
+      await clickButton(screen.getByRole('button', { name: /Read answer aloud/i }));
+      expect(cloudSpeakMock).toHaveBeenCalledWith('Photosynthesis makes sugar.', { lang: 'en' });
+
+      // Revoking consent resets state and blocks further synthesis
+      await clickButton(screen.getByRole('button', { name: 'Revoke cloud speech consent' }));
+      expect(onConsentChange).toHaveBeenCalledWith(false);
+      expect(
+        screen.getByText(
+          /Cloud speech synthesis sends the answer text to an external speech provider/i,
+        ),
+      ).toBeDefined();
+    });
+
+    it('speaks exactly the answer text with language tag and does not add uncited claims or private tokens', async () => {
+      const { client, respond } = controllableClient();
+      const { synthesizer, speakMock } = controllableSpeechSynthesizer();
+      render(<Assistant client={client} speechSynthesizer={synthesizer} />);
+
+      const privateQuestion = 'My secret account token is TOKEN-XYZ-999. Tell me about biology.';
+      type(privateQuestion);
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+      await respond(citedEnglishAnswer);
+
+      await clickButton(screen.getByRole('button', { name: /Read answer aloud/i }));
+
+      // Audio output contains ONLY reply.text and reply.lang
+      expect(speakMock).toHaveBeenCalledTimes(1);
+      const [spokenText, spokenOptions] = speakMock.mock.calls[0] as [string, { lang: string }];
+      expect(spokenText).toBe('Photosynthesis makes sugar.');
+      expect(spokenOptions.lang).toBe('en');
+
+      // Does NOT speak learner's private question or token
+      expect(spokenText).not.toContain('TOKEN-XYZ-999');
+      expect(spokenText).not.toContain('secret');
+
+      // Complete text and citations remain fully accessible in the document
+      expect(screen.getAllByText('Photosynthesis makes sugar.').length).toBeGreaterThan(0);
+      expect(screen.getByText(/Biology Basics — Photosynthesis Section/)).toBeDefined();
+    });
+
+    it('handles speech provider failure gracefully leaving complete text and citations intact', async () => {
+      const { client, respond } = controllableClient();
+      const { synthesizer } = controllableSpeechSynthesizer({ fail: true });
+      render(<Assistant client={client} speechSynthesizer={synthesizer} />);
+
+      type('Question');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+      await respond(citedEnglishAnswer);
+
+      await clickButton(screen.getByRole('button', { name: /Read answer aloud/i }));
+
+      // Alert notifies learner of failure
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Spoken audio could not be generated. The complete written answer and citations remain available below.',
+      );
+
+      // Both the complete text and citations remain visible and untouched
+      expect(screen.getAllByText('Photosynthesis makes sugar.').length).toBeGreaterThan(0);
+      expect(screen.getByText(/Biology Basics — Photosynthesis Section/)).toBeDefined();
+    });
+
+    it('handles missing language support gracefully leaving complete text and citations intact', async () => {
+      const { client, respond } = controllableClient();
+      const { synthesizer } = controllableSpeechSynthesizer({
+        isSupported: (lang) => lang !== 'am',
+      });
+      render(<Assistant client={client} speechSynthesizer={synthesizer} />);
+
+      type('ጥያቄ');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+      await respond({
+        kind: 'answer',
+        reply: {
+          id: 'r-am',
+          text: 'ፎቶሲንተሲስ ስኳር ያመርታል።',
+          lang: 'am',
+          createdAt: '2026-09-11T12:00:00.000Z',
+          citations: [
+            {
+              sourceId: 'src-am',
+              sectionId: 'sec-am',
+              sourceTitle: 'ስነ-ህይወት',
+              heading: 'ፎቶሲንተሲስ',
+            },
+          ],
+        },
+      });
+
+      await clickButton(screen.getByRole('button', { name: /Read answer aloud/i }));
+
+      // Alert notifies learner that language is unsupported by this speech provider
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Spoken audio is not available for this language on the selected speech provider.',
+      );
+
+      // Written Amharic text and citations remain visible
+      expect(screen.getAllByText('ፎቶሲንተሲስ ስኳር ያመርታል።').length).toBeGreaterThan(0);
+      expect(screen.getByText(/ስነ-ህይወት — ፎቶሲንተሲስ/)).toBeDefined();
+    });
+
+    it('cleans up temporary audio resources (object URLs) when cloud playback stops or ends', async () => {
+      const mockCreateObjectUrl = vi.fn(() => 'blob:mock-audio-url-123');
+      const mockRevokeObjectUrl = vi.fn();
+      globalThis.URL.createObjectURL = mockCreateObjectUrl;
+      globalThis.URL.revokeObjectURL = mockRevokeObjectUrl;
+
+      let triggerEnded: (() => void) | undefined;
+      const pauseMock = vi.fn();
+      const playMock = vi.fn(() => Promise.resolve());
+
+      class MockAudio {
+        src = '';
+        onplay: (() => void) | null = null;
+        onended: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        constructor(url: string) {
+          this.src = url;
+          // eslint-disable-next-line @typescript-eslint/no-this-alias
+          const self = this;
+          triggerEnded = () => {
+            self.onended?.();
+          };
+        }
+        play = playMock;
+        pause = pauseMock;
+        load = vi.fn();
+        removeAttribute = vi.fn();
+      }
+
+      globalThis.Audio = MockAudio as unknown as typeof Audio;
+
+      const cloudSynth = new CloudSpeechSynthesizer(
+        () => true,
+        () => Promise.resolve(new Blob(['fake-audio-bytes'], { type: 'audio/mp3' })),
+      );
+
+      // 1. Speak and then stop explicitly: verifies revokeObjectURL is called
+      const playback = await cloudSynth.speak('Hello learner', { lang: 'en' });
+      expect(mockCreateObjectUrl).toHaveBeenCalled();
+
+      playback.stop();
+      expect(pauseMock).toHaveBeenCalled();
+      expect(mockRevokeObjectUrl).toHaveBeenCalledWith('blob:mock-audio-url-123');
+
+      // 2. Speak and finish naturally via onended
+      mockRevokeObjectUrl.mockClear();
+      await cloudSynth.speak('Second sample', { lang: 'en' });
+      triggerEnded?.();
+      expect(mockRevokeObjectUrl).toHaveBeenCalledWith('blob:mock-audio-url-123');
+    });
+
+    it('BrowserSpeechSynthesizer requires verified Amharic voice before reporting Amharic support', () => {
+      // Per T3-011: "Sample output is checked for intelligibility with an appropriate speaker;
+      // unsupported quality is not presented as verified Amharic support."
+      const mockSynthWithoutAmharic = {
+        getVoices: () => [{ lang: 'en-US', name: 'English Voice' } as SpeechSynthesisVoice],
+        cancel: vi.fn(),
+        speak: vi.fn(),
+        pause: vi.fn(),
+        resume: vi.fn(),
+      } as unknown as SpeechSynthesis;
+
+      const synth1 = new BrowserSpeechSynthesizer(() => mockSynthWithoutAmharic);
+      expect(synth1.isSupported('en')).toBe(true);
+      expect(synth1.isSupported('am')).toBe(false);
+
+      const mockSynthWithAmharic = {
+        getVoices: () => [
+          { lang: 'en-US', name: 'English Voice' } as SpeechSynthesisVoice,
+          { lang: 'am-ET', name: 'Amharic Voice' } as SpeechSynthesisVoice,
+        ],
+        cancel: vi.fn(),
+        speak: vi.fn(),
+        pause: vi.fn(),
+        resume: vi.fn(),
+      } as unknown as SpeechSynthesis;
+
+      const synth2 = new BrowserSpeechSynthesizer(() => mockSynthWithAmharic);
+      expect(synth2.isSupported('am')).toBe(true);
+    });
   });
 });
