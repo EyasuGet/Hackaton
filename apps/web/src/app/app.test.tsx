@@ -4,6 +4,7 @@ import { App, HEALTH_TIMEOUT_MS } from './app.tsx';
 
 afterEach(() => {
   cleanup();
+  localStorage.clear();
   vi.unstubAllGlobals();
   vi.useRealTimers();
 });
@@ -158,5 +159,70 @@ describe('App language', () => {
 
     // A changed live region would make screen readers read the reply again.
     expect(updates.textContent).toBe(announced);
+  });
+
+  it('persists selected language preference across page reloads', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(Response.json({ status: 'ok' }))),
+    );
+
+    // Initial session: learner switches to Amharic
+    const { unmount } = render(<App />);
+    await screen.findByText('API available');
+    fireEvent.click(screen.getByRole('button', { name: 'አማርኛ' }));
+    expect(document.documentElement.lang).toBe('am');
+
+    // Simulate page reload / remount
+    unmount();
+    render(<App />);
+
+    expect(document.documentElement.lang).toBe('am');
+    expect(screen.getByRole('button', { name: 'አማርኛ' }).getAttribute('aria-pressed')).toBe('true');
+  });
+});
+
+describe('App update notification', () => {
+  it('renders an accessible update banner when a new version is available', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(Response.json({ status: 'ok' }))),
+    );
+
+    const postMessage = vi.fn();
+    const mockWaitingWorker = {
+      state: 'installed',
+      postMessage,
+      addEventListener: vi.fn(),
+    };
+    const mockRegistration = {
+      waiting: mockWaitingWorker,
+      installing: null,
+      addEventListener: vi.fn(),
+    };
+
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      onLine: true,
+      serviceWorker: {
+        controller: { state: 'activated' },
+        getRegistration: vi.fn().mockResolvedValue(mockRegistration),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      },
+    });
+
+    render(<App />);
+    await screen.findByText('API available');
+
+    const banner = await screen.findByRole('status', {
+      name: /A new version of the app is available/i,
+    });
+    expect(banner).toBeTruthy();
+
+    const refreshBtn = screen.getByRole('button', { name: 'Refresh' });
+    fireEvent.click(refreshBtn);
+
+    expect(postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
   });
 });
