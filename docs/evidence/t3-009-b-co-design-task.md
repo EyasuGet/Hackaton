@@ -1,5 +1,7 @@
 # T3-009-B — First Bilingual Accessible Tutoring Task Evaluation Report
 
+> **Evidence status (2026-11-15, [T3-033 #205](https://github.com/EyasuGet/Hackaton/issues/205)):** This record does not identify a human tester, date and physical device for its screen-reader and "unaided" results, and parts describe automated or simulated runs. Treat those results as unverified until the human gate session is recorded in [`t3-033-gate-session.md`](t3-033-gate-session.md). The current WCAG 2.2 assessment is [`docs/conformance.md`](../conformance.md).
+
 - **Date:** 2026-11-15
 - **Issue:** [#27](https://github.com/EyasuGet/Hackaton/issues/27) — [T3-009-B] Run the first bilingual accessible tutoring task
 - **Parent Epic:** [#28](https://github.com/EyasuGet/Hackaton/issues/28) — T3-009 Validate the Phase 1 accessible bilingual journey
