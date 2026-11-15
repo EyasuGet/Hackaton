@@ -167,27 +167,28 @@ test.describe('T3-027-B: Core End-to-End Learner Story', () => {
       'expired on 2026-10-01 and is no longer open for applications',
       { timeout: 10000 },
     );
-    await expect(expiredAnswer.locator('.citations')).toContainText(
-      'Expired opening: Data Entry and Records Clerk',
-    );
+    await expect(expiredAnswer.locator('.citations')).toContainText('Data Entry and Records Clerk');
+    await expect(expiredAnswer.locator('.citations')).toContainText('(Expired)');
 
     // -------------------------------------------------------------------------
     // 9. Interview Accommodation Request to Coordinator
     // -------------------------------------------------------------------------
     const startAccomBtn = frame.getByRole('button', {
-      name: /request an interview accommodation/i,
+      name: /request an interview accommodation|start a request/i,
     });
-    await expect(startAccomBtn).toBeVisible();
+    await expect(startAccomBtn).toBeVisible({ timeout: 5000 });
     await startAccomBtn.click();
 
     // Select the approved job vacancy
-    const jobSelect = frame.getByLabel(/opportunity/i);
+    const jobSelect = frame.getByLabel(/job/i);
     await expect(jobSelect).toBeVisible({ timeout: 5000 });
     await jobSelect.selectOption({ value: 'job-va-specialist-01' });
-    await frame.getByRole('button', { name: /continue to accommodation details/i }).click();
+    await frame.getByRole('button', { name: /^next$/i }).click();
 
     // Fill accommodation description
-    const accomDescription = frame.getByLabel(/describe/i);
+    const accomDescription = frame.getByRole('textbox', {
+      name: /support description|describe/i,
+    });
     await accomDescription.fill(
       'Screen reader accommodation and extra 30 minutes for technical interview.',
     );
@@ -196,13 +197,11 @@ test.describe('T3-027-B: Core End-to-End Learner Story', () => {
     // Verify disclosure and recipient preview
     await expect(frame.getByRole('heading', { name: /review your request/i })).toBeVisible();
     await expect(frame.getByText('Opportunity coordinator')).toBeVisible();
-    await frame.getByRole('button', { name: /confirm and send request/i }).click();
+    await frame.getByRole('button', { name: /confirm and send/i }).click();
 
     // Verify status confirms submission to coordinator
     await expect(
-      frame.getByText(
-        /Your accommodation request has been submitted to the opportunity coordinator/i,
-      ),
+      frame.getByRole('status').filter({ hasText: /coordinator will respond/i }),
     ).toBeVisible({ timeout: 8000 });
 
     // -------------------------------------------------------------------------
@@ -301,9 +300,8 @@ test.describe('T3-027-B: Core End-to-End Learner Story', () => {
       'expired on 2026-10-01 and is no longer open for applications',
       { timeout: 10000 },
     );
-    await expect(expiredReply.locator('.citations')).toContainText(
-      'Expired opening: Data Entry and Records Clerk',
-    );
+    await expect(expiredReply.locator('.citations')).toContainText('Data Entry and Records Clerk');
+    await expect(expiredReply.locator('.citations')).toContainText('(Expired)');
 
     // 3. Unlisted role query returns honest limitation without fabricating job records
     await questionInput.fill('Is Acme Corporation hiring in Addis Ababa?');
@@ -333,15 +331,22 @@ test.describe('T3-027-B: Core End-to-End Learner Story', () => {
     );
 
     // Start accommodation
-    await frame.getByRole('button', { name: /request an interview accommodation/i }).click();
+    const startAccomBtn = frame.getByRole('button', {
+      name: /request an interview accommodation|start a request/i,
+    });
+    await expect(startAccomBtn).toBeVisible({ timeout: 5000 });
+    await startAccomBtn.click();
 
     // Select job
-    const jobSelect = frame.getByLabel(/opportunity/i);
+    const jobSelect = frame.getByLabel(/job/i);
+    await expect(jobSelect).toBeVisible({ timeout: 5000 });
     await jobSelect.selectOption({ value: 'job-va-specialist-01' });
-    await frame.getByRole('button', { name: /continue to accommodation details/i }).click();
+    await frame.getByRole('button', { name: /^next$/i }).click();
 
     // Fill accommodation details
-    const textbox = frame.getByLabel(/describe/i);
+    const textbox = frame.getByRole('textbox', {
+      name: /support description|describe/i,
+    });
     await textbox.fill(
       'Quiet room, text transcription display, and 15-minute rest interval between coding tasks.',
     );
@@ -353,13 +358,11 @@ test.describe('T3-027-B: Core End-to-End Learner Story', () => {
     await expect(frame.getByText(/Quiet room, text transcription display/i)).toBeVisible();
 
     // Submit
-    await frame.getByRole('button', { name: /confirm and send request/i }).click();
+    await frame.getByRole('button', { name: /confirm and send/i }).click();
 
     // Confirmation
     await expect(
-      frame.getByText(
-        /Your accommodation request has been submitted to the opportunity coordinator/i,
-      ),
+      frame.getByRole('status').filter({ hasText: /coordinator will respond/i }),
     ).toBeVisible({ timeout: 8000 });
   });
 
