@@ -19,7 +19,12 @@ export default defineConfig(
   tseslint.configs.recommendedTypeChecked,
   {
     languageOptions: {
-      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: ['scripts/*.ts'],
+        },
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
     rules: {
       // Allows `const { omitted, ...rest } = value` to drop a key deliberately.
