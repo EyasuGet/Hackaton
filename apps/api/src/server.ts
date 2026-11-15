@@ -33,6 +33,7 @@ import { GeminiGroundedAnswerProvider } from './evaluations/grounding/provider-a
 import { HttpTelegramClient } from './modules/telegram/infrastructure/http-telegram-client.ts';
 import { TelegramLinkService } from './modules/telegram/application/telegram-link-service.ts';
 import { PostgresTelegramLinkRepository } from './modules/telegram/infrastructure/persistence/postgres-telegram-link-repository.ts';
+import { HttpTelegramMessenger } from './modules/telegram/infrastructure/http-telegram-messenger.ts';
 import { FaqProvider } from './modules/tutoring/application/faq-provider.ts';
 import { Tutoring } from './modules/tutoring/application/tutoring.ts';
 import { GeminiTranscriptionAdapter } from './modules/tutoring/infrastructure/gemini-transcription-adapter.ts';
@@ -57,6 +58,14 @@ const sharingRepository = new PostgresSharingRepository(pool);
 const helpRequestLookup = new PostgresHelpRequestLookup(pool);
 const jobRepository = new PostgresJobRepository(pool);
 const jobPreferencesRepo = new PostgresJobPreferencesRepository(pool);
+const tutoring = new Tutoring(
+  new PostgresTutoringRepository(pool),
+  faqProvider,
+  onlineProvider,
+  content,
+  admissionController,
+);
+const telegramMessenger = new HttpTelegramMessenger(config.telegram.botToken);
 const telegramLinkRepository = new PostgresTelegramLinkRepository(pool);
 const telegramClient = new HttpTelegramClient({ botToken: config.telegram.botToken });
 const jobPreferences = new JobPreferences(jobPreferencesRepo, telegramLinkRepository);
@@ -67,6 +76,9 @@ const telegramService = new TelegramLinkService(telegramLinkRepository, {
   jobPreferencesRepository: jobPreferencesRepo,
   telegramClient,
   jobAnswers,
+  tutoring,
+  content,
+  messenger: telegramMessenger,
 });
 
 const app = buildApp(

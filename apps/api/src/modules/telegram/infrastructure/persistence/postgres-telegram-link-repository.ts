@@ -203,8 +203,10 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       telegram_username: string | null;
       linked_at: Date;
       revoked_at: Date | null;
+      external_consent: boolean;
+      active_course_id: string | null;
     }>(
-      `SELECT id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at
+      `SELECT id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id
        FROM telegram_identities
        WHERE telegram_user_id = $1 AND revoked_at IS NULL`,
       [telegramUserId],
@@ -219,6 +221,8 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       telegramUsername: row.telegram_username ?? undefined,
       linkedAt: row.linked_at,
       revokedAt: row.revoked_at ?? undefined,
+      externalConsent: row.external_consent,
+      activeCourseId: row.active_course_id ?? undefined,
     };
   }
 
@@ -231,8 +235,10 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       telegram_username: string | null;
       linked_at: Date;
       revoked_at: Date | null;
+      external_consent: boolean;
+      active_course_id: string | null;
     }>(
-      `SELECT id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at
+      `SELECT id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id
        FROM telegram_identities
        WHERE learner_id = $1 AND revoked_at IS NULL`,
       [learnerId],
@@ -247,6 +253,56 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       telegramUsername: row.telegram_username ?? undefined,
       linkedAt: row.linked_at,
       revokedAt: row.revoked_at ?? undefined,
+      externalConsent: row.external_consent,
+      activeCourseId: row.active_course_id ?? undefined,
+    };
+  }
+
+  async setPreferences(
+    learnerId: string,
+    preferences: { readonly externalConsent?: boolean; readonly activeCourseId?: string },
+  ): Promise<TelegramIdentity | null> {
+    const existing = await this.findIdentityByLearnerId(learnerId);
+    if (!existing) return null;
+
+    const newConsent =
+      preferences.externalConsent !== undefined
+        ? preferences.externalConsent
+        : (existing.externalConsent ?? false);
+    const newCourseId =
+      preferences.activeCourseId !== undefined
+        ? preferences.activeCourseId
+        : existing.activeCourseId;
+
+    const result = await this.#pool.query<{
+      id: string;
+      learner_id: string;
+      telegram_user_id: string;
+      telegram_chat_id: string;
+      telegram_username: string | null;
+      linked_at: Date;
+      revoked_at: Date | null;
+      external_consent: boolean;
+      active_course_id: string | null;
+    }>(
+      `UPDATE telegram_identities
+       SET external_consent = $1, active_course_id = $2
+       WHERE learner_id = $3 AND revoked_at IS NULL
+       RETURNING id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id`,
+      [newConsent, newCourseId ?? null, learnerId],
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      learnerId: row.learner_id,
+      telegramUserId: row.telegram_user_id,
+      telegramChatId: row.telegram_chat_id,
+      telegramUsername: row.telegram_username ?? undefined,
+      linkedAt: row.linked_at,
+      revokedAt: row.revoked_at ?? undefined,
+      externalConsent: row.external_consent,
+      activeCourseId: row.active_course_id ?? undefined,
     };
   }
 

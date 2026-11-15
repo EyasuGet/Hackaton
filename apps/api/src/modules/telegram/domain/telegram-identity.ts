@@ -48,6 +48,43 @@ export interface TelegramIdentity {
   readonly telegramUsername?: string | undefined;
   readonly linkedAt: Date;
   readonly revokedAt?: Date | undefined;
+  readonly externalConsent?: boolean | undefined;
+  readonly activeCourseId?: string | undefined;
+}
+
+export interface TelegramCitation {
+  readonly sourceId: string;
+  readonly sectionId: string;
+  readonly sourceTitle?: string | undefined;
+  readonly heading?: string | undefined;
+}
+
+/**
+ * Formats citations cleanly for Telegram chat (source, section title, reference) (T3-012-B).
+ * Supports English and Amharic labels matching web presentation.
+ * Returns only the answer text if citations list is empty.
+ */
+export function formatTelegramTutorResponse(
+  answerText: string,
+  citations: readonly TelegramCitation[] = [],
+  lang: 'en' | 'am' = 'en',
+): string {
+  const cleanAnswer = answerText.trim();
+  if (!citations || citations.length === 0) {
+    return cleanAnswer;
+  }
+
+  const isAmharic = lang === 'am' || /[\u1200-\u137F]/.test(cleanAnswer);
+  const header = isAmharic ? 'ምንጮች እና ጥቅሶች፡' : 'Sources & Citations:';
+
+  const items = citations.map((c) => {
+    const source = c.sourceTitle?.trim() || c.sourceId;
+    const section = c.heading?.trim() || c.sectionId;
+    const ref = `${c.sourceId}#${c.sectionId}`;
+    return `• ${source} — ${section} (${ref})`;
+  });
+
+  return `${cleanAnswer}\n\n${header}\n${items.join('\n')}`;
 }
 
 export interface TelegramLinkCode {
