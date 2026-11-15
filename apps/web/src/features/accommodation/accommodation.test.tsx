@@ -258,13 +258,7 @@ describe('AccommodationPanel (T3-022-A)', () => {
         },
       });
 
-      wrap(
-        <AccommodationReplyThread
-          request={FAKE_REQUEST}
-          token="tok"
-          role="learner"
-        />,
-      );
+      wrap(<AccommodationReplyThread request={FAKE_REQUEST} token="tok" role="learner" />);
 
       // Reply is displayed
       await waitFor(() => {
@@ -302,7 +296,9 @@ describe('AccommodationPanel (T3-022-A)', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/accommodation coordinator inbox/i)).toBeTruthy();
-        expect(screen.getByText(/no accommodation requests in the coordinator inbox/i)).toBeTruthy();
+        expect(
+          screen.getByText(/no accommodation requests in the coordinator inbox/i),
+        ).toBeTruthy();
       });
     });
   });

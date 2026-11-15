@@ -10,10 +10,7 @@ import type {
   SubmitAccommodationInput,
   SubmitAccommodationResult,
 } from './application/ports/accommodation-repository.ts';
-import type {
-  AccommodationReply,
-  AccommodationRequest,
-} from './domain/accommodation-request.ts';
+import type { AccommodationReply, AccommodationRequest } from './domain/accommodation-request.ts';
 
 const LEARNER_A: Principal = {
   id: 'learner-a-id',
@@ -87,9 +84,7 @@ class InMemoryAccommodationRepository implements AccommodationRepository {
   }
 
   listOwned(scope: OwnedScope): Promise<readonly AccommodationRequest[]> {
-    return Promise.resolve(
-      [...this.requests.values()].filter((r) => r.ownerId === scope.ownerId),
-    );
+    return Promise.resolve([...this.requests.values()].filter((r) => r.ownerId === scope.ownerId));
   }
 
   coordinatorFindById(id: string): Promise<AccommodationRequest | null> {
@@ -224,22 +219,12 @@ describe('Accommodation Use Cases (T3-022-B)', () => {
     const reqId = (sub as { request: AccommodationRequest }).request.id;
 
     // Support adds reply
-    const coordReply = await accommodation.addReply(
-      SUPPORT,
-      reqId,
-      'reply-1',
-      'Support response.',
-    );
+    const coordReply = await accommodation.addReply(SUPPORT, reqId, 'reply-1', 'Support response.');
     expect(coordReply?.kind).toBe('added');
     expect(coordReply?.reply.body).toBe('Support response.');
 
     // Duplicate clientReplyId is idempotent
-    const dupReply = await accommodation.addReply(
-      SUPPORT,
-      reqId,
-      'reply-1',
-      'Support response.',
-    );
+    const dupReply = await accommodation.addReply(SUPPORT, reqId, 'reply-1', 'Support response.');
     expect(dupReply?.kind).toBe('existing');
 
     // Learner owner adds reply
@@ -280,12 +265,7 @@ describe('Accommodation Use Cases (T3-022-B)', () => {
     expect(cancelled?.state).toBe('cancelled');
 
     // Coordinator cannot reply to cancelled request
-    const supportReply = await accommodation.addReply(
-      SUPPORT,
-      reqId,
-      'reply-c1',
-      'Support msg.',
-    );
+    const supportReply = await accommodation.addReply(SUPPORT, reqId, 'reply-c1', 'Support msg.');
     expect(supportReply).toBeNull();
 
     // Coordinator cannot update status of cancelled request

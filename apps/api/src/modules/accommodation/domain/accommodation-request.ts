@@ -3,12 +3,7 @@
 // confirmed, without storing diagnosis or medical proof fields.
 // Status can be updated by an authorised coordinator (waiting -> reviewing -> confirmed / declined).
 
-export type AccommodationState =
-  | 'waiting'
-  | 'reviewing'
-  | 'confirmed'
-  | 'declined'
-  | 'cancelled';
+export type AccommodationState = 'waiting' | 'reviewing' | 'confirmed' | 'declined' | 'cancelled';
 
 export interface AccommodationRequest {
   readonly id: string;

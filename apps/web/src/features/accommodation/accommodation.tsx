@@ -3,14 +3,7 @@
 // Coordinator view: coordinator inbox listing requests, status controls (reviewing, confirmed, declined),
 // and two-sided threaded private replies.
 // Private by design: visible only to the requesting learner and authorised coordinator.
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type FormEvent,
-} from 'react';
+import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { T, type MessageKey } from '../../shared/i18n/i18n.tsx';
 import {
   addAccommodationReply,
@@ -103,9 +96,7 @@ export function AccommodationReplyThread({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const textareaId = useId();
   const isTerminal =
-    request.state === 'cancelled' ||
-    request.state === 'declined' ||
-    request.state === 'confirmed';
+    request.state === 'cancelled' || request.state === 'declined' || request.state === 'confirmed';
 
   useEffect(() => {
     let cancelled = false;
@@ -216,15 +207,9 @@ export function AccommodationReplyThread({
                 className={`accommodation-reply ${isAuthorOwner ? 'learner-reply' : 'coordinator-reply'}`}
               >
                 <div className="accommodation-reply-meta">
-                  <span className="author">
-                    {isAuthorOwner ? 'Learner' : 'Coordinator'}
-                  </span>
+                  <span className="author">{isAuthorOwner ? 'Learner' : 'Coordinator'}</span>
                   <span className="date">{formatDate(r.createdAt)}</span>
-                  {r.readAt && (
-                    <span className="read-status">
-                      (read {formatDate(r.readAt)})
-                    </span>
-                  )}
+                  {r.readAt && <span className="read-status">(read {formatDate(r.readAt)})</span>}
                 </div>
                 <p className="body" dir="auto">
                   {r.body}
@@ -236,11 +221,7 @@ export function AccommodationReplyThread({
       )}
 
       {!isTerminal && thread.phase.kind === 'idle' && (
-        <button
-          type="button"
-          className="accommodation-reply-btn"
-          onClick={onStartComposing}
-        >
+        <button type="button" className="accommodation-reply-btn" onClick={onStartComposing}>
           <T k="accommodation.reply" />
         </button>
       )}
@@ -323,17 +304,12 @@ export function CoordinatorAccommodationPanel({ token }: { readonly token: strin
     void loadCoordinatorInbox();
   }, [token]);
 
-  async function onUpdateStatus(
-    reqId: string,
-    newStatus: 'reviewing' | 'confirmed' | 'declined',
-  ) {
+  async function onUpdateStatus(reqId: string, newStatus: 'reviewing' | 'confirmed' | 'declined') {
     setStatusActionId(reqId);
     const result = await updateAccommodationStatus(token, reqId, newStatus);
     setStatusActionId(null);
     if (result.kind === 'ok') {
-      setRequests((prev) =>
-        prev.map((r) => (r.id === reqId ? result.request : r)),
-      );
+      setRequests((prev) => prev.map((r) => (r.id === reqId ? result.request : r)));
     }
   }
 
@@ -389,7 +365,11 @@ export function CoordinatorAccommodationPanel({ token }: { readonly token: strin
 
                 {/* Coordinator status action buttons */}
                 {!isCancelled && (
-                  <div className="coordinator-status-controls" role="group" aria-label="Status actions">
+                  <div
+                    className="coordinator-status-controls"
+                    role="group"
+                    aria-label="Status actions"
+                  >
                     <span className="controls-label">
                       <T k="accommodation.coordinator.updateStatus" />:
                     </span>
@@ -656,7 +636,13 @@ export function AccommodationPanel({
             <T k="accommodation.intro" />
           </p>
           <button type="button" onClick={() => void startRequest()}>
-            <T k={existingRequests.length > 0 ? 'accommodation.newRequest' : 'accommodation.startButton'} />
+            <T
+              k={
+                existingRequests.length > 0
+                  ? 'accommodation.newRequest'
+                  : 'accommodation.startButton'
+              }
+            />
           </button>
         </div>
       )}

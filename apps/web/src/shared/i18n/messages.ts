@@ -185,8 +185,7 @@ export const en = {
   'accommodation.coordinator.intro':
     'Review and respond to learner interview accommodation requests. Decisions and replies are private to the requesting learner.',
   'accommodation.coordinator.loading': 'Loading accommodation requests…',
-  'accommodation.coordinator.loadError':
-    'Could not load coordinator inbox. Check your connection.',
+  'accommodation.coordinator.loadError': 'Could not load coordinator inbox. Check your connection.',
   'accommodation.coordinator.noRequests': 'No accommodation requests in the coordinator inbox.',
   'accommodation.coordinator.updateStatus': 'Update status',
   'accommodation.coordinator.actionReviewing': 'Mark as Reviewing',
@@ -371,23 +370,20 @@ export const am: Partial<Record<MessageKey, string>> = {
   'accommodation.replyTerminal': 'ይህ ጥያቄ ተዘግቷል። ተጨማሪ መልእክት መላክ አይቻልም።',
   'accommodation.unread': 'አዲስ መልእክት',
   'accommodation.markRead': 'እንደተነበበ ምልክት አድርግ',
-  'accommodation.privateDisclosure':
-    'መልእክቶች በእርስዎ እና በተፈቀደለት አስተባባሪ መካከል ብቻ ሚስጥራዊ ናቸው።',
+  'accommodation.privateDisclosure': 'መልእክቶች በእርስዎ እና በተፈቀደለት አስተባባሪ መካከል ብቻ ሚስጥራዊ ናቸው።',
   // Coordinator Inbox (T3-022-B)
   'accommodation.coordinator.heading': 'የማመቻቸት ጥያቄዎች አስተባባሪ ሳጥን',
   'accommodation.coordinator.intro':
     'የተማሪዎችን የሥራ ቃለ-መጠይቅ ማመቻቸት ጥያቄዎችን ይገምግሙ እና ምላሽ ይስጡ። ውሳኔዎች እና ምላሾች ለተማሪው ብቻ የሚታዩ ናቸው።',
   'accommodation.coordinator.loading': 'የማመቻቸት ጥያቄዎች እየተጫኑ ነው…',
-  'accommodation.coordinator.loadError':
-    'የአስተባባሪውን ሳጥን መጫን አልተቻለም። ግንኙነትዎን ያረጋግጡ።',
+  'accommodation.coordinator.loadError': 'የአስተባባሪውን ሳጥን መጫን አልተቻለም። ግንኙነትዎን ያረጋግጡ።',
   'accommodation.coordinator.noRequests': 'በአስተባባሪ ሳጥን ውስጥ ምንም የማመቻቸት ጥያቄ የለም።',
   'accommodation.coordinator.updateStatus': 'ሁኔታን ቀይር',
   'accommodation.coordinator.actionReviewing': 'በግምገማ ላይ አድርግ',
   'accommodation.coordinator.actionConfirm': 'ማመቻቸቱን አረጋግጥ',
   'accommodation.coordinator.actionDecline': 'ጥያቄውን ውድቅ አድርግ',
   'accommodation.coordinator.statusUpdating': 'ሁኔታው እየተቀየረ ነው…',
-  'accommodation.coordinator.statusFailed':
-    'ሁኔታውን መቀየር አልተቻለም። ጥያቄው ተዘግቶ ወይም ተሰርዞ ሊሆን ይችላል።',
+  'accommodation.coordinator.statusFailed': 'ሁኔታውን መቀየር አልተቻለም። ጥያቄው ተዘግቶ ወይም ተሰርዞ ሊሆን ይችላል።',
   'accommodation.coordinator.replyPlaceholder': 'ለተማሪው የግል ምላሽ ይጻፉ…',
   'inbox.heading': 'የእርዳታ ጥያቄዎችዎ',
   'inbox.loading': 'ጥያቄዎችዎ እየተጫኑ ናቸው…',
