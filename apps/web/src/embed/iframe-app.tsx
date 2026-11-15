@@ -42,6 +42,10 @@ export function IframeApp() {
     window.close?.();
   };
 
+  const handleMinimise = () => {
+    window.parent.postMessage({ type: 'minimize' }, '*');
+  };
+
   return (
     <div
       style={{
@@ -60,9 +64,15 @@ export function IframeApp() {
           borderTop: '1px solid #ddd',
           textAlign: 'center',
           background: '#fff',
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '0.75rem',
         }}
       >
-        <button type="button" onClick={handleClose}>
+        <button type="button" onClick={handleMinimise} aria-label="Minimise learning assistant">
+          Minimise
+        </button>
+        <button type="button" onClick={handleClose} aria-label="Close learning assistant">
           Close
         </button>
       </footer>
