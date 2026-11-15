@@ -86,6 +86,7 @@ const telegramService = new TelegramLinkService(telegramLinkRepository, {
   tutoring,
   content,
   messenger: telegramMessenger,
+  transcription,
 });
 
 const app = buildApp(

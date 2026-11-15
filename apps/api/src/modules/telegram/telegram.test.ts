@@ -19,6 +19,18 @@ import type {
 import type { TutoringConversation } from '../tutoring/domain/conversation.ts';
 import type { TutoringRequest } from '../tutoring/domain/tutoring-request.ts';
 import type {
+  TranscriptionInput,
+  TranscriptionOutcome,
+  TranscriptionPort,
+} from '../tutoring/application/ports/transcription-port.ts';
+import type {
+  TelegramAnswerCallbackParams,
+  TelegramClient,
+  TelegramGetFileResult,
+  TelegramSendMessageParams,
+  TelegramSendResult,
+} from './application/ports/telegram-client.ts';
+import type {
   ConsumeLinkParams,
   ConsumeLinkResult,
   ProcessedTelegramUpdateRecord,
@@ -42,8 +54,10 @@ import {
 } from './application/telegram-link-service.ts';
 import {
   formatTelegramTutorResponse,
+  type PendingVoiceReview,
   type TelegramIdentity,
   type TelegramUpdate,
+  type VoiceReviewStatus,
 } from './domain/telegram-identity.ts';
 import { registerTelegramRoutes } from './presentation/http/telegram-routes.ts';
 
@@ -193,6 +207,46 @@ class InMemoryTelegramLinkRepository implements TelegramLinkRepository {
       processedAt: params.now,
     });
     return Promise.resolve();
+  }
+
+  readonly voiceReviews = new Map<string, PendingVoiceReview>();
+
+  createVoiceReview(review: PendingVoiceReview): Promise<void> {
+    this.voiceReviews.set(review.id, { ...review });
+    return Promise.resolve();
+  }
+
+  findVoiceReview(id: string): Promise<PendingVoiceReview | null> {
+    const r = this.voiceReviews.get(id);
+    return Promise.resolve(r ? { ...r } : null);
+  }
+
+  findAwaitingEditReview(telegramUserId: string): Promise<PendingVoiceReview | null> {
+    for (const r of this.voiceReviews.values()) {
+      if (r.telegramUserId === telegramUserId && r.status === 'awaiting_edit') {
+        return Promise.resolve({ ...r });
+      }
+    }
+    return Promise.resolve(null);
+  }
+
+  resolveVoiceReview(
+    id: string,
+    status: VoiceReviewStatus,
+    now: Date,
+    transcript?: string,
+  ): Promise<boolean> {
+    const r = this.voiceReviews.get(id);
+    if (!r) return Promise.resolve(false);
+    if (r.expiresAt <= now) return Promise.resolve(false);
+    if (r.status !== 'pending' && r.status !== 'awaiting_edit') return Promise.resolve(false);
+    this.voiceReviews.set(id, {
+      ...r,
+      status,
+      resolvedAt: now,
+      ...(transcript !== undefined ? { transcript } : {}),
+    });
+    return Promise.resolve(true);
   }
 }
 
@@ -1697,5 +1751,512 @@ describe('Telegram Routes HTTP Integration (T3-012-B)', () => {
     } finally {
       await app.close();
     }
+  });
+});
+
+describe('Telegram Voice Transcript Review Flow (T3-013-A)', () => {
+  let linkRepo: InMemoryTelegramLinkRepository;
+  let tutoringRepo: TestTutoringRepository;
+  let content: ContentAccess;
+  let faq: FaqProvider;
+  let tutoring: Tutoring;
+  let service: TelegramLinkService;
+  let clock: Date;
+  const webhookSecret = 'voice-webhook-secret';
+
+  class MockVoiceTelegramClient implements TelegramClient {
+    readonly sentMessages: TelegramSendMessageParams[] = [];
+    readonly callbackAnswers: TelegramAnswerCallbackParams[] = [];
+    getFileResult: TelegramGetFileResult = {
+      ok: true,
+      filePath: 'voice/voice_0.oga',
+      fileSize: 1024,
+    };
+    filePayload: Uint8Array = Buffer.from(
+      'OggS\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00valid-ogg-opus-payload',
+    );
+
+    sendMessage(params: TelegramSendMessageParams): Promise<TelegramSendResult> {
+      this.sentMessages.push(params);
+      return Promise.resolve({ ok: true, messageId: this.sentMessages.length });
+    }
+
+    answerCallbackQuery(params: TelegramAnswerCallbackParams): Promise<boolean> {
+      this.callbackAnswers.push(params);
+      return Promise.resolve(true);
+    }
+
+    getFile(): Promise<TelegramGetFileResult> {
+      return Promise.resolve(this.getFileResult);
+    }
+
+    downloadFile(): Promise<Uint8Array | null> {
+      return Promise.resolve(new Uint8Array(this.filePayload));
+    }
+  }
+
+  class MockTranscriptionAdapter implements TranscriptionPort {
+    readonly calls: TranscriptionInput[] = [];
+    outcome: TranscriptionOutcome = {
+      status: 'transcribed',
+      transcript: 'What is a virtual assistant?',
+      detectedLang: 'en',
+    };
+
+    transcribe(input: TranscriptionInput): Promise<TranscriptionOutcome> {
+      this.calls.push(input);
+      return Promise.resolve(this.outcome);
+    }
+
+    isAvailable(): boolean {
+      return true;
+    }
+  }
+
+  let mockClient: MockVoiceTelegramClient;
+  let transcription: MockTranscriptionAdapter;
+
+  beforeEach(async () => {
+    linkRepo = new InMemoryTelegramLinkRepository();
+    tutoringRepo = new TestTutoringRepository();
+    content = createTestContentAccess();
+    faq = new FaqProvider(content);
+    tutoring = new Tutoring(tutoringRepo, faq, undefined, content);
+    clock = new Date('2026-11-15T12:00:00Z');
+    mockClient = new MockVoiceTelegramClient();
+    transcription = new MockTranscriptionAdapter();
+
+    service = new TelegramLinkService(linkRepo, {
+      webhookSecret,
+      botToken: '123456:voice-bot-token',
+      now: () => clock,
+      telegramClient: mockClient,
+      transcription,
+      tutoring,
+      content,
+    });
+
+    // Link Learner A
+    const { code } = await service.issueLinkCode(learnerA);
+    await service.linkAccount({
+      code,
+      telegramUserId: '12345678',
+      telegramChatId: '12345678',
+      chatType: 'private',
+    });
+  });
+
+  it('transcribes valid voice message and prompts learner with transcript and inline review buttons', async () => {
+    const voiceUpdate: TelegramUpdate = {
+      updateId: 401,
+      message: {
+        messageId: 101,
+        chat: { id: '12345678', type: 'private' },
+        from: { id: '12345678', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        voice: {
+          file_id: 'voice-file-id-101',
+          duration: 15,
+          file_size: 2048,
+        },
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(voiceUpdate, webhookSecret);
+    expect(result.status).toBe('voice_prompt');
+    if (result.status === 'voice_prompt') {
+      expect(result.transcript).toBe('What is a virtual assistant?');
+      expect(result.reviewId).toBeDefined();
+
+      // Check review was persisted in pending state
+      const review = await linkRepo.findVoiceReview(result.reviewId);
+      expect(review).not.toBeNull();
+      expect(review?.status).toBe('pending');
+      expect(review?.transcript).toBe('What is a virtual assistant?');
+      expect(review?.telegramUserId).toBe('12345678');
+    }
+
+    // Check inline keyboard buttons dispatched to TelegramClient
+    expect(mockClient.sentMessages.length).toBe(1);
+    const sent = mockClient.sentMessages[0]!;
+    expect(sent.chatId).toBe('12345678');
+    expect(sent.text).toContain('What is a virtual assistant?');
+    const buttons = sent.replyMarkup?.inline_keyboard?.[0];
+    expect(buttons).toBeDefined();
+    expect(buttons).toHaveLength(3);
+    expect(buttons![0]?.text).toBe('Ask this question');
+    expect(buttons![0]?.callback_data).toContain('vt:a:');
+    expect(buttons![1]?.text).toBe('Edit');
+    expect(buttons![1]?.callback_data).toContain('vt:e:');
+    expect(buttons![2]?.text).toBe('Discard');
+    expect(buttons![2]?.callback_data).toContain('vt:d:');
+  });
+
+  it('learner approves transcript via callback query -> answers query and asks tutor', async () => {
+    // 1. Send voice message
+    const voiceUpdate: TelegramUpdate = {
+      updateId: 402,
+      message: {
+        messageId: 102,
+        chat: { id: '12345678', type: 'private' },
+        from: { id: '12345678', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        voice: {
+          file_id: 'voice-file-102',
+          duration: 10,
+        },
+      },
+    };
+    const voiceResult = await service.handleWebhookUpdate(voiceUpdate, webhookSecret);
+    expect(voiceResult.status).toBe('voice_prompt');
+    const reviewId = (voiceResult as { reviewId: string }).reviewId;
+
+    // 2. Click "Ask this question" (Approve)
+    const approveCallback: TelegramUpdate = {
+      updateId: 403,
+      callbackQuery: {
+        id: 'cb-approve-1',
+        from: { id: '12345678', isBot: false },
+        data: `vt:a:${reviewId}`,
+      },
+    };
+
+    const approveResult = await service.handleWebhookUpdate(approveCallback, webhookSecret);
+    expect(approveResult.status).toBe('answered');
+    if (approveResult.status === 'answered') {
+      expect(approveResult.answer).toContain('Sources & Citations:');
+      expect(approveResult.citations.length).toBeGreaterThan(0);
+    }
+
+    // Check callback query answer
+    expect(mockClient.callbackAnswers.some((a) => a.text === 'Question submitted.')).toBe(true);
+
+    // Check review transitioned to approved
+    const review = await linkRepo.findVoiceReview(reviewId);
+    expect(review?.status).toBe('approved');
+  });
+
+  it('learner discards transcript via callback query -> cancels and acknowledges without asking tutor', async () => {
+    // 1. Send voice message
+    const voiceUpdate: TelegramUpdate = {
+      updateId: 404,
+      message: {
+        messageId: 103,
+        chat: { id: '12345678', type: 'private' },
+        from: { id: '12345678', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        voice: { file_id: 'voice-file-103', duration: 10 },
+      },
+    };
+    const voiceResult = await service.handleWebhookUpdate(voiceUpdate, webhookSecret);
+    const reviewId = (voiceResult as { reviewId: string }).reviewId;
+
+    // 2. Click "Discard"
+    const discardCallback: TelegramUpdate = {
+      updateId: 405,
+      callbackQuery: {
+        id: 'cb-discard-1',
+        from: { id: '12345678', isBot: false },
+        data: `vt:d:${reviewId}`,
+      },
+    };
+
+    const discardResult = await service.handleWebhookUpdate(discardCallback, webhookSecret);
+    expect(discardResult.status).toBe('voice_reviewed');
+    if (discardResult.status === 'voice_reviewed') {
+      expect(discardResult.action).toBe('discarded');
+    }
+
+    // Check callback query answer
+    expect(mockClient.callbackAnswers.some((a) => a.text === 'Transcript discarded.')).toBe(true);
+
+    // Review transitioned to discarded
+    const review = await linkRepo.findVoiceReview(reviewId);
+    expect(review?.status).toBe('discarded');
+  });
+
+  it('learner edits transcript -> sets awaiting_edit and next typed message answers question', async () => {
+    // 1. Send voice message
+    const voiceUpdate: TelegramUpdate = {
+      updateId: 406,
+      message: {
+        messageId: 104,
+        chat: { id: '12345678', type: 'private' },
+        from: { id: '12345678', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        voice: { file_id: 'voice-file-104', duration: 10 },
+      },
+    };
+    const voiceResult = await service.handleWebhookUpdate(voiceUpdate, webhookSecret);
+    const reviewId = (voiceResult as { reviewId: string }).reviewId;
+
+    // 2. Click "Edit"
+    const editCallback: TelegramUpdate = {
+      updateId: 407,
+      callbackQuery: {
+        id: 'cb-edit-1',
+        from: { id: '12345678', isBot: false },
+        data: `vt:e:${reviewId}`,
+      },
+    };
+
+    const editResult = await service.handleWebhookUpdate(editCallback, webhookSecret);
+    expect(editResult.status).toBe('voice_reviewed');
+    if (editResult.status === 'voice_reviewed') {
+      expect(editResult.action).toBe('awaiting_edit');
+    }
+
+    const review = await linkRepo.findVoiceReview(reviewId);
+    expect(review?.status).toBe('awaiting_edit');
+
+    // 3. Learner sends typed replacement question
+    const textUpdate: TelegramUpdate = {
+      updateId: 408,
+      message: {
+        messageId: 105,
+        chat: { id: '12345678', type: 'private' },
+        from: { id: '12345678', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: 'What is a virtual assistant?',
+      },
+    };
+
+    const answerResult = await service.handleWebhookUpdate(textUpdate, webhookSecret);
+    expect(answerResult.status).toBe('answered');
+
+    // Review was resolved with edited text
+    const updatedReview = await linkRepo.findVoiceReview(reviewId);
+    expect(updatedReview?.status).toBe('approved');
+  });
+
+  it('rejects callback query from another Telegram user (cross-user callback forgery prevention)', async () => {
+    // 1. Learner A sends voice message
+    const voiceUpdate: TelegramUpdate = {
+      updateId: 409,
+      message: {
+        messageId: 106,
+        chat: { id: '12345678', type: 'private' },
+        from: { id: '12345678', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        voice: { file_id: 'voice-file-106', duration: 10 },
+      },
+    };
+    const voiceResult = await service.handleWebhookUpdate(voiceUpdate, webhookSecret);
+    const reviewId = (voiceResult as { reviewId: string }).reviewId;
+
+    // 2. Another user (e.g. 99999999) attempts to approve it
+    const forgerCallback: TelegramUpdate = {
+      updateId: 410,
+      callbackQuery: {
+        id: 'cb-forgery-1',
+        from: { id: '99999999', isBot: false },
+        data: `vt:a:${reviewId}`,
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(forgerCallback, webhookSecret);
+    expect(result.status).toBe('rejected');
+    if (result.status === 'rejected') {
+      expect(result.reason).toBe('unauthorized_callback');
+    }
+
+    // Verify callback was answered with unauthorized notice
+    expect(mockClient.callbackAnswers.some((a) => a.text?.includes('Unauthorized'))).toBe(true);
+
+    // Verify review remained pending
+    const review = await linkRepo.findVoiceReview(reviewId);
+    expect(review?.status).toBe('pending');
+  });
+
+  it('rejects duplicate or replayed callback query on already resolved review', async () => {
+    const voiceUpdate: TelegramUpdate = {
+      updateId: 411,
+      message: {
+        messageId: 107,
+        chat: { id: '12345678', type: 'private' },
+        from: { id: '12345678', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        voice: { file_id: 'voice-file-107', duration: 10 },
+      },
+    };
+    const voiceResult = await service.handleWebhookUpdate(voiceUpdate, webhookSecret);
+    const reviewId = (voiceResult as { reviewId: string }).reviewId;
+
+    // First approve click
+    const firstClick: TelegramUpdate = {
+      updateId: 412,
+      callbackQuery: {
+        id: 'cb-click-1',
+        from: { id: '12345678', isBot: false },
+        data: `vt:a:${reviewId}`,
+      },
+    };
+    const firstResult = await service.handleWebhookUpdate(firstClick, webhookSecret);
+    expect(firstResult.status).toBe('answered');
+
+    // Second click (replay)
+    const secondClick: TelegramUpdate = {
+      updateId: 413,
+      callbackQuery: {
+        id: 'cb-click-2',
+        from: { id: '12345678', isBot: false },
+        data: `vt:a:${reviewId}`,
+      },
+    };
+    const secondResult = await service.handleWebhookUpdate(secondClick, webhookSecret);
+    expect(secondResult.status).toBe('rejected');
+    if (secondResult.status === 'rejected') {
+      expect(secondResult.reason).toBe('review_expired_or_processed');
+    }
+  });
+
+  it('rejects expired voice review callback query', async () => {
+    const voiceUpdate: TelegramUpdate = {
+      updateId: 414,
+      message: {
+        messageId: 108,
+        chat: { id: '12345678', type: 'private' },
+        from: { id: '12345678', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        voice: { file_id: 'voice-file-108', duration: 10 },
+      },
+    };
+    const voiceResult = await service.handleWebhookUpdate(voiceUpdate, webhookSecret);
+    const reviewId = (voiceResult as { reviewId: string }).reviewId;
+
+    // Advance clock past 15-minute TTL
+    clock = new Date(clock.getTime() + 16 * 60 * 1000);
+
+    const expiredClick: TelegramUpdate = {
+      updateId: 415,
+      callbackQuery: {
+        id: 'cb-expired-1',
+        from: { id: '12345678', isBot: false },
+        data: `vt:a:${reviewId}`,
+      },
+    };
+    const result = await service.handleWebhookUpdate(expiredClick, webhookSecret);
+    expect(result.status).toBe('rejected');
+    if (result.status === 'rejected') {
+      expect(result.reason).toBe('review_expired_or_processed');
+    }
+  });
+
+  it('anti-DoS: rejects voice message exceeding duration cap (> 120s)', async () => {
+    const longVoiceUpdate: TelegramUpdate = {
+      updateId: 416,
+      message: {
+        messageId: 109,
+        chat: { id: '12345678', type: 'private' },
+        from: { id: '12345678', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        voice: {
+          file_id: 'voice-long',
+          duration: 125, // > 120 seconds cap
+        },
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(longVoiceUpdate, webhookSecret);
+    expect(result.status).toBe('voice_error');
+    if (result.status === 'voice_error') {
+      expect(result.reason).toBe('voice_too_long');
+    }
+
+    // Transcription was never called
+    expect(transcription.calls).toHaveLength(0);
+  });
+
+  it('anti-DoS: rejects voice message exceeding size cap (> 10MB)', async () => {
+    const largeVoiceUpdate: TelegramUpdate = {
+      updateId: 417,
+      message: {
+        messageId: 110,
+        chat: { id: '12345678', type: 'private' },
+        from: { id: '12345678', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        voice: {
+          file_id: 'voice-large',
+          duration: 30,
+          file_size: 11 * 1024 * 1024, // > 10 MB cap
+        },
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(largeVoiceUpdate, webhookSecret);
+    expect(result.status).toBe('voice_error');
+    if (result.status === 'voice_error') {
+      expect(result.reason).toBe('voice_too_large');
+    }
+
+    // Transcription was never called
+    expect(transcription.calls).toHaveLength(0);
+  });
+
+  it('content validation: rejects non-audio payload disguised as audio (magic byte mismatch)', async () => {
+    // Return HTML instead of audio
+    mockClient.filePayload = Buffer.from('<html><body><script>alert(1)</script></body></html>');
+
+    const fakeVoiceUpdate: TelegramUpdate = {
+      updateId: 418,
+      message: {
+        messageId: 111,
+        chat: { id: '12345678', type: 'private' },
+        from: { id: '12345678', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        voice: {
+          file_id: 'fake-voice',
+          duration: 10,
+        },
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(fakeVoiceUpdate, webhookSecret);
+    expect(result.status).toBe('voice_error');
+    if (result.status === 'voice_error') {
+      expect(result.reason).toBe('voice_unsupported_format');
+    }
+
+    // Transcription was never called
+    expect(transcription.calls).toHaveLength(0);
+  });
+
+  it('handles transcription failure gracefully and preserves typed path', async () => {
+    transcription.outcome = { status: 'provider_error' };
+
+    const failingVoiceUpdate: TelegramUpdate = {
+      updateId: 419,
+      message: {
+        messageId: 112,
+        chat: { id: '12345678', type: 'private' },
+        from: { id: '12345678', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        voice: {
+          file_id: 'voice-fail',
+          duration: 10,
+        },
+      },
+    };
+
+    const result = await service.handleWebhookUpdate(failingVoiceUpdate, webhookSecret);
+    expect(result.status).toBe('voice_error');
+    if (result.status === 'voice_error') {
+      expect(result.reason).toBe('voice_transcription_failed');
+    }
+
+    // Learner can immediately type their question instead
+    const typedUpdate: TelegramUpdate = {
+      updateId: 420,
+      message: {
+        messageId: 113,
+        chat: { id: '12345678', type: 'private' },
+        from: { id: '12345678', isBot: false },
+        date: Math.floor(clock.getTime() / 1000),
+        text: 'What is a virtual assistant?',
+      },
+    };
+
+    const typedResult = await service.handleWebhookUpdate(typedUpdate, webhookSecret);
+    expect(typedResult.status).toBe('answered');
   });
 });

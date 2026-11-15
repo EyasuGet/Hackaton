@@ -146,4 +146,53 @@ export class HttpTelegramClient implements TelegramClient {
       return false;
     }
   }
+
+  async getFile(fileId: string): Promise<{
+    readonly ok: boolean;
+    readonly filePath?: string | undefined;
+    readonly fileSize?: number | undefined;
+    readonly error?: string | undefined;
+  }> {
+    if (!this.#botToken) {
+      return { ok: false, error: 'Telegram botToken not configured' };
+    }
+    const url = `${this.#baseUrl}/bot${this.#botToken}/getFile?file_id=${encodeURIComponent(fileId)}`;
+    try {
+      const response = await this.#fetchFn(url, { method: 'GET' });
+      if (!response.ok) {
+        return { ok: false, error: `HTTP ${response.status}` };
+      }
+      const body = (await response.json()) as {
+        ok?: boolean;
+        result?: { file_path?: string; file_size?: number };
+      };
+      if (body.ok && body.result?.file_path) {
+        return {
+          ok: true,
+          filePath: body.result.file_path,
+          fileSize: body.result.file_size,
+        };
+      }
+      return { ok: false, error: 'Missing file_path in response' };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : 'Unknown getFile error',
+      };
+    }
+  }
+
+  async downloadFile(filePath: string): Promise<Uint8Array | null> {
+    if (!this.#botToken) return null;
+    const cleanPath = filePath.replace(/^\/+/, '');
+    const url = `${this.#baseUrl}/file/bot${this.#botToken}/${cleanPath}`;
+    try {
+      const response = await this.#fetchFn(url, { method: 'GET' });
+      if (!response.ok) return null;
+      const arrayBuffer = await response.arrayBuffer();
+      return new Uint8Array(arrayBuffer);
+    } catch {
+      return null;
+    }
+  }
 }
