@@ -7,6 +7,7 @@ import { ownedScope, type Principal } from '../../identity/domain/principal.ts';
 import type { TranscriptionPort } from '../../tutoring/application/ports/transcription-port.ts';
 import type { SpeechSynthesizerProvider } from '../../tutoring/application/ports/speech-synthesizer-provider.ts';
 import type { ProviderAdmissionController } from '../../tutoring/application/provider-admission.ts';
+import type { Help } from '../../help/application/help.ts';
 import {
   TutoringError,
   type AnswerResult,
@@ -83,6 +84,7 @@ export interface TelegramLinkServiceOptions {
   readonly transcription?: TranscriptionPort | undefined;
   readonly speechProvider?: SpeechSynthesizerProvider | undefined;
   readonly admissionController?: ProviderAdmissionController | undefined;
+  readonly help?: Help | undefined;
 }
 
 export interface IssuedTelegramLinkCode {
@@ -212,6 +214,21 @@ export type WebhookHandlingResult =
       readonly principal: Principal;
       readonly replayed?: boolean | undefined;
     }
+  | {
+      readonly status: 'help_preview';
+      readonly contextId: string;
+      readonly question?: string | undefined;
+    }
+  | {
+      readonly status: 'help_submitted';
+      readonly helpRequestId?: string | undefined;
+    }
+  | {
+      readonly status: 'help_cancelled';
+    }
+  | {
+      readonly status: 'help_instructions';
+    }
   | { readonly status: 'unauthenticated'; readonly replayed?: boolean | undefined };
 
 export function digestLinkCode(code: string): string {
@@ -233,7 +250,18 @@ export class TelegramLinkService {
   readonly #transcription?: TranscriptionPort | undefined;
   readonly #speechProvider?: SpeechSynthesizerProvider | undefined;
   readonly #admissionController?: ProviderAdmissionController | undefined;
+  readonly #help?: Help | undefined;
   readonly #now: () => Date;
+  readonly #pendingHelpContexts = new Map<
+    string,
+    {
+      learnerId: string;
+      courseId: string;
+      question: string;
+      answerText?: string;
+      timestamp: number;
+    }
+  >();
 
   constructor(repository: TelegramLinkRepository, options: TelegramLinkServiceOptions = {}) {
     this.#repository = repository;
@@ -248,6 +276,7 @@ export class TelegramLinkService {
     this.#transcription = options.transcription;
     this.#speechProvider = options.speechProvider;
     this.#admissionController = options.admissionController;
+    this.#help = options.help;
     this.#now = options.now ?? (() => new Date());
     this.#rateLimiter = options.rateLimiter ?? new SlidingWindowRateLimiter(15, 60_000, this.#now);
     this.#sender =
@@ -502,6 +531,181 @@ export class TelegramLinkService {
           return { status: 'unsubscribed', unlinked: false, channel: 'telegram', principal };
         }
         return { status: 'unauthenticated' };
+      }
+
+      // Human help request preview callback (T3-041)
+      const helpAskMatch = /^hlp:ask:([a-zA-Z0-9_-]+)$/i.exec(cb.data ?? '');
+      if (helpAskMatch) {
+        const contextId = helpAskMatch[1]!;
+        const principal = await this.resolveLearner(cb.from.id);
+        if (!principal) {
+          await this.#telegramClient?.answerCallbackQuery?.({
+            callbackQueryId: cb.id,
+            text: 'No active linked account found.',
+          });
+          return { status: 'unauthenticated' };
+        }
+
+        const identity = await this.#repository.findIdentityByTelegramUserId(String(cb.from.id));
+        if (!identity || identity.revokedAt) {
+          await this.#telegramClient?.answerCallbackQuery?.({
+            callbackQueryId: cb.id,
+            text: 'Linked account has been revoked.',
+          });
+          return { status: 'unauthenticated' };
+        }
+
+        const context = this.#pendingHelpContexts.get(contextId);
+        const courseId =
+          context?.courseId ??
+          identity.activeCourseId ??
+          principal.courseIds[0] ??
+          'course-alx-foundations';
+        const question = context?.question ?? 'Course question';
+
+        await this.#telegramClient?.answerCallbackQuery?.({
+          callbackQueryId: cb.id,
+          text: 'Opening help preview...',
+        });
+
+        const previewText = [
+          '👤 Human Help Request Preview / የሰው ድጋፍ ቅድመ-እይታ:',
+          '',
+          'Only you and an authorized support coordinator will see this request.',
+          'Context shared with support:',
+          `• Course: ${courseId}`,
+          `• Question: "${question}"`,
+          '',
+          'Do you want to submit this request to support?',
+          'ጥያቄውን ወደ ድጋፍ ሰራተኞች ለመላክ ያረጋግጡ፡',
+        ].join('\n');
+
+        const markup = {
+          inline_keyboard: [
+            [
+              { text: '✅ Confirm & Send / አረጋግጥና ላክ', callback_data: `hlp:send:${contextId}` },
+              { text: '❌ Cancel / ሰርዝ', callback_data: `hlp:cancel:${contextId}` },
+            ],
+          ],
+        };
+
+        if (this.#telegramClient && cb.message?.chat.id) {
+          await this.#telegramClient.sendMessage({
+            chatId: String(cb.message.chat.id),
+            text: previewText,
+            replyMarkup: markup,
+          });
+        } else if (this.#messenger && cb.message?.chat.id) {
+          await this.#messenger.sendMessage({
+            chatId: cb.message.chat.id,
+            text: previewText,
+            replyMarkup: markup,
+          });
+        }
+
+        return { status: 'help_preview', contextId, question };
+      }
+
+      // Human help submit confirmation callback (T3-041)
+      const helpSendMatch = /^hlp:send:([a-zA-Z0-9_-]+)$/i.exec(cb.data ?? '');
+      if (helpSendMatch) {
+        const contextId = helpSendMatch[1]!;
+        const principal = await this.resolveLearner(cb.from.id);
+        if (!principal) {
+          await this.#telegramClient?.answerCallbackQuery?.({
+            callbackQueryId: cb.id,
+            text: 'No active linked account found.',
+          });
+          return { status: 'unauthenticated' };
+        }
+
+        const identity = await this.#repository.findIdentityByTelegramUserId(String(cb.from.id));
+        if (!identity || identity.revokedAt) {
+          await this.#telegramClient?.answerCallbackQuery?.({
+            callbackQueryId: cb.id,
+            text: 'Linked account has been revoked.',
+          });
+          return { status: 'unauthenticated' };
+        }
+
+        let helpRequestId: string | undefined;
+        if (this.#help) {
+          const context = this.#pendingHelpContexts.get(contextId);
+          const courseId =
+            context?.courseId ??
+            identity.activeCourseId ??
+            principal.courseIds[0] ??
+            'course-alx-foundations';
+          const question = context?.question ?? 'Telegram assistance inquiry';
+          const clientRequestId = `tg-help-${contextId}-${this.#now().getTime()}`;
+          const contextSnapshot = `Telegram help request for course ${courseId}: "${question}"`;
+          const submitRes = await this.#help.submit(principal, {
+            clientRequestId,
+            contextSnapshot,
+          });
+          if (submitRes) {
+            helpRequestId = submitRes.request.id;
+          }
+          await this.#help.optIn(principal, 'telegram');
+        }
+
+        await this.#telegramClient?.answerCallbackQuery?.({
+          callbackQueryId: cb.id,
+          text: 'Help request submitted.',
+        });
+
+        const confirmNotice = [
+          '✅ Your help request has been submitted to the support queue.',
+          'A support coordinator will reply to you here in Telegram chat.',
+          '',
+          'የድጋፍ ጥያቄዎ ደርሷል። የድጋፍ ሰራተኛ በቴሌግራም መልስ ይሰጥዎታል።',
+        ].join('\n');
+
+        if (this.#telegramClient && cb.message?.chat.id) {
+          await this.#telegramClient.sendMessage({
+            chatId: String(cb.message.chat.id),
+            text: confirmNotice,
+          });
+        } else if (this.#messenger && cb.message?.chat.id) {
+          await this.#messenger.sendMessage({
+            chatId: cb.message.chat.id,
+            text: confirmNotice,
+          });
+        }
+
+        this.#pendingHelpContexts.delete(contextId);
+        return { status: 'help_submitted', helpRequestId };
+      }
+
+      // Human help cancel callback (T3-041)
+      const helpCancelMatch = /^hlp:cancel:([a-zA-Z0-9_-]+)$/i.exec(cb.data ?? '');
+      if (helpCancelMatch) {
+        const contextId = helpCancelMatch[1]!;
+        await this.#telegramClient?.answerCallbackQuery?.({
+          callbackQueryId: cb.id,
+          text: 'Help request cancelled.',
+        });
+
+        const cancelNotice = [
+          '❌ Help request cancelled. No information was shared.',
+          '',
+          'የድጋፍ ጥያቄው ተሰርዟል። ምንም መረጃ አልተጋራም።',
+        ].join('\n');
+
+        if (this.#telegramClient && cb.message?.chat.id) {
+          await this.#telegramClient.sendMessage({
+            chatId: String(cb.message.chat.id),
+            text: cancelNotice,
+          });
+        } else if (this.#messenger && cb.message?.chat.id) {
+          await this.#messenger.sendMessage({
+            chatId: cb.message.chat.id,
+            text: cancelNotice,
+          });
+        }
+
+        this.#pendingHelpContexts.delete(contextId);
+        return { status: 'help_cancelled' };
       }
 
       // On-demand speech synthesis callback (T3-013-B)
@@ -777,34 +981,51 @@ export class TelegramLinkService {
               tutorRes.answerLang,
             );
 
+            const helpContextId = randomUUID();
+            this.#pendingHelpContexts.set(helpContextId, {
+              learnerId: principal.id,
+              courseId: activeCourse,
+              question: review.transcript,
+              answerText: tutorRes.answerText,
+              timestamp: this.#now().getTime(),
+            });
+
             const speechEnabled = identity?.speechEnabled === true;
-            const speechMarkup =
-              this.#speechProvider?.isAvailable() && update.updateId && update.updateId > 0
-                ? {
-                    inline_keyboard: [
-                      [
-                        {
-                          text: tutorRes.answerLang === 'am' ? '🔊 አዳምጥ' : '🔊 Listen',
-                          callback_data: `ts:${update.updateId}`,
-                        },
-                      ],
-                    ],
-                  }
-                : undefined;
+            const markupRows: Array<Array<{ text: string; callback_data: string }>> = [];
+            if (
+              !speechEnabled &&
+              this.#speechProvider?.isAvailable() &&
+              update.updateId &&
+              update.updateId > 0
+            ) {
+              markupRows.push([
+                {
+                  text: tutorRes.answerLang === 'am' ? '🔊 አዳምጥ' : '🔊 Listen',
+                  callback_data: `ts:${update.updateId}`,
+                },
+              ]);
+            }
+            markupRows.push([
+              {
+                text: tutorRes.answerLang === 'am' ? '👤 ሰው ያነጋግሩ' : '👤 Talk to a person',
+                callback_data: `hlp:ask:${helpContextId}`,
+              },
+            ]);
+            const voiceAnswerMarkup = { inline_keyboard: markupRows };
 
             let sentMsgId: number | undefined;
             if (this.#telegramClient) {
               const res = await this.#telegramClient.sendMessage({
                 chatId: review.telegramChatId,
                 text: formatted,
-                ...(!speechEnabled && speechMarkup ? { replyMarkup: speechMarkup } : {}),
+                replyMarkup: voiceAnswerMarkup,
               });
               if (res.ok) sentMsgId = res.messageId;
             } else if (this.#messenger) {
               const res = await this.#messenger.sendMessage({
                 chatId: review.telegramChatId,
                 text: formatted,
-                ...(!speechEnabled && speechMarkup ? { replyMarkup: speechMarkup } : {}),
+                replyMarkup: voiceAnswerMarkup,
               });
               sentMsgId = res.messageId;
             } else if (this.#sender) {
@@ -1237,6 +1458,49 @@ export class TelegramLinkService {
 
     const identity = await this.#repository.findIdentityByTelegramUserId(String(message.from.id));
 
+    // 8.5. Handle help command: /help or /ድጋፍ (T3-041)
+    const helpCmdMatch = /^(\/help|\/ድጋፍ)$/i.exec(text);
+    if (helpCmdMatch) {
+      const helpContextId = randomUUID();
+      const course = identity?.activeCourseId ?? principal.courseIds[0] ?? 'course-alx-foundations';
+      this.#pendingHelpContexts.set(helpContextId, {
+        learnerId: principal.id,
+        courseId: course,
+        question: 'Help requested via /help command',
+        timestamp: this.#now().getTime(),
+      });
+      const helpText = [
+        'Need help from a person? You can escalate your question to a human coordinator.',
+        'የሰው ድጋፍ ይፈልጋሉ? ጥያቄዎን ለድጋፍ ሰራተኛ ማስተላለፍ ይችላሉ።',
+      ].join('\n');
+      const markup = {
+        inline_keyboard: [
+          [
+            {
+              text: '👤 Talk to a person / ሰው ያነጋግሩ',
+              callback_data: `hlp:ask:${helpContextId}`,
+            },
+          ],
+        ],
+      };
+      if (this.#telegramClient) {
+        await this.#telegramClient.sendMessage({
+          chatId: String(message.chat.id),
+          text: helpText,
+          replyToMessageId: message.messageId,
+          replyMarkup: markup,
+        });
+      } else if (this.#messenger) {
+        await this.#messenger.sendMessage({
+          chatId: message.chat.id,
+          text: helpText,
+          replyToMessageId: message.messageId,
+          replyMarkup: markup,
+        });
+      }
+      return { status: 'help_instructions' };
+    }
+
     // 9. Handle consent command: /consent [on|off]
     const consentCmdMatch = /^\/consent(?:\s+(on|off|true|false|yes|no))?$/i.exec(text);
     if (consentCmdMatch) {
@@ -1521,11 +1785,39 @@ export class TelegramLinkService {
 
     if (!result) {
       const refusalText = HONEST_LIMITATIONS[lang];
-      await this.#messenger?.sendMessage({
-        chatId: message.chat.id,
-        text: refusalText,
-        replyToMessageId: message.messageId,
+      const helpContextId = randomUUID();
+      this.#pendingHelpContexts.set(helpContextId, {
+        learnerId: principal.id,
+        courseId: activeCourse,
+        question: text,
+        answerText: refusalText,
+        timestamp: this.#now().getTime(),
       });
+      const refusalMarkup = {
+        inline_keyboard: [
+          [
+            {
+              text: lang === 'am' ? '👤 ሰው ያነጋግሩ' : '👤 Talk to a person',
+              callback_data: `hlp:ask:${helpContextId}`,
+            },
+          ],
+        ],
+      };
+      if (this.#telegramClient) {
+        await this.#telegramClient.sendMessage({
+          chatId: String(message.chat.id),
+          text: refusalText,
+          replyToMessageId: message.messageId,
+          replyMarkup: refusalMarkup,
+        });
+      } else if (this.#messenger) {
+        await this.#messenger.sendMessage({
+          chatId: message.chat.id,
+          text: refusalText,
+          replyToMessageId: message.messageId,
+          replyMarkup: refusalMarkup,
+        });
+      }
       const outcome: WebhookHandlingResult = {
         status: 'answered',
         answer: refusalText,
@@ -1556,20 +1848,37 @@ export class TelegramLinkService {
       result.answerLang,
     );
 
+    const helpContextId = randomUUID();
+    this.#pendingHelpContexts.set(helpContextId, {
+      learnerId: principal.id,
+      courseId: activeCourse,
+      question: text,
+      answerText: result.answerText,
+      timestamp: this.#now().getTime(),
+    });
+
     const speechEnabled = identity?.speechEnabled === true;
-    const speechMarkup =
-      this.#speechProvider?.isAvailable() && update.updateId && update.updateId > 0
-        ? {
-            inline_keyboard: [
-              [
-                {
-                  text: result.answerLang === 'am' ? '🔊 አዳምጥ' : '🔊 Listen',
-                  callback_data: `ts:${update.updateId}`,
-                },
-              ],
-            ],
-          }
-        : undefined;
+    const markupRows: Array<Array<{ text: string; callback_data: string }>> = [];
+    if (
+      !speechEnabled &&
+      this.#speechProvider?.isAvailable() &&
+      update.updateId &&
+      update.updateId > 0
+    ) {
+      markupRows.push([
+        {
+          text: result.answerLang === 'am' ? '🔊 አዳምጥ' : '🔊 Listen',
+          callback_data: `ts:${update.updateId}`,
+        },
+      ]);
+    }
+    markupRows.push([
+      {
+        text: result.answerLang === 'am' ? '👤 ሰው ያነጋግሩ' : '👤 Talk to a person',
+        callback_data: `hlp:ask:${helpContextId}`,
+      },
+    ]);
+    const answerMarkup = { inline_keyboard: markupRows };
 
     let sentMsgId: number | undefined;
     if (this.#telegramClient) {
@@ -1577,7 +1886,7 @@ export class TelegramLinkService {
         chatId: String(message.chat.id),
         text: formattedText,
         replyToMessageId: message.messageId,
-        ...(!speechEnabled && speechMarkup ? { replyMarkup: speechMarkup } : {}),
+        replyMarkup: answerMarkup,
       });
       if (res.ok) sentMsgId = res.messageId;
     } else if (this.#messenger) {
@@ -1585,7 +1894,7 @@ export class TelegramLinkService {
         chatId: message.chat.id,
         text: formattedText,
         replyToMessageId: message.messageId,
-        ...(!speechEnabled && speechMarkup ? { replyMarkup: speechMarkup } : {}),
+        replyMarkup: answerMarkup,
       });
       sentMsgId = res.messageId;
     }

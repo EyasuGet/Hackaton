@@ -9,6 +9,7 @@ import {
   type PhoneVerificationStatus,
 } from '../domain/phone-verification.ts';
 import type { PhoneVerificationRepository } from '../application/ports/phone-verification-repository.ts';
+import type { Principal, Role } from '../../identity/domain/principal.ts';
 
 interface StoredPhoneVerificationRow {
   id: string;
@@ -138,6 +139,48 @@ export class PostgresPhoneVerificationRepository implements PhoneVerificationRep
       [now],
     );
     return result.rowCount ?? 0;
+  }
+
+  async findLearnerByPhoneNumber(phoneNumber: string): Promise<string | null> {
+    const result = await this.#pool.query<{ learner_id: string }>(
+      `SELECT learner_id
+         FROM learner_verified_phones
+        WHERE phone_number = $1
+        ORDER BY verified_at DESC
+        LIMIT 1`,
+      [phoneNumber],
+    );
+    return result.rows[0]?.learner_id ?? null;
+  }
+
+  async findPrincipalByPhoneNumber(phoneNumber: string): Promise<Principal | null> {
+    const result = await this.#pool.query<{
+      id: string;
+      role: string;
+      label: string;
+      demo: boolean;
+      course_ids: string[];
+    }>(
+      `SELECT p.id, p.role, p.label, p.is_demo AS demo,
+              coalesce(array_agg(g.course_id ORDER BY g.course_id)
+                       FILTER (WHERE g.course_id IS NOT NULL), '{}') AS course_ids
+         FROM learner_verified_phones vp
+         JOIN principals p ON p.id = vp.learner_id
+         LEFT JOIN course_grants g ON g.principal_id = p.id
+        WHERE vp.phone_number = $1
+        GROUP BY p.id`,
+      [phoneNumber],
+    );
+
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      role: row.role as Role,
+      label: row.label,
+      demo: row.demo,
+      courseIds: row.course_ids,
+    };
   }
 
   #mapRow(row: StoredPhoneVerificationRow): PhoneVerificationCode {

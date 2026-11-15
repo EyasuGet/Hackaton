@@ -34,6 +34,7 @@ import { registerSharingRoutes } from '../modules/sharing/presentation/http/shar
 import type { TelegramLinkService } from '../modules/telegram/application/telegram-link-service.ts';
 import { registerTelegramRoutes } from '../modules/telegram/presentation/http/telegram-routes.ts';
 import type { SmsSubscriptionService } from '../modules/delivery/application/sms-subscription-service.ts';
+import type { SmsTutorService } from '../modules/delivery/application/sms-tutor-service.ts';
 import { registerSmsSubscriptionRoutes } from '../modules/delivery/presentation/http/sms-subscription-routes.ts';
 import type { TranscriptionPort } from '../modules/tutoring/application/ports/transcription-port.ts';
 import type { ProviderAdmissionController } from '../modules/tutoring/application/provider-admission.ts';
@@ -72,6 +73,8 @@ export interface AppDependencies {
   readonly telegramService?: TelegramLinkService;
   /** Optional; when omitted SMS subscription routes are not registered. */
   readonly smsSubscriptionService?: SmsSubscriptionService;
+  /** Optional; when omitted inbound SMS tutor routes are not registered (T3-040). */
+  readonly smsTutorService?: SmsTutorService;
   /** Optional provider admission controller for route-level provider admission (T3-024-C). */
   readonly admissionController?: ProviderAdmissionController;
   /** Optional custom speech synthesizer provider (defaults to synthetic WAV generator). */
@@ -189,11 +192,12 @@ export function buildApp(
   if (dependencies.telegramService) {
     registerTelegramRoutes(app, dependencies.resolvePrincipal, dependencies.telegramService);
   }
-  if (dependencies.smsSubscriptionService) {
+  if (dependencies.smsSubscriptionService || dependencies.smsTutorService) {
     registerSmsSubscriptionRoutes(
       app,
       dependencies.resolvePrincipal,
       dependencies.smsSubscriptionService,
+      dependencies.smsTutorService,
     );
   }
   if (dependencies.speechProvider) {

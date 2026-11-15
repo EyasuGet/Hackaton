@@ -19,6 +19,9 @@ import { PostgresDemoSessionRepository } from './modules/identity/infrastructure
 import { PostgresPrincipalRepository } from './modules/identity/infrastructure/postgres-principal-repository.ts';
 import { Accommodation } from './modules/accommodation/application/accommodation.ts';
 import { PostgresAccommodationRepository } from './modules/accommodation/infrastructure/persistence/postgres-accommodation-repository.ts';
+import { AfroMessageSmsAdapter } from './modules/delivery/infrastructure/afromessage-sms-adapter.ts';
+import { PostgresPhoneVerificationRepository } from './modules/delivery/infrastructure/postgres-phone-verification-repository.ts';
+import { SmsTutorService } from './modules/delivery/application/sms-tutor-service.ts';
 import { JobAnswers } from './modules/careers/application/job-answers.ts';
 import { JobPreferences } from './modules/careers/application/job-preferences.ts';
 import { CareerResearchService } from './modules/careers/application/career-research.ts';
@@ -59,6 +62,8 @@ const onlineProvider = new GeminiGroundedAnswerProvider();
 const transcription = new GeminiTranscriptionAdapter();
 const admissionController = new ProviderAdmissionController(config.providerLimits);
 const helpRepository = new PostgresHelpRepository(pool);
+const help = new Help(helpRepository);
+const staffHelp = new StaffHelp(helpRepository);
 const employerRepository = new PostgresEmployerRepository(pool);
 const employerService = new EmployerService(employerRepository);
 const sharingRepository = new PostgresSharingRepository(pool);
@@ -91,6 +96,19 @@ const telegramService = new TelegramLinkService(telegramLinkRepository, {
   transcription,
   speechProvider,
   admissionController,
+  help,
+});
+const phoneVerificationRepo = new PostgresPhoneVerificationRepository(pool);
+const smsAdapter = new AfroMessageSmsAdapter({
+  apiToken: process.env.AFROMESSAGE_API_TOKEN ?? 'mock-token',
+  ...(process.env.AFROMESSAGE_FROM_ID ? { fromId: process.env.AFROMESSAGE_FROM_ID } : {}),
+  senderName: process.env.AFROMESSAGE_SENDER_NAME ?? 'Track3',
+});
+const smsTutorService = new SmsTutorService({
+  phoneVerificationRepository: phoneVerificationRepo,
+  tutoring,
+  smsAdapter,
+  help,
 });
 
 const app = buildApp(
@@ -111,8 +129,8 @@ const app = buildApp(
     transcription,
     speechProvider,
     content,
-    help: new Help(helpRepository),
-    staffHelp: new StaffHelp(helpRepository),
+    help,
+    staffHelp,
     sharing: new Sharing(sharingRepository, helpRequestLookup),
     accommodation: new Accommodation(new PostgresAccommodationRepository(pool)),
     jobRepository,
@@ -121,6 +139,7 @@ const app = buildApp(
     careerResearch,
     employerService,
     telegramService,
+    smsTutorService,
     admissionController,
   },
   { logger: true },
