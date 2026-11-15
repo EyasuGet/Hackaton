@@ -826,4 +826,243 @@ describe('Assistant', () => {
       expect(screen.queryByRole('link')).toBeNull();
     });
   });
+
+  describe('Career web research mode (T3-028-B)', () => {
+    it('starts with research mode disabled by default and presents standard mode notice', () => {
+      const { client } = controllableClient();
+      render(<Assistant client={client} mode="faq" />);
+
+      const toggle = screen.getByLabelText<HTMLInputElement>(
+        /Enable supplementary career web research/i,
+      );
+      expect(toggle.checked).toBe(false);
+      expect(
+        screen.getByText(
+          /Operating in approved course FAQ mode. Answers are grounded in course materials with explicit citations without cloud processing./i,
+        ),
+      ).toBeTruthy();
+    });
+
+    it('course mode never searches implicitly and routes to client.ask when research mode is off', async () => {
+      const { client, ask: clientAsk, respond: clientRespond } = controllableClient();
+      const { client: researchClient, ask: researchAsk } = controllableClient();
+
+      render(<Assistant client={client} researchClient={researchClient} mode="faq" />);
+      type('What is an operating system?');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+
+      expect(clientAsk).toHaveBeenCalledWith('What is an operating system?');
+      expect(researchAsk).not.toHaveBeenCalled();
+
+      await clientRespond({
+        kind: 'answer',
+        reply: {
+          id: 'course-ans-1',
+          text: 'An operating system manages hardware and software resources.',
+          lang: 'en',
+          createdAt: '2026-09-11T12:00:00.000Z',
+          provider: 'faq',
+        },
+      });
+
+      expect(screen.getByText('Assistant (course FAQ)')).toBeTruthy();
+    });
+
+    it('toggling research mode ON immediately updates notice and routes questions to researchClient with external provenance', async () => {
+      const { client, ask: clientAsk } = controllableClient();
+      const {
+        client: researchClient,
+        ask: researchAsk,
+        respond: researchRespond,
+      } = controllableClient();
+
+      render(<Assistant client={client} researchClient={researchClient} mode="faq" />);
+
+      const toggle = screen.getByLabelText<HTMLInputElement>(
+        /Enable supplementary career web research/i,
+      );
+      fireEvent.click(toggle);
+      expect(toggle.checked).toBe(true);
+
+      // Immediately updates notice
+      expect(
+        screen.getByText(
+          /Operating in career web research mode. Queries are minimised and sent to external search providers with your explicit consent./i,
+        ),
+      ).toBeTruthy();
+
+      type('What are current entry-level VA compensation rates in Addis Ababa?');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+
+      // Routed to researchClient, not course client
+      expect(researchAsk).toHaveBeenCalledWith(
+        'What are current entry-level VA compensation rates in Addis Ababa?',
+      );
+      expect(clientAsk).not.toHaveBeenCalled();
+
+      await researchRespond({
+        kind: 'answer',
+        reply: {
+          id: 'research-ans-1',
+          text: 'Current market rates in Addis Ababa range from 15,000 to 25,000 ETB for entry-level remote Virtual Assistants.',
+          lang: 'en',
+          createdAt: '2026-09-11T12:00:00.000Z',
+          provider: 'external_web_research',
+          citations: [
+            {
+              sourceId: 'web-1',
+              sectionId: 'salary-report',
+              sourceTitle: 'Addis Ababa Remote Work Trends 2026',
+              heading: 'Compensation Survey',
+              url: 'https://digitalbridge.et/research/va-2026',
+            },
+          ],
+        },
+      });
+
+      // Distinct speaker label
+      expect(screen.getByText('Assistant (external web research)')).toBeTruthy();
+
+      // Distinct provenance disclaimer
+      expect(
+        screen.getByText(
+          /Source: External web research. Information from external web sources is unverified and not part of the approved course curriculum./i,
+        ),
+      ).toBeTruthy();
+
+      // Accessible citation link
+      const citationLink = screen.getByRole('link', {
+        name: 'Addis Ababa Remote Work Trends 2026 — Compensation Survey',
+      });
+      expect(citationLink.getAttribute('href')).toBe('https://digitalbridge.et/research/va-2026');
+      expect(citationLink.getAttribute('target')).toBe('_blank');
+      expect(citationLink.getAttribute('rel')).toBe('noopener noreferrer');
+    });
+
+    it('leaving research mode immediately restores standard approved-source tutoring behavior while preserving history', async () => {
+      const { client, ask: clientAsk, respond: clientRespond } = controllableClient();
+      const {
+        client: researchClient,
+        ask: researchAsk,
+        respond: researchRespond,
+      } = controllableClient();
+
+      render(<Assistant client={client} researchClient={researchClient} mode="faq" />);
+
+      // Enable research mode
+      const toggle = screen.getByLabelText<HTMLInputElement>(
+        /Enable supplementary career web research/i,
+      );
+      fireEvent.click(toggle);
+
+      type('Research VA jobs');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+      await researchRespond({
+        kind: 'answer',
+        reply: {
+          id: 'res-1',
+          text: 'Found 12 external postings.',
+          lang: 'en',
+          createdAt: '2026-09-11T12:00:00.000Z',
+          provider: 'external_web_research',
+        },
+      });
+
+      expect(screen.getByText('Assistant (external web research)')).toBeTruthy();
+
+      // Turn OFF research mode
+      fireEvent.click(toggle);
+      expect(toggle.checked).toBe(false);
+
+      // Notice restored to approved course mode
+      expect(
+        screen.getByText(
+          /Operating in approved course FAQ mode. Answers are grounded in course materials with explicit citations without cloud processing./i,
+        ),
+      ).toBeTruthy();
+
+      // Subsequent question routes strictly to course client
+      type('What is module 2 about?');
+      fireEvent.keyDown(questionBox(), { key: 'Enter' });
+
+      expect(clientAsk).toHaveBeenCalledWith('What is module 2 about?');
+      expect(researchAsk).toHaveBeenCalledTimes(1); // Only the first research question
+
+      await clientRespond({
+        kind: 'answer',
+        reply: {
+          id: 'course-ans-2',
+          text: 'Module 2 covers calendar management.',
+          lang: 'en',
+          createdAt: '2026-09-11T12:00:00.000Z',
+          provider: 'faq',
+        },
+      });
+
+      // Previous external research entry retains its distinct provenance label
+      expect(screen.getByText('Assistant (external web research)')).toBeTruthy();
+      expect(screen.getByText('Assistant (course FAQ)')).toBeTruthy();
+    });
+
+    it('preserves question draft in textarea when toggling research mode on and off', () => {
+      const { client } = controllableClient();
+      render(<Assistant client={client} mode="faq" />);
+
+      const toggle = screen.getByLabelText(/Enable supplementary career web research/i);
+      type('My draft question about market data');
+      expect((questionBox() as HTMLTextAreaElement).value).toBe(
+        'My draft question about market data',
+      );
+
+      fireEvent.click(toggle);
+      expect((questionBox() as HTMLTextAreaElement).value).toBe(
+        'My draft question about market data',
+      );
+
+      fireEvent.click(toggle);
+      expect((questionBox() as HTMLTextAreaElement).value).toBe(
+        'My draft question about market data',
+      );
+    });
+
+    it('renders bilingual Amharic labels and announcements when locale is am', async () => {
+      const { client, respond } = controllableClient();
+      render(
+        <LocaleContext value="am">
+          <Assistant client={client} mode="faq" />
+        </LocaleContext>,
+      );
+
+      // Amharic toggle label
+      const toggle = screen.getByLabelText<HTMLInputElement>(/ተጨማሪ የሙያ ድር ጥናትን አንቃ/i);
+      expect(toggle).toBeTruthy();
+      expect(toggle.checked).toBe(false);
+
+      fireEvent.click(toggle);
+      expect(toggle.checked).toBe(true);
+
+      // Amharic mode notice
+      expect(screen.getByText(/በሙያ ድር ጥናት ሁነታ ላይ ይሰራል። ጥያቄዎች ተቀንሰው/i)).toBeTruthy();
+
+      const textarea = screen.getByLabelText('ጥያቄዎ');
+      fireEvent.change(textarea, { target: { value: 'የስራ እድሎች ምንድን ናቸው?' } });
+      fireEvent.keyDown(textarea, { key: 'Enter' });
+
+      await respond({
+        kind: 'answer',
+        reply: {
+          id: 'res-am-1',
+          text: 'በአዲስ አበባ ውስጥ በርካታ የቨርቹዋል ረዳት ክፍት የስራ መደቦች አሉ።',
+          lang: 'am',
+          createdAt: '2026-09-11T12:00:00.000Z',
+          provider: 'external_web_research',
+        },
+      });
+
+      // Amharic speaker label
+      expect(screen.getByText('ረዳት (የውጭ ድር ጥናት)')).toBeTruthy();
+      // Amharic provenance disclaimer
+      expect(screen.getByText(/ምንጭ፦ የውጭ ድር ጥናት። ከውጭ ድር ምንጮች የተገኘ መረጃ/i)).toBeTruthy();
+    });
+  });
 });
