@@ -4,6 +4,11 @@
 import type { FastifyInstance, preHandlerAsyncHookHandler } from 'fastify';
 import { principalOf, requireRole } from '../../../identity/presentation/http/authentication.ts';
 import type { Help } from '../../application/help.ts';
+import {
+  isScreenshotMimeType,
+  SCREENSHOT_MAX_BYTES,
+  type HelpScreenshots,
+} from '../../application/help-screenshots.ts';
 import type { StaffHelp } from '../../application/staff-help.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -23,6 +28,7 @@ export function registerHelpRoutes(
   authenticated: preHandlerAsyncHookHandler,
   help: Help,
   staffHelp: StaffHelp,
+  screenshots?: HelpScreenshots,
 ) {
   const learnerOnly = { preHandler: [authenticated, requireRole('learner')] };
   const supportOnly = { preHandler: [authenticated, requireRole('support')] };
@@ -266,6 +272,62 @@ export function registerHelpRoutes(
       }
       await help.setNotificationPreference(principal, channel, optedIn);
       return reply.code(200).send({ channel, optedIn });
+    },
+  );
+
+  if (screenshots) registerScreenshotRoutes(app, authenticated, screenshots);
+}
+
+// A screenshot is sent as the raw image body: no base64 overhead on a 3G phone.
+function registerScreenshotRoutes(
+  app: FastifyInstance,
+  authenticated: preHandlerAsyncHookHandler,
+  screenshots: HelpScreenshots,
+) {
+  app.addContentTypeParser(
+    ['image/png', 'image/jpeg', 'image/webp'],
+    { parseAs: 'buffer', bodyLimit: SCREENSHOT_MAX_BYTES },
+    (_request, body, done) => done(null, body),
+  );
+  const learnerOnly = { preHandler: [authenticated, requireRole('learner')] };
+  const path = '/api/help/requests/:id/screenshot';
+
+  app.put<{ Params: { id: string }; Body: Buffer }>(path, learnerOnly, async (request, reply) => {
+    const { id } = request.params;
+    if (!UUID.test(id)) return reply.code(404).send({ error: 'not_found' });
+    const mimeType = request.headers['content-type']?.split(';')[0]?.trim() ?? '';
+    if (!isScreenshotMimeType(mimeType) || !Buffer.isBuffer(request.body)) {
+      return reply.code(415).send({ error: 'unsupported_image_type' });
+    }
+    const result = await screenshots.attach(principalOf(request), id, {
+      mimeType,
+      data: request.body,
+    });
+    if (result === 'invalid_image') return reply.code(400).send({ error: 'invalid_image' });
+    if (result === 'not_found') return reply.code(404).send({ error: 'not_found' });
+    return reply.code(204).send();
+  });
+
+  app.delete<{ Params: { id: string } }>(path, learnerOnly, async (request, reply) => {
+    const { id } = request.params;
+    if (!UUID.test(id) || !(await screenshots.remove(principalOf(request), id))) {
+      return reply.code(404).send({ error: 'not_found' });
+    }
+    return reply.code(204).send();
+  });
+
+  // The owner, or the support person who claimed the request.
+  app.get<{ Params: { id: string } }>(
+    path,
+    { preHandler: [authenticated] },
+    async (request, reply) => {
+      const { id } = request.params;
+      const image = UUID.test(id) ? await screenshots.view(principalOf(request), id) : null;
+      if (!image) return reply.code(404).send({ error: 'not_found' });
+      return reply
+        .header('content-type', image.mimeType)
+        .header('cache-control', 'no-store')
+        .send(image.data);
     },
   );
 }

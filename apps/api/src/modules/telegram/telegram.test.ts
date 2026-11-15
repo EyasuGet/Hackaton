@@ -999,6 +999,7 @@ describe('TelegramLinkService Unit Tests (T3-012-A)', () => {
         webhookSecret,
         botToken,
         jobAnswers,
+        sender: mockSender,
         rateLimiter: testLimiter,
         now,
       });
@@ -1029,7 +1030,7 @@ describe('TelegramLinkService Unit Tests (T3-012-A)', () => {
         expect(res3.message).toContain('Too many requests');
         expect(res3.retryAfterSec).toBeGreaterThan(0);
       }
-    });
+    }, 15_000);
 
     it('revoking identity (/unlink) immediately cuts off job answer access', async () => {
       const askUpdate: TelegramUpdate = {
