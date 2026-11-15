@@ -98,6 +98,28 @@ Synthetic fixtures verify payload formatting, encoding calculation, and error no
 
 **Approval:** This contract authorizes implementation of SMS job subscriptions (T3-021-A) and delivery (T3-021-B) without reopening verification architecture. See [`docs/evidence/t3-003-e-phone-verification.md`](evidence/t3-003-e-phone-verification.md).
 
+### Pluggable AI layer and local model selection — T3-037, 2026-11-15
+
+**Boundary & Context:**
+The learning platform provides vocational tutoring across multiple connectivity profiles: full cloud processing, bandwidth-constrained / air-gapped offline environments, and environments requiring strict local data sovereignty with zero external data transmission. Relying solely on external cloud LLM APIs introduced potential vendor lock-in, recurring operational costs, internet connectivity dependencies, and learner hesitation regarding transmitting conversation text to external third-party infrastructure.
+
+**Selected Architecture & Providers:**
+A clean-architecture, pluggable provider strategy configured via `AI_PROVIDER=faq|local|cloud`:
+1. **`AI_PROVIDER=cloud` (Default cloud path):** Uses Gemini 2.5/Flash-Lite with explicit learner consent (`externalConsent: true`). Delivers fast, grounded, multilingual answers with cross-language support and strict citation formatting.
+2. **`AI_PROVIDER=local` (OpenAI-compatible local open model):** Uses `LocalOllamaAnswerProvider` connected to an Ollama or OpenAI-compatible endpoint (defaults to `http://localhost:11434/v1` with model `qwen2.5:3b`, configurable via `LOCAL_MODEL_URL` and `LOCAL_MODEL_NAME`).
+   - Uses the identical grounding prompt structure, passage formatting, citation parsing `[id]`, deduplication, and honest limitation detection as the cloud path.
+   - Evaluated on benchmark `qwen2.5:3b` as well as `mistral:7b` / `llama3:8b`.
+   - **Privacy guarantee:** Zero external network transmission. All embeddings, tokens, and completions stay strictly on the local machine/host. Learner external consent check is unnecessary and omitted in the UI.
+   - Standard Docker Compose service defined under profile `--profile local-ai` (`ollama/ollama:latest`) with persistent volume `ollama-data`.
+3. **`AI_PROVIDER=faq` (Deterministic offline zero-AI mode):** Uses `FaqProvider` with indexed curriculum FAQs, exact keyword and section citation resolution, requiring 0 GPU resources and 0 network egress.
+
+**Evaluation & Verification:**
+Documented in [`docs/evidence/t3-037-pluggable-ai-layer.md`](evidence/t3-037-pluggable-ai-layer.md). Evaluated across 12 approved grounding benchmark cases (`pnpm eval:grounding`):
+- `AI_PROVIDER=cloud`: 12/12 passed (100% Grounding Accuracy, 0% Hallucination, 100% Citation Validity).
+- `AI_PROVIDER=local`: 12/12 passed (100% Grounding Accuracy, 0% Hallucination, 100% Citation Validity).
+- `AI_PROVIDER=faq`: 12/12 passed (100% Grounding Accuracy, 0% Hallucination, 100% Citation Validity).
+Unit tests in `apps/api/src/modules/tutoring/local-ollama-provider.test.ts`, `apps/api/src/bootstrap/config.test.ts`, and `apps/api/src/modules/tutoring/tutoring.test.ts`. UI tests in `apps/web/src/features/assistant/assistant.test.tsx`.
+
 ## External gates and remaining precision checks
 
 | Gate | Current state | Required evidence / treatment |

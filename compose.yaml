@@ -1,5 +1,5 @@
-# Local PostgreSQL for development and integration tests. Values come from the
-# root .env (see .env.example); the password has no default on purpose.
+# Local PostgreSQL and optional local Ollama for development and integration tests.
+# Values come from the root .env (see .env.example); the password has no default on purpose.
 services:
   db:
     image: postgres:18.7-alpine
@@ -18,5 +18,19 @@ services:
       timeout: 3s
       retries: 15
 
+  # Optional local open model runtime (T3-037).
+  # Run `docker compose --profile local-ai up` to spin up Ollama with local model support.
+  # Pull the recommended small multilingual model: `docker compose --profile local-ai exec ollama ollama pull qwen2.5:3b`.
+  ollama:
+    image: ollama/ollama:latest
+    profiles:
+      - local-ai
+    ports:
+      # Loopback only: Ollama is exposed only to the local API process.
+      - 127.0.0.1:11434:11434
+    volumes:
+      - ollama-data:/root/.ollama
+
 volumes:
   db-data:
+  ollama-data:

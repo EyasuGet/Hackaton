@@ -10,6 +10,7 @@ export interface UserPreferences {
   readonly locale?: Locale | undefined;
   readonly scenario?: FixtureScenario | undefined;
   readonly simpleLanguage?: boolean | undefined;
+  readonly localMode?: boolean | undefined;
 }
 
 export function loadStoredPreferences(storage: Storage = localStorage): UserPreferences {
@@ -22,10 +23,12 @@ export function loadStoredPreferences(storage: Storage = localStorage): UserPref
       typeof parsed.scenario === 'string' ? (parsed.scenario as FixtureScenario) : undefined;
     const simpleLanguage =
       typeof parsed.simpleLanguage === 'boolean' ? parsed.simpleLanguage : undefined;
+    const localMode = typeof parsed.localMode === 'boolean' ? parsed.localMode : undefined;
     return {
       ...(locale !== undefined ? { locale } : {}),
       ...(scenario !== undefined ? { scenario } : {}),
       ...(simpleLanguage !== undefined ? { simpleLanguage } : {}),
+      ...(localMode !== undefined ? { localMode } : {}),
     };
   } catch {
     return {};

@@ -29,7 +29,7 @@ interface Entry {
   readonly lang?: string;
   readonly createdAt?: string;
   readonly citations?: readonly Citation[];
-  readonly provider?: 'online' | 'faq' | 'job' | 'external_web_research';
+  readonly provider?: 'online' | 'faq' | 'job' | 'external_web_research' | 'local';
   readonly provenance?: {
     readonly kind: string;
     readonly disclaimer?: string;
@@ -95,7 +95,7 @@ function MessageDate({
 export interface AssistantProps {
   readonly client: ConversationClient;
   readonly researchClient?: ConversationClient;
-  readonly mode?: 'demo' | 'faq' | 'online';
+  readonly mode?: 'demo' | 'faq' | 'online' | 'local';
   readonly speechSynthesizer?: SpeechSynthesizer;
   readonly cloudSynthesizer?: SpeechSynthesizer;
   readonly defaultSpeechEngine?: 'client' | 'cloud';
@@ -559,6 +559,12 @@ export function Assistant({
               <T k="assistant.onlineModeNotice" />
             </p>
           )}
+
+          {mode === 'local' && (
+            <p className="assistant-mode-notice assistant-local-notice" role="note">
+              <T k="assistant.localModeNotice" />
+            </p>
+          )}
         </>
       )}
 
@@ -568,7 +574,13 @@ export function Assistant({
         </p>
       )}
 
-      {onConsentChange && (
+      {mode === 'local' ? (
+        <div className="assistant-local-status" role="status">
+          <p className="hint">
+            <T k="assistant.localZeroDataNotice" />
+          </p>
+        </div>
+      ) : onConsentChange ? (
         <div className="assistant-consent-control">
           <label htmlFor={ids.consent}>
             <input
@@ -584,7 +596,7 @@ export function Assistant({
             <T k="assistant.consentHint" />
           </p>
         </div>
-      )}
+      ) : null}
 
       {/* Speech preferences and cloud consent (T3-011) */}
       <div
@@ -666,11 +678,13 @@ export function Assistant({
                           ? 'assistant.speakerResearch'
                           : entry.provider === 'job'
                             ? 'assistant.speakerJob'
-                            : mode === 'online'
-                              ? 'assistant.speakerOnline'
-                              : mode === 'faq'
-                                ? 'assistant.speakerFaq'
-                                : 'assistant.speakerAssistant'
+                            : entry.provider === 'local' || mode === 'local'
+                              ? 'assistant.speakerLocal'
+                              : mode === 'online'
+                                ? 'assistant.speakerOnline'
+                                : mode === 'faq'
+                                  ? 'assistant.speakerFaq'
+                                  : 'assistant.speakerAssistant'
                     }
                   />
                 </p>

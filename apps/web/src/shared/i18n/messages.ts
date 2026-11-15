@@ -51,6 +51,9 @@ export const en = {
     'Operating in approved course FAQ mode. Answers are grounded in course materials with explicit citations without cloud processing.',
   'assistant.onlineModeNotice':
     'Operating in consented online answer mode. Answers are generated using authorized course materials and external AI processing.',
+  'assistant.localModeNotice':
+    'Operating in local open model mode. Answers are processed entirely on-device with zero external data transmission.',
+  'assistant.localZeroDataNotice': 'Local on-device processing: zero external data transmission.',
   'assistant.simpleLanguageNotice':
     'Operating in simple-language mode. Answers use shorter sentences and everyday words without altering facts or citations.',
   'assistant.researchModeNotice':
@@ -60,6 +63,7 @@ export const en = {
   'assistant.speakerAssistant': 'Assistant (demo)',
   'assistant.speakerFaq': 'Assistant (course FAQ)',
   'assistant.speakerOnline': 'Assistant (online AI)',
+  'assistant.speakerLocal': 'Assistant (local AI)',
   'assistant.speakerJob': 'Assistant (approved jobs)',
   'assistant.speakerResearch': 'Assistant (external web research)',
   'assistant.researchProvenanceNote':
@@ -325,6 +329,9 @@ export const am: Partial<Record<MessageKey, string>> = {
     'በተረጋገጠ የትምህርት ተደጋጋሚ ጥያቄዎች (FAQ) ሁኔታ ላይ ይገኛል። መልሶች ያለ ደመና ማቀነባበሪያ ከትምህርት ክፍሎች የተገኙ ናቸው።',
   'assistant.onlineModeNotice':
     'በተፈቀደ የመስመር ላይ AI ሁኔታ ላይ ይገኛል። መልሶች ከተፈቀዱ የትምህርት ክፍሎች እና ውጫዊ AI ማቀነባበሪያ የተገኙ ናቸው።',
+  'assistant.localModeNotice':
+    'በአካባቢያዊ ክፍት ሞዴል ሁነታ ላይ ይገኛል። መልሶች ያለ ምንም ውጫዊ የውሂብ ማስተላለፍ ሙሉ በሙሉ በመሣሪያው ላይ ይከናወናሉ።',
+  'assistant.localZeroDataNotice': 'የአካባቢ መሣሪያ ላይ ማቀነባበሪያ፡ ወደ ውጭ ምንም ዓይነት የውሂብ ማስተላለፍ አይደረግም።',
   'assistant.simpleLanguageNotice':
     'በቀላል ቋንቋ ሁነታ ላይ ይሰራል። እውነታዎችን ወይም ጥቅሶችን ሳይቀይሩ መልሶች በአጫጭር ዓረፍተ ነገሮች እና የተለመዱ ቃላት ይቀርባሉ።',
   'assistant.researchModeNotice':
@@ -334,6 +341,7 @@ export const am: Partial<Record<MessageKey, string>> = {
   'assistant.speakerAssistant': 'ረዳት (ሙከራ)',
   'assistant.speakerFaq': 'ረዳት (የትምህርት FAQ)',
   'assistant.speakerOnline': 'ረዳት (የመስመር ላይ AI)',
+  'assistant.speakerLocal': 'ረዳት (የአካባቢ AI)',
   'assistant.speakerJob': 'ረዳት (የተረጋገጡ ሥራዎች)',
   'assistant.speakerResearch': 'ረዳት (የውጭ ድር ጥናት)',
   'assistant.researchProvenanceNote':

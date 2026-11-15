@@ -173,7 +173,7 @@ export type WebhookHandlingResult =
       readonly kind: 'answered' | 'insufficient_evidence';
       readonly answerLang?: 'en' | 'am' | undefined;
       readonly lang?: 'en' | 'am' | undefined;
-      readonly provider?: 'online' | 'faq' | 'job' | undefined;
+      readonly provider?: 'online' | 'faq' | 'job' | 'local' | undefined;
       readonly requestId?: string | undefined;
       readonly matchedJobId?: string | undefined;
       readonly replayed?: boolean | undefined;

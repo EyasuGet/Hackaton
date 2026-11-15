@@ -5387,7 +5387,7 @@
           },
           "provider": {
             "type": "string",
-            "enum": ["online", "faq"],
+            "enum": ["online", "faq", "job", "local"],
             "example": "faq"
           },
           "simpleLanguage": {

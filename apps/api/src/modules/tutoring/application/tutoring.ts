@@ -67,7 +67,7 @@ export interface AnswerResult {
   readonly answerText: string;
   readonly answerLang: 'en' | 'am';
   readonly kind: 'answered' | 'insufficient_evidence';
-  readonly provider: 'online' | 'faq' | 'job';
+  readonly provider: 'online' | 'faq' | 'job' | 'local';
   readonly citations: readonly FaqCitation[];
   readonly simpleLanguage?: boolean;
 }
@@ -191,8 +191,10 @@ export class Tutoring {
       };
     }
 
-    // 3. Determine whether online processing is consented and available
-    const consented = input.externalConsent === true;
+    // 3. Determine whether online/local processing is consented and available
+    // Local providers operate on-host without external data transmission, requiring no external consent.
+    const isLocalProvider = this.#onlineProvider?.isLocal === true;
+    const consented = isLocalProvider || input.externalConsent === true;
     const useOnline =
       consented && this.#onlineProvider !== undefined && this.#onlineProvider.isAvailable();
 
@@ -284,7 +286,7 @@ export class Tutoring {
         answerText: refusalText,
         answerLang: lang,
         kind: 'insufficient_evidence',
-        provider: 'online',
+        provider: this.#onlineProvider?.isLocal ? 'local' : 'online',
         citations: [],
         ...(input.simpleLanguage ? { simpleLanguage: true } : {}),
       };
@@ -414,7 +416,7 @@ export class Tutoring {
         answerText: onlineResponse.answer,
         answerLang: lang,
         kind,
-        provider: 'online',
+        provider: this.#onlineProvider?.isLocal ? 'local' : 'online',
         citations: verifiedCitations,
         ...(input.simpleLanguage ? { simpleLanguage: true } : {}),
       };

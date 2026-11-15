@@ -78,8 +78,23 @@ Open http://localhost:5173. The page shows the accessible conversation shell in 
 | `DATABASE_USER` | Yes | Database user; Compose creates it |
 | `DATABASE_PASSWORD` | Yes | Local-only password you choose; empty in `.env.example` on purpose |
 | `DEMO_MODE` | No | `true` enables synthetic demo identities; default `false`. Any other value stops startup. Never enable it for a real deployment |
+| `AI_PROVIDER` | No | `cloud`, `local`, or `faq` (default `cloud`). Selects the AI layer |
+| `LOCAL_MODEL_URL` | No | OpenAI-compatible endpoint for local mode (default `http://localhost:11434/v1`) |
+| `LOCAL_MODEL_NAME` | No | Model name for local mode (default `qwen2.5:3b`) |
 
 Compose, the API and the migration command all refuse to start with a missing value, and messages name the variable, never its value. The web bundle does not include these server values.
+
+### Pluggable AI layer (cloud, local, or offline FAQ)
+
+The assistant supports three AI operational modes configured via `AI_PROVIDER` (T3-037):
+
+1. **Cloud AI (`AI_PROVIDER=cloud`, default):** Uses Google Gemini (`gemini-3.5-flash-lite`). Requires explicit learner consent before queries are sent to external cloud processing; falls back safely to verified probe recordings when `GEMINI_API_KEY` is not supplied.
+2. **Local Open Model (`AI_PROVIDER=local`):** Connects to an OpenAI-compatible local model server (Ollama, llama.cpp, vLLM) configured via `LOCAL_MODEL_URL` (default: `http://localhost:11434/v1`) and `LOCAL_MODEL_NAME` (default: `qwen2.5:3b`). Because inference runs entirely on-host with zero external data transmission, no external consent prompt is required, and the UI displays a clear on-device processing indicator. To run Ollama locally via Docker Compose:
+   ```sh
+   docker compose --profile local-ai up -d
+   docker compose --profile local-ai exec ollama ollama pull qwen2.5:3b
+   ```
+3. **Offline FAQ (`AI_PROVIDER=faq`):** 100% deterministic approved course FAQ. Operates fully offline without calling any LLM API or local model runtime.
 
 ### Demo identities
 
