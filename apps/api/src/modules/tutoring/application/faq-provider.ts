@@ -38,6 +38,10 @@ export class FaqProvider {
     this.#entries = entries ?? loadApprovedFaqs();
   }
 
+  getFaqsForCourse(courseId: string): readonly FaqEntry[] {
+    return this.#entries.filter((entry) => entry.courseId === courseId);
+  }
+
   async answer(principal: Principal, courseId: string, question: string): Promise<FaqAnswerResult> {
     const isAmharic = /[\u1200-\u137F]/.test(question);
     const lang = isAmharic ? 'am' : 'en';

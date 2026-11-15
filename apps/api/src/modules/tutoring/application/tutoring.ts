@@ -48,6 +48,19 @@ export interface AskAnswerInput extends ClaimRequestInput {
   readonly externalConsent?: boolean;
 }
 
+export interface TeacherTopicSummary {
+  readonly topic: string;
+  readonly count: number;
+}
+
+export interface TeacherTopicsResponse {
+  readonly courseId: string;
+  readonly totalQuestions: number;
+  readonly topics: readonly TeacherTopicSummary[];
+  readonly suppressedCount: number;
+  readonly kThreshold: number;
+}
+
 export interface AnswerResult {
   readonly request: TutoringRequest;
   readonly answerText: string;
@@ -450,5 +463,106 @@ export class Tutoring {
    */
   async purgeExpired(now: Date): Promise<number> {
     return this.#repository.purgeExpired(now);
+  }
+
+  /**
+   * Returns aggregate frequently asked topics for authorized teachers/support (T3-030).
+   * Enforces low-count k-anonymity suppression (k >= 3) to protect learner privacy.
+   * Strictly excludes any learner IDs, names, phone numbers, or conversation transcripts.
+   */
+  async getTeacherTopics(
+    principal: Principal,
+    courseId: string,
+    options?: { groupByOther?: boolean },
+  ): Promise<TeacherTopicsResponse | null> {
+    if (principal.role !== 'teacher' && principal.role !== 'support') {
+      return null;
+    }
+
+    if (principal.role === 'teacher' && !principal.courseIds.includes(courseId)) {
+      return null;
+    }
+    if (
+      principal.role === 'support' &&
+      principal.courseIds.length > 0 &&
+      !principal.courseIds.includes(courseId)
+    ) {
+      return null;
+    }
+
+    const rawQuestions = this.#repository.listCourseQuestionsForAnalytics
+      ? await this.#repository.listCourseQuestionsForAnalytics(courseId)
+      : [];
+
+    const courseFaqs = this.#faqProvider ? this.#faqProvider.getFaqsForCourse(courseId) : [];
+
+    const topicCounts = new Map<string, number>();
+
+    for (const q of rawQuestions) {
+      const trimmed = q.trim();
+      if (!trimmed) continue;
+
+      let topic = 'Other / General';
+
+      const bracketMatch = /^\[([^\]]+)\]/.exec(trimmed);
+      if (bracketMatch?.[1]?.trim()) {
+        topic = bracketMatch[1].trim();
+      } else if (courseFaqs.length > 0) {
+        const normQ = trimmed
+          .toLowerCase()
+          .replace(/[^\p{L}\p{N}\s]/gu, '')
+          .trim();
+
+        if (normQ) {
+          const match = courseFaqs.find((entry) =>
+            entry.patterns.some((pattern) => {
+              const normPat = pattern
+                .toLowerCase()
+                .replace(/[^\p{L}\p{N}\s]/gu, '')
+                .trim();
+              return normQ.includes(normPat) || normPat.includes(normQ);
+            }),
+          );
+
+          if (match) {
+            topic = match.citations[0]?.heading || match.id;
+          }
+        }
+      }
+
+      topicCounts.set(topic, (topicCounts.get(topic) ?? 0) + 1);
+    }
+
+    const K_THRESHOLD = 3;
+    let suppressedCount = 0;
+    const topics: TeacherTopicSummary[] = [];
+
+    for (const [topic, count] of topicCounts.entries()) {
+      if (count < K_THRESHOLD) {
+        suppressedCount += count;
+      } else {
+        topics.push({ topic, count });
+      }
+    }
+
+    if (options?.groupByOther && suppressedCount >= K_THRESHOLD) {
+      const existingOther = topics.find((t) => t.topic === 'Other / General');
+      if (existingOther) {
+        const idx = topics.indexOf(existingOther);
+        topics[idx] = { topic: 'Other / General', count: existingOther.count + suppressedCount };
+      } else {
+        topics.push({ topic: 'Other / General', count: suppressedCount });
+      }
+    }
+
+    topics.sort((a, b) => b.count - a.count || a.topic.localeCompare(b.topic));
+
+    return {
+      courseId,
+      totalQuestions: rawQuestions.length,
+      topics,
+      suppressedCount,
+      kThreshold: K_THRESHOLD,
+    };
   }
 }

@@ -1337,6 +1337,125 @@
         }
       }
     },
+    "/api/tutoring/teacher/topics": {
+      "get": {
+        "tags": ["Tutoring"],
+        "summary": "Retrieve anonymous aggregate frequently asked topics for a course",
+        "description": "Authorized teacher/support analytics endpoint (T3-030). Returns course-scoped topic clusters with low-count k-anonymity suppression (k >= 3) to protect learner privacy. Strictly excludes personal learner IDs, names, timestamps, and conversation transcripts.",
+        "operationId": "getTeacherTopics",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "courseId",
+            "in": "query",
+            "required": true,
+            "description": "Course identifier to retrieve aggregate topics for",
+            "schema": {
+              "type": "string",
+              "example": "course-1"
+            }
+          },
+          {
+            "name": "groupByOther",
+            "in": "query",
+            "required": false,
+            "description": "Whether to group suppressed low-count topics under Other / General if count >= 3",
+            "schema": {
+              "type": "string",
+              "example": "false"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aggregate course topics retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "courseId",
+                    "totalQuestions",
+                    "topics",
+                    "suppressedCount",
+                    "kThreshold"
+                  ],
+                  "properties": {
+                    "courseId": {
+                      "type": "string",
+                      "example": "course-1"
+                    },
+                    "totalQuestions": {
+                      "type": "integer",
+                      "example": 10
+                    },
+                    "topics": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["topic", "count"],
+                        "properties": {
+                          "topic": {
+                            "type": "string",
+                            "example": "Introduction"
+                          },
+                          "count": {
+                            "type": "integer",
+                            "example": 4
+                          }
+                        }
+                      }
+                    },
+                    "suppressedCount": {
+                      "type": "integer",
+                      "example": 3
+                    },
+                    "kThreshold": {
+                      "type": "integer",
+                      "example": 3
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid course ID supplied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: teacher or support role with course grant required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/help/requests": {
       "post": {
         "tags": ["Human Help"],
