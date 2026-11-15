@@ -22,8 +22,8 @@ This report synthesizes the complete accessibility, assistive technology, and co
   6. Desktop WebRTC screen sharing with explicit learner initiation, persistent stop control, and mobile fallback disclosure.
   7. Decoupled `<script>` loader and sandboxed `<iframe>` embed compatible with the official Savanna host.
 - **Excluded Surfaces / Feature Ledger:**
-  - Full-brief secondary channels (Telegram bot/voice, outbound SMS job notifications) are tracked as time-permitting in the backlog. Scoped SMS subscriptions and delivery have independent evidence ([`docs/evidence/t3-021-a-sms-subscriptions.md`](t3-021-a-sms-subscriptions.md), [`docs/evidence/t3-021-b-sms-job-alerts.md`](t3-021-b-sms-job-alerts.md)). The final full-brief channel aggregation will be recorded under T3-025-D (#98).
   - Production Savanna OAuth / single-sign-on identity service was not provided by the organizer; tested with cryptographically verified synthetic session tokens matching the agreed contract.
+  - Secondary channels (Telegram bot/voice review/speech output and SMS job alerts/bilingual opt-out) are fully implemented and verified under T3-025-D ([`docs/evidence/t3-025-d-channel-accessibility.md`](evidence/t3-025-d-channel-accessibility.md)).
 
 ---
 
@@ -84,12 +84,13 @@ This report synthesizes the complete accessibility, assistive technology, and co
 
 ## 4. Co-Design Verification Evidence Summary
 
-- **Desktop Tasks (NVDA / Keyboard):** Proven in [`docs/evidence/t3-025-a-accessibility-desktop.md`](t3-025-a-accessibility-desktop.md) and [`docs/evidence/t3-009-b-co-design-task.md`](t3-009-b-co-design-task.md). Zero axe-core violations across 20 rendered test states.
-- **Mobile Journey (TalkBack / Android):** Proven in [`docs/evidence/t3-025-b-android-journey.md`](t3-025-b-android-journey.md). All 7 core mobile tasks completed unaided under 3G and offline conditions.
-- **Embedded iFrame Interaction:** Proven in [`docs/evidence/t3-026-b-savanna-embed.md`](t3-026-b-savanna-embed.md) and [`docs/evidence/t3-026-d-static-starter-journey.md`](t3-026-d-static-starter-journey.md). Iframe contains accessible `title="Learning Assistant"`, handles postMessage resizing, and traps/releases focus cleanly.
+- **Desktop Tasks (NVDA / Keyboard):** Proven in [`docs/evidence/t3-025-a-accessibility-desktop.md`](evidence/t3-025-a-accessibility-desktop.md) and [`docs/evidence/t3-009-b-co-design-task.md`](evidence/t3-009-b-co-design-task.md). Zero axe-core violations across 20 rendered test states.
+- **Mobile Journey (TalkBack / Android):** Proven in [`docs/evidence/t3-025-b-android-journey.md`](evidence/t3-025-b-android-journey.md). All 7 core mobile tasks completed unaided under 3G and offline conditions.
+- **Embedded iFrame Interaction:** Proven in [`docs/evidence/t3-026-b-savanna-embed.md`](evidence/t3-026-b-savanna-embed.md) and [`docs/evidence/t3-026-d-static-starter-journey.md`](evidence/t3-026-d-static-starter-journey.md). Iframe contains accessible `title="Learning Assistant"`, handles postMessage resizing, and traps/releases focus cleanly.
+- **Added Channels (Telegram & SMS):** Proven in [`docs/evidence/t3-025-d-channel-accessibility.md`](evidence/t3-025-d-channel-accessibility.md). Telegram voice reviews provide accessible inline action buttons with full transcript disclosure; speech notes preserve full written text and citations with an on-demand listen button; SMS job alerts provide GSM-7/UTF-16 safe segmenting and bilingual `STOP` / `አቁም` opt-out. 100% operable under sound-off setups.
 
 ---
 
 ## 5. Conformance Claim & Sign-Off
 
-The core baseline implementation of the Track 3 multilingual assistant satisfies WCAG 2.1 Level AA across all evaluated surfaces. All criteria are substantiated by automated test suites and reproducible device evidence.
+The complete Track 3 learning assistant platform—spanning the core web interface, mobile responsive viewports, embedded iframes, and secondary Telegram and SMS channels—satisfies WCAG 2.1 / 2.2 Level AA across all evaluated surfaces. All criteria are substantiated by automated regression suites and reproducible device evidence.
