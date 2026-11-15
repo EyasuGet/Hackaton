@@ -1,7 +1,7 @@
 {
   "@context": "https://schema.org",
   "@type": "JobPosting",
-  "identifier": "job-ethio-tech-software-engineer-01",
+  "identifier": "job-addis-software-engineer-01",
   "title": "Junior Software Engineer",
   "description": "Build accessible educational and career platforms using TypeScript and React. Collaborates across design and engineering teams to ensure high availability and responsiveness for learners across Ethiopia.",
   "datePosted": "2026-11-01T08:00:00.000Z",
@@ -9,8 +9,8 @@
   "employmentType": "FULL_TIME",
   "hiringOrganization": {
     "@type": "Organization",
-    "name": "Ethio Tech Solutions",
-    "sameAs": "https://ethiotech.et"
+    "name": "Addis Software Solutions",
+    "sameAs": "https://addissoftware.et"
   },
   "jobLocation": {
     "@type": "Place",
@@ -22,6 +22,6 @@
     }
   },
   "occupationalCategory": "software-engineering",
-  "url": "https://ethiotech.et/careers/junior-software-engineer",
+  "url": "https://addissoftware.et/careers/junior-software-engineer",
   "accessibilityRequirements": "Screen reader accessible tools, adaptive keyboard support, and remote accommodation available upon request."
 }

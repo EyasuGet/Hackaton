@@ -209,7 +209,7 @@ export class JobAnswers {
         return job;
       }
       if (
-        (normTitle.includes('data entry') || normOrg.includes('ethio tech')) &&
+        normTitle.includes('data entry') &&
         (normQ.includes('data entry') ||
           normQ.includes('data clerk') ||
           normQ.includes('records clerk') ||
@@ -217,6 +217,21 @@ export class JobAnswers {
           normQ.includes('ዳታ') ||
           normQ.includes('ክለርክ') ||
           normQ.includes('ኢትዮ ቴክ'))
+      ) {
+        return job;
+      }
+      if (
+        normOrg.includes('ethio tech') &&
+        (normQ.includes('ethio tech') || normQ.includes('ኢትዮ ቴክ'))
+      ) {
+        return job;
+      }
+      if (
+        (normTitle.includes('software engineer') || normOrg.includes('addis software')) &&
+        (normQ.includes('software engineer') ||
+          normQ.includes('addis software') ||
+          normQ.includes('ሶፍትዌር') ||
+          normQ.includes('አዲስ ሶፍትዌር'))
       ) {
         return job;
       }

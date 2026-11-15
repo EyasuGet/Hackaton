@@ -36,7 +36,7 @@ The implemented integration:
 | Application | `JobAnswers` (accommodation and requirement Q&A grounding) | [`apps/api/src/modules/careers/application/job-answers.ts`](../../apps/api/src/modules/careers/application/job-answers.ts) |
 | Presentation | `GET /api/jobs/:id` with `Accept: application/ld+json` content negotiation | [`apps/api/src/modules/careers/presentation/http/careers-routes.ts`](../../apps/api/src/modules/careers/presentation/http/careers-routes.ts) |
 | API Contract | OpenAPI 3.1 Specification (`/api/jobs/{id}`, `JobDetail`, `SchemaOrgJobPosting`) | [`docs/contracts/openapi.json`](../contracts/openapi.json) |
-| Public Fixture | Public Partner JobPosting JSON-LD Fixture | [`fixtures/jobs/partner-ethio-tech-software-engineer.json`](../../fixtures/jobs/partner-ethio-tech-software-engineer.json) |
+| Public Fixture | Public Partner JobPosting JSON-LD Fixture | [`fixtures/jobs/partner-schema-org-job.json`](../../fixtures/jobs/partner-schema-org-job.json) |
 | Automated Tests | Unit, route, and grounding test suite (15 tests) | [`apps/api/src/modules/careers/schema-org-job-posting.test.ts`](../../apps/api/src/modules/careers/schema-org-job-posting.test.ts) |
 
 ---

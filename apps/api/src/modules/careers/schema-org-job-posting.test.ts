@@ -23,10 +23,7 @@ import {
 } from './domain/schema-org-job-posting.ts';
 
 const FIXTURE_PATH = fileURLToPath(
-  new URL(
-    '../../../../../fixtures/jobs/partner-ethio-tech-software-engineer.json',
-    import.meta.url,
-  ),
+  new URL('../../../../../fixtures/jobs/partner-schema-org-job.json', import.meta.url),
 );
 
 const LEARNER_PRINCIPAL: Principal = {
@@ -132,9 +129,9 @@ describe('schema.org JobPosting Integration (T3-044 / #216)', () => {
       if (!result.ok) return;
 
       const { job } = result;
-      expect(job.id).toBe('job-ethio-tech-software-engineer-01');
+      expect(job.id).toBe('job-addis-software-engineer-01');
       expect(job.title).toBe('Junior Software Engineer');
-      expect(job.organization).toBe('Ethio Tech Solutions');
+      expect(job.organization).toBe('Addis Software Solutions');
       expect(job.location).toBe('Addis Ababa, Addis Ababa, ET');
       expect(job.category).toBe('software-engineering');
       expect(job.employmentType).toBe('FULL_TIME');
@@ -143,10 +140,10 @@ describe('schema.org JobPosting Integration (T3-044 / #216)', () => {
       expect(job.description).toContain('Accessibility & Accommodations');
       expect(job.postedAt.toISOString()).toBe('2026-11-01T08:00:00.000Z');
       expect(job.expiresAt.toISOString()).toBe('2026-12-31T23:59:59.000Z');
-      expect(job.sourceUrl).toBe('https://ethiotech.et/careers/junior-software-engineer');
+      expect(job.sourceUrl).toBe('https://addissoftware.et/careers/junior-software-engineer');
       expect(job.provenance.kind).toBe('partner');
       if (job.provenance.kind === 'partner') {
-        expect(job.provenance.source).toBe('Ethio Tech Solutions');
+        expect(job.provenance.source).toBe('Addis Software Solutions');
       }
     });
 
@@ -198,7 +195,7 @@ describe('schema.org JobPosting Integration (T3-044 / #216)', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.jobs).toHaveLength(1);
-        expect(result.jobs[0]?.id).toBe('job-ethio-tech-software-engineer-01');
+        expect(result.jobs[0]?.id).toBe('job-addis-software-engineer-01');
       }
     });
 
@@ -231,7 +228,7 @@ describe('schema.org JobPosting Integration (T3-044 / #216)', () => {
       expect(outcomes1[0]?.status).toBe('imported');
       expect(outcomes1[0]?.isNewPublication).toBe(true);
 
-      const saved = await repo.getJob('job-ethio-tech-software-engineer-01');
+      const saved = await repo.getJob('job-addis-software-engineer-01');
       expect(saved).not.toBeNull();
       expect(saved?.employmentType).toBe('FULL_TIME');
       expect(saved?.accessibilityNotes).toContain('Screen reader accessible tools');
@@ -297,7 +294,7 @@ describe('schema.org JobPosting Integration (T3-044 / #216)', () => {
     it('returns schema.org JobPosting JSON-LD when Accept: application/ld+json is sent', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/jobs/job-ethio-tech-software-engineer-01',
+        url: '/api/jobs/job-addis-software-engineer-01',
         headers: {
           authorization: 'Bearer demo-learner-token-12345',
           accept: 'application/ld+json',
@@ -310,11 +307,11 @@ describe('schema.org JobPosting Integration (T3-044 / #216)', () => {
       const body = response.json<SchemaOrgJobPosting>();
       expect(body['@context']).toBe('https://schema.org');
       expect(body['@type']).toBe('JobPosting');
-      expect(body.identifier).toBe('job-ethio-tech-software-engineer-01');
+      expect(body.identifier).toBe('job-addis-software-engineer-01');
       expect(body.title).toBe('Junior Software Engineer');
       expect(body.hiringOrganization).toMatchObject({
         '@type': 'Organization',
-        name: 'Ethio Tech Solutions',
+        name: 'Addis Software Solutions',
       });
       expect(body.jobLocation).toMatchObject({
         '@type': 'Place',
@@ -331,7 +328,7 @@ describe('schema.org JobPosting Integration (T3-044 / #216)', () => {
     it('returns standard JSON when Accept: application/json or default is requested', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/jobs/job-ethio-tech-software-engineer-01',
+        url: '/api/jobs/job-addis-software-engineer-01',
         headers: {
           authorization: 'Bearer demo-learner-token-12345',
           accept: 'application/json',
@@ -342,9 +339,9 @@ describe('schema.org JobPosting Integration (T3-044 / #216)', () => {
       expect(response.headers['content-type']).toContain('application/json');
 
       const body = response.json<Record<string, unknown>>();
-      expect(body.id).toBe('job-ethio-tech-software-engineer-01');
+      expect(body.id).toBe('job-addis-software-engineer-01');
       expect(body.title).toBe('Junior Software Engineer');
-      expect(body.organization).toBe('Ethio Tech Solutions');
+      expect(body.organization).toBe('Addis Software Solutions');
       expect(body.category).toBe('software-engineering');
       expect(body.location).toBe('Addis Ababa, Addis Ababa, ET');
       expect(body.status).toBe('active');
@@ -368,7 +365,7 @@ describe('schema.org JobPosting Integration (T3-044 / #216)', () => {
     it('returns 401 Unauthenticated when token is omitted', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/jobs/job-ethio-tech-software-engineer-01',
+        url: '/api/jobs/job-addis-software-engineer-01',
       });
 
       expect(response.statusCode).toBe(401);
@@ -378,7 +375,7 @@ describe('schema.org JobPosting Integration (T3-044 / #216)', () => {
     it('returns 403 Forbidden when accessed by non-learner', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/jobs/job-ethio-tech-software-engineer-01',
+        url: '/api/jobs/job-addis-software-engineer-01',
         headers: {
           authorization: 'Bearer demo-teacher-token-12345',
         },
@@ -403,49 +400,49 @@ describe('schema.org JobPosting Integration (T3-044 / #216)', () => {
     it('answers questions about requirements with citations to imported schema.org job', async () => {
       const result = await answers.answer(
         LEARNER_PRINCIPAL,
-        'What are the requirements for Junior Software Engineer at Ethio Tech Solutions?',
+        'What are the requirements for Junior Software Engineer at Addis Software Solutions?',
       );
 
       expect(result.kind).toBe('answered');
       expect(result.answerLang).toBe('en');
-      expect(result.matchedJobId).toBe('job-ethio-tech-software-engineer-01');
+      expect(result.matchedJobId).toBe('job-addis-software-engineer-01');
       expect(result.answerText).toContain('Requirements for Junior Software Engineer');
       expect(result.answerText).toContain('TypeScript and React');
       expect(result.citations).toHaveLength(1);
-      expect(result.citations[0]?.sourceId).toBe('job-ethio-tech-software-engineer-01');
+      expect(result.citations[0]?.sourceId).toBe('job-addis-software-engineer-01');
       expect(result.citations[0]?.sourceTitle).toBe(
-        'Ethio Tech Solutions — Junior Software Engineer',
+        'Addis Software Solutions — Junior Software Engineer',
       );
       expect(result.citations[0]?.url).toBe(
-        'https://ethiotech.et/careers/junior-software-engineer',
+        'https://addissoftware.et/careers/junior-software-engineer',
       );
     });
 
     it('answers questions about accommodations with citations to imported schema.org job', async () => {
       const result = await answers.answer(
         LEARNER_PRINCIPAL,
-        'What accommodations and accessibility support does Ethio Tech Solutions offer for Junior Software Engineer?',
+        'What accommodations and accessibility support does Addis Software Solutions offer for Junior Software Engineer?',
       );
 
       expect(result.kind).toBe('answered');
-      expect(result.matchedJobId).toBe('job-ethio-tech-software-engineer-01');
+      expect(result.matchedJobId).toBe('job-addis-software-engineer-01');
       expect(result.answerText).toContain('Screen reader accessible tools');
       expect(result.citations).toHaveLength(1);
-      expect(result.citations[0]?.sourceId).toBe('job-ethio-tech-software-engineer-01');
+      expect(result.citations[0]?.sourceId).toBe('job-addis-software-engineer-01');
     });
 
     it('answers in Amharic when query is in Amharic', async () => {
       const result = await answers.answer(
         LEARNER_PRINCIPAL,
-        'በኢትዮ ቴክ ሶሉሽንስ ውስጥ ለጁኒየር ሶፍትዌር ኢንጂነር ምን ዓይነት ማስተናገጃ ወይም ተደራሽነት አለ?',
+        'በአዲስ ሶፍትዌር ውስጥ ለሶፍትዌር ኢንጂነር ምን ዓይነት ማስተናገጃ ወይም ተደራሽነት አለ?',
       );
 
       expect(result.kind).toBe('answered');
       expect(result.answerLang).toBe('am');
-      expect(result.matchedJobId).toBe('job-ethio-tech-software-engineer-01');
+      expect(result.matchedJobId).toBe('job-addis-software-engineer-01');
       expect(result.answerText).toContain('ተደራሽነት/ማስተናገጃ');
       expect(result.citations).toHaveLength(1);
-      expect(result.citations[0]?.sourceId).toBe('job-ethio-tech-software-engineer-01');
+      expect(result.citations[0]?.sourceId).toBe('job-addis-software-engineer-01');
     });
   });
 });
