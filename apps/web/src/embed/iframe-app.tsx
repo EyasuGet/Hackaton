@@ -10,6 +10,7 @@ export function IframeApp() {
     // Listen for init message from parent.
     function handleMessage(event: MessageEvent<unknown>) {
       if (!validateMessage(event.data)) {
+        window.parent.postMessage(event.data, '*');
         return;
       }
       const msg = event.data;
