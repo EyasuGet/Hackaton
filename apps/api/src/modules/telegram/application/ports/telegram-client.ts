@@ -5,6 +5,7 @@
 export interface TelegramSendMessageParams {
   readonly chatId: string;
   readonly text: string;
+  readonly replyToMessageId?: number | undefined;
   readonly replyMarkup?: {
     readonly inline_keyboard?: ReadonlyArray<
       ReadonlyArray<{
@@ -33,6 +34,15 @@ export interface TelegramAnswerCallbackParams {
   readonly text?: string | undefined;
 }
 
+export interface TelegramSendVoiceParams {
+  readonly chatId: string | number;
+  readonly voice: Uint8Array;
+  readonly caption?: string | undefined;
+  readonly duration?: number | undefined;
+  readonly replyToMessageId?: number | undefined;
+  readonly replyMarkup?: TelegramSendMessageParams['replyMarkup'];
+}
+
 export interface TelegramGetFileResult {
   readonly ok: boolean;
   readonly filePath?: string | undefined;
@@ -42,6 +52,7 @@ export interface TelegramGetFileResult {
 
 export interface TelegramClient {
   sendMessage(params: TelegramSendMessageParams): Promise<TelegramSendResult>;
+  sendVoice?(params: TelegramSendVoiceParams): Promise<TelegramSendResult>;
   answerCallbackQuery?(params: TelegramAnswerCallbackParams): Promise<boolean>;
   getFile?(fileId: string): Promise<TelegramGetFileResult>;
   downloadFile?(filePath: string): Promise<Uint8Array | null>;

@@ -74,6 +74,7 @@ export interface TelegramIdentity {
   readonly revokedAt?: Date | undefined;
   readonly externalConsent?: boolean | undefined;
   readonly activeCourseId?: string | undefined;
+  readonly speechEnabled?: boolean | undefined;
 }
 
 export interface TelegramCitation {

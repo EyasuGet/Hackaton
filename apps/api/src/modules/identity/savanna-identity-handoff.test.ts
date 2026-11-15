@@ -18,7 +18,7 @@ const TEST_AUDIENCE = 'https://assistant.alxafrica.com';
 const ALLOWED_ORIGIN = 'http://localhost:5173';
 
 function createAdapter(now: Date = new Date('2026-11-15T12:00:00Z')) {
-  const replayCache = new MemoryReplayCache();
+  const replayCache = new MemoryReplayCache(() => now);
   const sessionStore = new MemoryHostSessionStore();
   const adapter = new SavannaHostIdentityAdapter(
     {

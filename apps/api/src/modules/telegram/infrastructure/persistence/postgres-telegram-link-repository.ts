@@ -209,8 +209,9 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       revoked_at: Date | null;
       external_consent: boolean;
       active_course_id: string | null;
+      speech_enabled?: boolean;
     }>(
-      `SELECT id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id
+      `SELECT id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id, speech_enabled
        FROM telegram_identities
        WHERE telegram_user_id = $1 AND revoked_at IS NULL`,
       [telegramUserId],
@@ -227,6 +228,7 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       revokedAt: row.revoked_at ?? undefined,
       externalConsent: row.external_consent,
       activeCourseId: row.active_course_id ?? undefined,
+      speechEnabled: row.speech_enabled ?? false,
     };
   }
 
@@ -241,8 +243,9 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       revoked_at: Date | null;
       external_consent: boolean;
       active_course_id: string | null;
+      speech_enabled?: boolean;
     }>(
-      `SELECT id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id
+      `SELECT id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id, speech_enabled
        FROM telegram_identities
        WHERE learner_id = $1 AND revoked_at IS NULL`,
       [learnerId],
@@ -259,12 +262,17 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       revokedAt: row.revoked_at ?? undefined,
       externalConsent: row.external_consent,
       activeCourseId: row.active_course_id ?? undefined,
+      speechEnabled: row.speech_enabled ?? false,
     };
   }
 
   async setPreferences(
     learnerId: string,
-    preferences: { readonly externalConsent?: boolean; readonly activeCourseId?: string },
+    preferences: {
+      readonly externalConsent?: boolean;
+      readonly activeCourseId?: string;
+      readonly speechEnabled?: boolean;
+    },
   ): Promise<TelegramIdentity | null> {
     const existing = await this.findIdentityByLearnerId(learnerId);
     if (!existing) return null;
@@ -277,6 +285,10 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       preferences.activeCourseId !== undefined
         ? preferences.activeCourseId
         : existing.activeCourseId;
+    const newSpeechEnabled =
+      preferences.speechEnabled !== undefined
+        ? preferences.speechEnabled
+        : (existing.speechEnabled ?? false);
 
     const result = await this.#pool.query<{
       id: string;
@@ -288,12 +300,13 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       revoked_at: Date | null;
       external_consent: boolean;
       active_course_id: string | null;
+      speech_enabled?: boolean;
     }>(
       `UPDATE telegram_identities
-       SET external_consent = $1, active_course_id = $2
-       WHERE learner_id = $3 AND revoked_at IS NULL
-       RETURNING id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id`,
-      [newConsent, newCourseId ?? null, learnerId],
+       SET external_consent = $1, active_course_id = $2, speech_enabled = $3
+       WHERE learner_id = $4 AND revoked_at IS NULL
+       RETURNING id, learner_id, telegram_user_id, telegram_chat_id, telegram_username, linked_at, revoked_at, external_consent, active_course_id, speech_enabled`,
+      [newConsent, newCourseId ?? null, newSpeechEnabled, learnerId],
     );
     const row = result.rows[0];
     if (!row) return null;
@@ -307,6 +320,7 @@ export class PostgresTelegramLinkRepository implements TelegramLinkRepository {
       revokedAt: row.revoked_at ?? undefined,
       externalConsent: row.external_consent,
       activeCourseId: row.active_course_id ?? undefined,
+      speechEnabled: row.speech_enabled ?? false,
     };
   }
 

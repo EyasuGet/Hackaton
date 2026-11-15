@@ -54,7 +54,11 @@ export interface TelegramLinkRepository {
    */
   setPreferences(
     learnerId: string,
-    preferences: { readonly externalConsent?: boolean; readonly activeCourseId?: string },
+    preferences: {
+      readonly externalConsent?: boolean;
+      readonly activeCourseId?: string;
+      readonly speechEnabled?: boolean;
+    },
   ): Promise<TelegramIdentity | null>;
 
   /**

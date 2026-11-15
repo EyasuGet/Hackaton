@@ -5,6 +5,8 @@ import type { JobPreferencesRepository } from '../../careers/application/ports/j
 import type { ContentAccess } from '../../content/application/content-access.ts';
 import { ownedScope, type Principal } from '../../identity/domain/principal.ts';
 import type { TranscriptionPort } from '../../tutoring/application/ports/transcription-port.ts';
+import type { SpeechSynthesizerProvider } from '../../tutoring/application/ports/speech-synthesizer-provider.ts';
+import type { ProviderAdmissionController } from '../../tutoring/application/provider-admission.ts';
 import {
   TutoringError,
   type AnswerResult,
@@ -79,6 +81,8 @@ export interface TelegramLinkServiceOptions {
   readonly content?: ContentAccess | undefined;
   readonly messenger?: TelegramMessenger | undefined;
   readonly transcription?: TranscriptionPort | undefined;
+  readonly speechProvider?: SpeechSynthesizerProvider | undefined;
+  readonly admissionController?: ProviderAdmissionController | undefined;
 }
 
 export interface IssuedTelegramLinkCode {
@@ -93,6 +97,7 @@ export interface TelegramLinkStatus {
   readonly linkedAt?: string | undefined;
   readonly externalConsent?: boolean | undefined;
   readonly activeCourseId?: string | undefined;
+  readonly speechEnabled?: boolean | undefined;
 }
 
 export type LinkResult =
@@ -177,6 +182,12 @@ export type WebhookHandlingResult =
       readonly status: 'preference_updated';
       readonly externalConsent?: boolean | undefined;
       readonly activeCourseId?: string | undefined;
+      readonly speechEnabled?: boolean | undefined;
+    }
+  | {
+      readonly status: 'speech_sent';
+      readonly updateId: number;
+      readonly messageId?: number | undefined;
     }
   | {
       readonly status: 'citation';
@@ -220,6 +231,8 @@ export class TelegramLinkService {
   readonly #content?: ContentAccess | undefined;
   readonly #messenger?: TelegramMessenger | undefined;
   readonly #transcription?: TranscriptionPort | undefined;
+  readonly #speechProvider?: SpeechSynthesizerProvider | undefined;
+  readonly #admissionController?: ProviderAdmissionController | undefined;
   readonly #now: () => Date;
 
   constructor(repository: TelegramLinkRepository, options: TelegramLinkServiceOptions = {}) {
@@ -233,6 +246,8 @@ export class TelegramLinkService {
     this.#content = options.content;
     this.#messenger = options.messenger;
     this.#transcription = options.transcription;
+    this.#speechProvider = options.speechProvider;
+    this.#admissionController = options.admissionController;
     this.#now = options.now ?? (() => new Date());
     this.#rateLimiter = options.rateLimiter ?? new SlidingWindowRateLimiter(15, 60_000, this.#now);
     this.#sender =
@@ -366,15 +381,88 @@ export class TelegramLinkService {
         ? { externalConsent: identity.externalConsent }
         : {}),
       ...(identity.activeCourseId ? { activeCourseId: identity.activeCourseId } : {}),
+      ...(identity.speechEnabled !== undefined ? { speechEnabled: identity.speechEnabled } : {}),
     };
   }
 
   async setPreferences(
     learner: Principal,
-    preferences: { readonly externalConsent?: boolean; readonly activeCourseId?: string },
+    preferences: {
+      readonly externalConsent?: boolean;
+      readonly activeCourseId?: string;
+      readonly speechEnabled?: boolean;
+    },
   ): Promise<TelegramIdentity | null> {
     if (learner.role !== 'learner') return null;
     return this.#repository.setPreferences(learner.id, preferences);
+  }
+
+  async #synthesizeSpeech(
+    text: string,
+    lang: 'en' | 'am',
+    principalId?: string,
+  ): Promise<Buffer | null> {
+    if (!this.#speechProvider || !this.#speechProvider.isAvailable()) {
+      return null;
+    }
+
+    if (this.#admissionController) {
+      if (text.length > this.#admissionController.limits.maxSpeechTextLength) {
+        throw new Error(
+          `Speech text exceeds maximum allowed length of ${this.#admissionController.limits.maxSpeechTextLength} characters`,
+        );
+      }
+    }
+
+    let lease;
+    if (this.#admissionController && principalId) {
+      lease = await this.#admissionController.acquire(principalId);
+    }
+
+    try {
+      const buffer = await this.#speechProvider.synthesize({
+        text,
+        language: lang,
+      });
+      return buffer;
+    } finally {
+      lease?.release();
+    }
+  }
+
+  async #tryDeliverSpeech(params: {
+    chatId: string | number;
+    text: string;
+    lang: 'en' | 'am';
+    replyToMessageId?: number | undefined;
+    principalId?: string | undefined;
+  }): Promise<{ ok: boolean; messageId?: number }> {
+    if (
+      !this.#speechProvider ||
+      !this.#speechProvider.isAvailable() ||
+      !this.#telegramClient?.sendVoice
+    ) {
+      return { ok: false };
+    }
+
+    let audioBuffer: Buffer | null = null;
+    try {
+      audioBuffer = await this.#synthesizeSpeech(params.text, params.lang, params.principalId);
+      if (!audioBuffer) return { ok: false };
+
+      const res = await this.#telegramClient.sendVoice({
+        chatId: params.chatId,
+        voice: audioBuffer,
+        replyToMessageId: params.replyToMessageId,
+      });
+      return { ok: res.ok, ...(res.messageId !== undefined ? { messageId: res.messageId } : {}) };
+    } catch {
+      return { ok: false };
+    } finally {
+      if (audioBuffer) {
+        audioBuffer.fill(0);
+      }
+    }
   }
 
   async handleWebhookUpdate(
@@ -414,6 +502,96 @@ export class TelegramLinkService {
           return { status: 'unsubscribed', unlinked: false, channel: 'telegram', principal };
         }
         return { status: 'unauthenticated' };
+      }
+
+      // On-demand speech synthesis callback (T3-013-B)
+      const speechMatch = /^ts:(\d+)$/i.exec(cb.data ?? '');
+      if (speechMatch) {
+        const targetUpdateId = parseInt(speechMatch[1]!, 10);
+        const principal = await this.resolveLearner(cb.from.id);
+        if (!principal) {
+          await this.#telegramClient?.answerCallbackQuery?.({
+            callbackQueryId: cb.id,
+            text: 'No active linked account found.',
+          });
+          return { status: 'unauthenticated' };
+        }
+
+        const cached = await this.#repository.findProcessedUpdate(targetUpdateId);
+        if (!cached || !cached.responsePayload) {
+          await this.#telegramClient?.answerCallbackQuery?.({
+            callbackQueryId: cb.id,
+            text: 'Answer audio is no longer available.',
+          });
+          return { status: 'rejected', reason: 'review_expired_or_processed' };
+        }
+
+        const payload = cached.responsePayload;
+        const rawAnswer =
+          typeof payload.rawAnswer === 'string'
+            ? payload.rawAnswer
+            : typeof payload.answer === 'string'
+              ? payload.answer
+              : '';
+        const lang: 'en' | 'am' =
+          payload.lang === 'am' || payload.answerLang === 'am' ? 'am' : 'en';
+
+        if (
+          !this.#speechProvider ||
+          !this.#speechProvider.isAvailable() ||
+          !this.#telegramClient?.sendVoice
+        ) {
+          await this.#telegramClient?.answerCallbackQuery?.({
+            callbackQueryId: cb.id,
+            text:
+              lang === 'am'
+                ? 'የድምፅ አገልግሎት ለጊዜው አይገኝም'
+                : 'Speech synthesis is currently unavailable.',
+          });
+          return { status: 'rejected', reason: 'unauthorized_callback' };
+        }
+
+        let audioBuffer: Buffer | null = null;
+        try {
+          audioBuffer = await this.#synthesizeSpeech(rawAnswer, lang, principal.id);
+          if (!audioBuffer) {
+            await this.#telegramClient?.answerCallbackQuery?.({
+              callbackQueryId: cb.id,
+              text:
+                lang === 'am'
+                  ? 'የድምፅ አገልግሎት ለጊዜው አይገኝም'
+                  : 'Speech synthesis is currently unavailable.',
+            });
+            return { status: 'rejected', reason: 'unauthorized_callback' };
+          }
+
+          const sendRes = await this.#telegramClient.sendVoice({
+            chatId: cb.message?.chat.id ?? cb.from.id,
+            voice: audioBuffer,
+            replyToMessageId: cb.message?.messageId,
+          });
+
+          await this.#telegramClient.answerCallbackQuery?.({
+            callbackQueryId: cb.id,
+            text: lang === 'am' ? 'ድምፅ ተልኳል' : 'Audio sent',
+          });
+
+          return {
+            status: 'speech_sent',
+            updateId: targetUpdateId,
+            ...(sendRes.messageId !== undefined ? { messageId: sendRes.messageId } : {}),
+          };
+        } catch {
+          await this.#telegramClient?.answerCallbackQuery?.({
+            callbackQueryId: cb.id,
+            text: lang === 'am' ? 'ድምፅ ማመንጨት አልተሳካም' : 'Could not generate speech audio.',
+          });
+          return { status: 'rejected', reason: 'unauthorized_callback' };
+        } finally {
+          if (audioBuffer) {
+            audioBuffer.fill(0);
+          }
+        }
       }
 
       // Voice review actions (T3-013-A)
@@ -599,11 +777,36 @@ export class TelegramLinkService {
               tutorRes.answerLang,
             );
 
-            if (this.#messenger) {
-              await this.#messenger.sendMessage({
+            const speechEnabled = identity?.speechEnabled === true;
+            const speechMarkup =
+              this.#speechProvider?.isAvailable() && update.updateId && update.updateId > 0
+                ? {
+                    inline_keyboard: [
+                      [
+                        {
+                          text: tutorRes.answerLang === 'am' ? '🔊 አዳምጥ' : '🔊 Listen',
+                          callback_data: `ts:${update.updateId}`,
+                        },
+                      ],
+                    ],
+                  }
+                : undefined;
+
+            let sentMsgId: number | undefined;
+            if (this.#telegramClient) {
+              const res = await this.#telegramClient.sendMessage({
                 chatId: review.telegramChatId,
                 text: formatted,
+                ...(!speechEnabled && speechMarkup ? { replyMarkup: speechMarkup } : {}),
               });
+              if (res.ok) sentMsgId = res.messageId;
+            } else if (this.#messenger) {
+              const res = await this.#messenger.sendMessage({
+                chatId: review.telegramChatId,
+                text: formatted,
+                ...(!speechEnabled && speechMarkup ? { replyMarkup: speechMarkup } : {}),
+              });
+              sentMsgId = res.messageId;
             } else if (this.#sender) {
               await this.#sender.sendMessage({
                 chatId: review.telegramChatId,
@@ -611,7 +814,17 @@ export class TelegramLinkService {
               });
             }
 
-            return {
+            if (speechEnabled) {
+              await this.#tryDeliverSpeech({
+                chatId: review.telegramChatId,
+                text: tutorRes.answerText,
+                lang: tutorRes.answerLang,
+                replyToMessageId: sentMsgId,
+                principalId: principal.id,
+              });
+            }
+
+            const outcome: WebhookHandlingResult = {
               status: 'answered',
               answer: formatted,
               rawAnswer: tutorRes.answerText,
@@ -622,6 +835,18 @@ export class TelegramLinkService {
               provider: tutorRes.provider,
               requestId,
             };
+
+            if (update.updateId && update.updateId > 0) {
+              await this.#repository.recordProcessedUpdate({
+                updateId: update.updateId,
+                telegramUserId: String(cb.from.id),
+                responseStatus: 'answered',
+                responsePayload: outcome,
+                now: this.#now(),
+              });
+            }
+
+            return outcome;
           }
 
           return {
@@ -1086,6 +1311,43 @@ export class TelegramLinkService {
       return { status: 'preference_updated', activeCourseId: active };
     }
 
+    // 10b. Handle voice preference command: /voice [on|off] or /audio [on|off]
+    const voiceCmdMatch = /^\/(?:voice|audio)(?:\s+(on|off|true|false|yes|no))?$/i.exec(text);
+    if (voiceCmdMatch) {
+      const toggle = voiceCmdMatch[1]?.toLowerCase();
+      if (toggle === 'on' || toggle === 'true' || toggle === 'yes') {
+        await this.#repository.setPreferences(principal.id, { speechEnabled: true });
+        const notice =
+          'Audio speech answers enabled. Tutor answers will be accompanied by a voice message.';
+        await this.#messenger?.sendMessage({
+          chatId: message.chat.id,
+          text: notice,
+          replyToMessageId: message.messageId,
+        });
+        return { status: 'preference_updated', speechEnabled: true };
+      }
+      if (toggle === 'off' || toggle === 'false' || toggle === 'no') {
+        await this.#repository.setPreferences(principal.id, { speechEnabled: false });
+        const notice =
+          'Audio speech answers disabled. Tutor answers will only be sent as text with the 🔊 Listen button.';
+        await this.#messenger?.sendMessage({
+          chatId: message.chat.id,
+          text: notice,
+          replyToMessageId: message.messageId,
+        });
+        return { status: 'preference_updated', speechEnabled: false };
+      }
+
+      const current = identity?.speechEnabled === true;
+      const notice = `Audio speech answers are currently ${current ? 'enabled' : 'disabled'}. Use /voice on or /voice off to change.`;
+      await this.#messenger?.sendMessage({
+        chatId: message.chat.id,
+        text: notice,
+        replyToMessageId: message.messageId,
+      });
+      return { status: 'preference_updated', speechEnabled: current };
+    }
+
     // 11. Handle citation following command: /cite <sourceId> <sectionId>
     const citeCmdMatch = /^\/(?:cite|citation)\s+(\S+)\s+(\S+)$/i.exec(text);
     if (citeCmdMatch) {
@@ -1294,11 +1556,49 @@ export class TelegramLinkService {
       result.answerLang,
     );
 
-    await this.#messenger?.sendMessage({
-      chatId: message.chat.id,
-      text: formattedText,
-      replyToMessageId: message.messageId,
-    });
+    const speechEnabled = identity?.speechEnabled === true;
+    const speechMarkup =
+      this.#speechProvider?.isAvailable() && update.updateId && update.updateId > 0
+        ? {
+            inline_keyboard: [
+              [
+                {
+                  text: result.answerLang === 'am' ? '🔊 አዳምጥ' : '🔊 Listen',
+                  callback_data: `ts:${update.updateId}`,
+                },
+              ],
+            ],
+          }
+        : undefined;
+
+    let sentMsgId: number | undefined;
+    if (this.#telegramClient) {
+      const res = await this.#telegramClient.sendMessage({
+        chatId: String(message.chat.id),
+        text: formattedText,
+        replyToMessageId: message.messageId,
+        ...(!speechEnabled && speechMarkup ? { replyMarkup: speechMarkup } : {}),
+      });
+      if (res.ok) sentMsgId = res.messageId;
+    } else if (this.#messenger) {
+      const res = await this.#messenger.sendMessage({
+        chatId: message.chat.id,
+        text: formattedText,
+        replyToMessageId: message.messageId,
+        ...(!speechEnabled && speechMarkup ? { replyMarkup: speechMarkup } : {}),
+      });
+      sentMsgId = res.messageId;
+    }
+
+    if (speechEnabled) {
+      await this.#tryDeliverSpeech({
+        chatId: message.chat.id,
+        text: result.answerText,
+        lang: result.answerLang,
+        replyToMessageId: sentMsgId ?? message.messageId,
+        principalId: principal.id,
+      });
+    }
 
     const outcome: WebhookHandlingResult = {
       status: 'answered',
