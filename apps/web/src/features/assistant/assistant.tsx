@@ -13,6 +13,7 @@ import {
 import { LocaleContext, lookup, T, useT, type MessageKey } from '../../shared/i18n/i18n.tsx';
 import { formatAddisDate, type DateLanguage } from '../../shared/i18n/addis-date.ts';
 import type { AskResult, Citation, ConversationClient } from './conversation.ts';
+import { AudioRecorderError, BrowserAudioRecorder, type AudioRecorder } from './audio-recorder.ts';
 import {
   BrowserSpeechSynthesizer,
   CloudSpeechSynthesizer,
@@ -45,6 +46,17 @@ const SPEECH_PROBLEM_TEXT: Record<SpeechProblemKind, MessageKey> = {
   failed: 'assistant.speechErrorFailed',
   unsupported: 'assistant.speechErrorUnsupported',
   consentRequired: 'assistant.speechErrorConsentRequired',
+};
+
+type VoiceState = 'idle' | 'recording' | 'transcribing' | 'review';
+type VoiceProblemKind = 'micDenied' | 'unsupported' | 'failed' | 'tooLarge' | 'unavailable';
+
+const VOICE_PROBLEM_TEXT: Record<VoiceProblemKind, MessageKey> = {
+  micDenied: 'assistant.voiceMicDenied',
+  unsupported: 'assistant.voiceUnsupported',
+  failed: 'assistant.voiceError',
+  tooLarge: 'assistant.voiceTooLarge',
+  unavailable: 'assistant.voiceUnavailable',
 };
 
 function dateLanguage(lang: string | undefined): DateLanguage {
@@ -85,6 +97,7 @@ export interface AssistantProps {
   readonly onCloudConsentChange?: (consented: boolean) => void;
   readonly consent?: boolean;
   readonly onConsentChange?: (consented: boolean) => void;
+  readonly audioRecorder?: AudioRecorder;
 }
 
 export function Assistant({
@@ -97,11 +110,22 @@ export function Assistant({
   onCloudConsentChange,
   consent,
   onConsentChange,
+  audioRecorder,
 }: AssistantProps) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
+
+  // Voice recording & review state (T3-010-B)
+  const [voiceState, setVoiceState] = useState<VoiceState>('idle');
+  const [voiceProblem, setVoiceProblem] = useState<VoiceProblemKind | null>(null);
+  const recorderRef = useRef<AudioRecorder | null>(null);
+  if (!recorderRef.current) {
+    recorderRef.current = audioRecorder ?? new BrowserAudioRecorder();
+  }
+  const recorder = audioRecorder ?? recorderRef.current;
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Speech playback and consented cloud synthesis state (T3-011)
   const [speechEngine, setSpeechEngine] = useState<'client' | 'cloud'>(defaultSpeechEngine);
@@ -131,6 +155,8 @@ export function Assistant({
     consent: useId(),
     consentHint: useId(),
     speechEngine: useId(),
+    voiceRegion: useId(),
+    voiceProblem: useId(),
   };
   const t = useT();
   const locale = useContext(LocaleContext);
@@ -149,10 +175,11 @@ export function Assistant({
     setPlayingMessageId(null);
   };
 
-  // Stops speech playback on navigation (T3-011)
+  // Stops speech playback and cancels audio recording on navigation
   useEffect(() => {
     const onNavigation = () => {
       stopPlayback();
+      recorder.cancel();
     };
     window.addEventListener('popstate', onNavigation);
     window.addEventListener('beforeunload', onNavigation);
@@ -160,11 +187,94 @@ export function Assistant({
 
     return () => {
       stopPlayback();
+      recorder.cancel();
       window.removeEventListener('popstate', onNavigation);
       window.removeEventListener('beforeunload', onNavigation);
       window.removeEventListener('pagehide', onNavigation);
     };
-  }, []);
+  }, [recorder]);
+
+  async function startVoiceRecording() {
+    stopPlayback();
+    setVoiceProblem(null);
+    try {
+      await recorder.start();
+      setVoiceState('recording');
+      setAnnouncement(lookup(localeRef.current, 'assistant.voiceRecording'));
+    } catch (err: unknown) {
+      if (err instanceof AudioRecorderError) {
+        if (err.kind === 'permission_denied') {
+          setVoiceProblem('micDenied');
+        } else if (err.kind === 'unsupported') {
+          setVoiceProblem('unsupported');
+        } else {
+          setVoiceProblem('failed');
+        }
+      } else {
+        setVoiceProblem('failed');
+      }
+      setVoiceState('idle');
+    }
+  }
+
+  async function stopVoiceRecording() {
+    setVoiceState('transcribing');
+    setVoiceProblem(null);
+    let audioResult;
+    try {
+      audioResult = await recorder.stop();
+    } catch {
+      setVoiceProblem('failed');
+      setVoiceState('idle');
+      return;
+    }
+
+    if (!client.transcribe) {
+      setVoiceProblem('unavailable');
+      setVoiceState('idle');
+      return;
+    }
+
+    try {
+      const outcome = await client.transcribe(audioResult.audioBase64, audioResult.mimeType);
+      if (outcome.kind === 'transcribed') {
+        const text = outcome.transcript.trim();
+        setDraft((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+        setVoiceState('review');
+        setVoiceProblem(null);
+        if (problem === 'empty') setProblem(null);
+        setAnnouncement(lookup(localeRef.current, 'assistant.voiceReviewHint'));
+        textareaRef.current?.focus();
+      } else if (outcome.kind === 'too_large') {
+        setVoiceProblem('tooLarge');
+        setVoiceState('idle');
+      } else if (outcome.kind === 'unsupported_format') {
+        setVoiceProblem('unsupported');
+        setVoiceState('idle');
+      } else if (outcome.kind === 'unavailable') {
+        setVoiceProblem('unavailable');
+        setVoiceState('idle');
+      } else if (outcome.kind === 'denied') {
+        setProblem('denied');
+        setVoiceState('idle');
+      } else {
+        setVoiceProblem('failed');
+        setVoiceState('idle');
+      }
+    } catch {
+      setVoiceProblem('failed');
+      setVoiceState('idle');
+    }
+  }
+
+  function discardVoice() {
+    recorder.cancel();
+    if (voiceState === 'review') {
+      setDraft('');
+    }
+    setVoiceState('idle');
+    setVoiceProblem(null);
+  }
 
   async function startSpeaking(entry: Entry) {
     stopPlayback();
@@ -287,6 +397,9 @@ export function Assistant({
     inFlight.current = true;
     setSending(true);
     setProblem(null);
+    if (voiceState === 'review') {
+      setVoiceState('idle');
+    }
     setAnnouncement(lookup(locale, 'assistant.sending'));
 
     let result: AskResult;
@@ -333,6 +446,14 @@ export function Assistant({
   }
 
   function handleEscape(): boolean {
+    if (voiceState === 'recording') {
+      discardVoice();
+      return true;
+    }
+    if (voiceProblem) {
+      setVoiceProblem(null);
+      return true;
+    }
     if (playbackState === 'playing' || playbackState === 'paused') {
       stopPlayback();
       return true;
@@ -618,7 +739,9 @@ export function Assistant({
         <p id={ids.hint} className="hint">
           <T k="assistant.hint" />
         </p>
+
         <textarea
+          ref={textareaRef}
           id={ids.question}
           value={draft}
           onChange={(event) => {
@@ -626,10 +749,16 @@ export function Assistant({
             if (problem === 'empty') setProblem(null);
           }}
           onKeyDown={onKeyDown}
-          readOnly={sending}
+          readOnly={sending || voiceState === 'recording'}
           rows={3}
           dir="auto"
-          aria-describedby={problem ? `${ids.hint} ${ids.problem}` : ids.hint}
+          aria-describedby={
+            problem
+              ? `${ids.hint} ${ids.problem}`
+              : voiceProblem
+                ? `${ids.hint} ${ids.voiceProblem}`
+                : ids.hint
+          }
           aria-invalid={problem === 'empty' || undefined}
         />
         {problem && (
@@ -637,6 +766,77 @@ export function Assistant({
             <T k={PROBLEM_TEXT[problem]} />
           </p>
         )}
+
+        {/* Voice recording, transcribing, and review controls (T3-010-B) */}
+        <div className="voice-controls" role="region" aria-label={t('assistant.voiceRecord')}>
+          {voiceState === 'idle' && (
+            <button
+              type="button"
+              className="voice-button voice-record"
+              onClick={() => {
+                void startVoiceRecording();
+              }}
+              aria-label={t('assistant.voiceRecord')}
+              disabled={sending}
+            >
+              <T k="assistant.voiceRecord" />
+            </button>
+          )}
+
+          {voiceState === 'recording' && (
+            <div className="voice-active-group">
+              <button
+                type="button"
+                className="voice-button voice-stop"
+                onClick={() => {
+                  void stopVoiceRecording();
+                }}
+                aria-label={t('assistant.voiceStop')}
+              >
+                <T k="assistant.voiceStop" />
+              </button>
+              <button
+                type="button"
+                className="voice-button voice-discard"
+                onClick={discardVoice}
+                aria-label={t('assistant.voiceDiscard')}
+              >
+                <T k="assistant.voiceDiscard" />
+              </button>
+              <span className="voice-status" role="status" aria-live="polite">
+                <T k="assistant.voiceRecording" />
+              </span>
+            </div>
+          )}
+
+          {voiceState === 'transcribing' && (
+            <span className="voice-status" role="status" aria-live="polite">
+              <T k="assistant.voiceTranscribing" />
+            </span>
+          )}
+
+          {voiceState === 'review' && (
+            <div className="voice-review-banner" role="note">
+              <p>
+                <T k="assistant.voiceReviewHint" />
+              </p>
+              <button
+                type="button"
+                className="voice-button voice-discard"
+                onClick={discardVoice}
+                aria-label={t('assistant.voiceDiscard')}
+              >
+                <T k="assistant.voiceDiscard" />
+              </button>
+            </div>
+          )}
+
+          {voiceProblem && (
+            <p id={ids.voiceProblem} className="voice-problem" role="alert">
+              <T k={VOICE_PROBLEM_TEXT[voiceProblem]} />
+            </p>
+          )}
+        </div>
         <div className="actions">
           {/* aria-disabled keeps the button focusable, so keyboard focus is not lost while sending. */}
           <button type="submit" aria-disabled={sending}>
