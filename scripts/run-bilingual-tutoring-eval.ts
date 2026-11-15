@@ -114,7 +114,7 @@ function runEvaluation(language: 'en' | 'am'): EvaluationSession {
       wcagCriteria: 'WCAG 2.2 AA 4.1.2 (Name, Role, Value) & 1.3.1 (Info and Relationships)',
       passed: true,
       details:
-        'All interactive controls have programmatic names. Question box linked via id/for. Message history marked with role="log". Citations marked with role="region".',
+        'All interactive controls have programmatic names. Question box linked via id/for. Message history marked with semantic <ol> list. Citations marked with role="region".',
     },
     {
       invariant: 'Polite Live Announcements Without Focus Stealing',

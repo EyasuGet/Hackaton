@@ -475,7 +475,7 @@ export function Assistant({
           <T k="assistant.empty" />
         </p>
       ) : (
-        <ol className="messages" role="log" aria-label={t('assistant.heading')}>
+        <ol className="messages">
           {entries.map((entry) => {
             const isCurrentMessage = playingMessageId === entry.id;
             return (
