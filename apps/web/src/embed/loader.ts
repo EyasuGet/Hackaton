@@ -91,6 +91,10 @@ export function embedAssistant(config: EmbedConfig): void {
     z-index: 999999;
   `;
   iframe.title = 'Learning assistant';
+  iframe.allow = config.allow ?? 'microphone; display-capture';
+  if (config.sandbox !== undefined) {
+    iframe.setAttribute('sandbox', config.sandbox);
+  }
 
   // Append to body before messaging (origin must be loaded first).
   document.body.appendChild(iframe);

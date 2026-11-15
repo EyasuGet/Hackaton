@@ -58,7 +58,15 @@ async function fetchApiStatus(signal: AbortSignal): Promise<ApiStatus> {
 }
 
 /** `handoffCode` is the one-time demo sign-in code taken from the URL at startup. */
-export function App({ handoffCode = null }: { handoffCode?: string | null }) {
+export function App({
+  handoffCode = null,
+  isEmbedded = false,
+  onClose,
+}: {
+  handoffCode?: string | null;
+  isEmbedded?: boolean;
+  onClose?: () => void;
+}) {
   const [status, setStatus] = useState<ApiStatus>('checking');
   const [scenario, setScenarioState] = useState<FixtureScenario>(
     () => loadStoredPreferences().scenario ?? 'english',
@@ -205,6 +213,11 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
         <p role="status" aria-label={t('status.label')}>
           <T k={STATUS_TEXT[status]} />
         </p>
+        {isEmbedded && onClose && (
+          <button type="button" onClick={onClose} className="embed-close-btn">
+            Close
+          </button>
+        )}
       </footer>
     </LocaleContext>
   );
