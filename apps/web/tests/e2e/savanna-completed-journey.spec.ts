@@ -161,7 +161,7 @@ test.describe('T3-026-D: Completed core journey in static starter', () => {
 
     // Start accommodation request
     const startBtn = frame.getByRole('button', {
-      name: /request an interview accommodation|start a request/i,
+      name: /request an interview accommodation|start a request|submit another request/i,
     });
     await expect(startBtn).toBeVisible({ timeout: 5000 });
     await startBtn.click();

@@ -174,7 +174,7 @@ test.describe('T3-027-B: Core End-to-End Learner Story', () => {
     // 9. Interview Accommodation Request to Coordinator
     // -------------------------------------------------------------------------
     const startAccomBtn = frame.getByRole('button', {
-      name: /request an interview accommodation|start a request/i,
+      name: /request an interview accommodation|start a request|submit another request/i,
     });
     await expect(startAccomBtn).toBeVisible({ timeout: 5000 });
     await startAccomBtn.click();
@@ -329,7 +329,7 @@ test.describe('T3-027-B: Core End-to-End Learner Story', () => {
 
     // Start accommodation
     const startAccomBtn = frame.getByRole('button', {
-      name: /request an interview accommodation|start a request/i,
+      name: /request an interview accommodation|start a request|submit another request/i,
     });
     await expect(startAccomBtn).toBeVisible({ timeout: 5000 });
     await startAccomBtn.click();
