@@ -18,7 +18,6 @@ import {
 } from './application/delivery-worker.ts';
 import {
   MAX_ATTEMPT_COUNT,
-  type ClaimedDeliveryIntent,
   type NewDeliveryIntent,
 } from './domain/delivery-intent.ts';
 import { PostgresDeliveryIntents } from './infrastructure/postgres-delivery-intents.ts';
@@ -247,7 +246,7 @@ describe('dispatch batch with multiple intents', () => {
 
     let callIndex = 0;
     const mixedPort: DispatchPort = {
-      dispatch: vi.fn().mockImplementation((_intent: ClaimedDeliveryIntent) => {
+      dispatch: vi.fn().mockImplementation(() => {
         const outcomes = [
           { status: 'sent' as const },
           { status: 'failed' as const },
