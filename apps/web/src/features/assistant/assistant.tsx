@@ -740,6 +740,33 @@ export function Assistant({
           <T k="assistant.hint" />
         </p>
 
+        <textarea
+          ref={textareaRef}
+          id={ids.question}
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            if (problem === 'empty') setProblem(null);
+          }}
+          onKeyDown={onKeyDown}
+          readOnly={sending || voiceState === 'recording'}
+          rows={3}
+          dir="auto"
+          aria-describedby={
+            problem
+              ? `${ids.hint} ${ids.problem}`
+              : voiceProblem
+                ? `${ids.hint} ${ids.voiceProblem}`
+                : ids.hint
+          }
+          aria-invalid={problem === 'empty' || undefined}
+        />
+        {problem && (
+          <p id={ids.problem} className="problem" role="alert">
+            <T k={PROBLEM_TEXT[problem]} />
+          </p>
+        )}
+
         {/* Voice recording, transcribing, and review controls (T3-010-B) */}
         <div className="voice-controls" role="region" aria-label={t('assistant.voiceRecord')}>
           {voiceState === 'idle' && (
@@ -810,33 +837,6 @@ export function Assistant({
             </p>
           )}
         </div>
-
-        <textarea
-          ref={textareaRef}
-          id={ids.question}
-          value={draft}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            if (problem === 'empty') setProblem(null);
-          }}
-          onKeyDown={onKeyDown}
-          readOnly={sending || voiceState === 'recording'}
-          rows={3}
-          dir="auto"
-          aria-describedby={
-            problem
-              ? `${ids.hint} ${ids.problem}`
-              : voiceProblem
-                ? `${ids.hint} ${ids.voiceProblem}`
-                : ids.hint
-          }
-          aria-invalid={problem === 'empty' || undefined}
-        />
-        {problem && (
-          <p id={ids.problem} className="problem" role="alert">
-            <T k={PROBLEM_TEXT[problem]} />
-          </p>
-        )}
         <div className="actions">
           {/* aria-disabled keeps the button focusable, so keyboard focus is not lost while sending. */}
           <button type="submit" aria-disabled={sending}>
