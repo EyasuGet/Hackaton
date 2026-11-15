@@ -38,17 +38,14 @@ class InMemoryTelegramIdentityRepository implements TelegramIdentityRepository {
 
   findActiveByPrincipalId(principalId: string): Promise<TelegramIdentity | null> {
     return Promise.resolve(
-      this.identities.find(
-        (id) => id.principalId === principalId && id.revokedAt === null,
-      ) ?? null,
+      this.identities.find((id) => id.principalId === principalId && id.revokedAt === null) ?? null,
     );
   }
 
   findActiveByTelegramUserId(telegramUserId: string): Promise<TelegramIdentity | null> {
     return Promise.resolve(
-      this.identities.find(
-        (id) => id.telegramUserId === telegramUserId && id.revokedAt === null,
-      ) ?? null,
+      this.identities.find((id) => id.telegramUserId === telegramUserId && id.revokedAt === null) ??
+        null,
     );
   }
 
@@ -59,8 +56,7 @@ class InMemoryTelegramIdentityRepository implements TelegramIdentityRepository {
     readonly now: Date;
   }): Promise<TelegramIdentity> {
     const existingIndex = this.identities.findIndex(
-      (id) =>
-        id.principalId === params.principalId && id.telegramUserId === params.telegramUserId,
+      (id) => id.principalId === params.principalId && id.telegramUserId === params.telegramUserId,
     );
 
     if (existingIndex >= 0) {
@@ -391,7 +387,11 @@ describe('TelegramIdentityService', () => {
       };
 
       // Mismatched secret returns unauthorized error
-      const rejected = await service.handleTelegramUpdate(update, 'wrong-secret', 'expected-secret');
+      const rejected = await service.handleTelegramUpdate(
+        update,
+        'wrong-secret',
+        'expected-secret',
+      );
       expect(rejected).toEqual({ handled: false, error: 'unauthorized' });
 
       // Valid secret succeeds

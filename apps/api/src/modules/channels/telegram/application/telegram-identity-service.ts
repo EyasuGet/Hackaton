@@ -47,7 +47,10 @@ export class TelegramIdentityService {
   readonly #clock: () => Date;
   readonly #tokenTtlSeconds: number;
 
-  constructor(repository: TelegramIdentityRepository, options: TelegramIdentityServiceOptions = {}) {
+  constructor(
+    repository: TelegramIdentityRepository,
+    options: TelegramIdentityServiceOptions = {},
+  ) {
     this.#repository = repository;
     this.#clock = options.clock ?? (() => new Date());
     this.#tokenTtlSeconds = options.tokenTtlSeconds ?? 600;
@@ -126,7 +129,8 @@ export class TelegramIdentityService {
       return {
         success: false,
         reason: 'invalid_token',
-        message: 'Invalid or expired linking token. Please generate a new code from the web assistant.',
+        message:
+          'Invalid or expired linking token. Please generate a new code from the web assistant.',
       };
     }
 
@@ -135,7 +139,8 @@ export class TelegramIdentityService {
       return {
         success: false,
         reason: 'token_already_used',
-        message: 'This linking token has already been used. Please generate a new code from the web assistant.',
+        message:
+          'This linking token has already been used. Please generate a new code from the web assistant.',
       };
     }
 
@@ -146,18 +151,22 @@ export class TelegramIdentityService {
       return {
         success: false,
         reason: 'expired_token',
-        message: 'This linking token has expired. Please generate a new code from the web assistant.',
+        message:
+          'This linking token has expired. Please generate a new code from the web assistant.',
       };
     }
 
     // 5. Cross-user linking guard: check if Telegram user is already linked to another principal
-    const existingForTelegram = await this.#repository.findActiveByTelegramUserId(params.telegramUserId);
+    const existingForTelegram = await this.#repository.findActiveByTelegramUserId(
+      params.telegramUserId,
+    );
     if (existingForTelegram) {
       if (existingForTelegram.principalId !== tokenRecord.principalId) {
         return {
           success: false,
           reason: 'already_linked_to_other_account',
-          message: 'This Telegram account is already linked to another learner. Please unlink it first.',
+          message:
+            'This Telegram account is already linked to another learner. Please unlink it first.',
         };
       }
       // If already linked to the same principal, idempotently mark token used and confirm
@@ -170,12 +179,15 @@ export class TelegramIdentityService {
     }
 
     // 6. Re-linking guard: check if this principal is already linked to a different Telegram user
-    const existingForPrincipal = await this.#repository.findActiveByPrincipalId(tokenRecord.principalId);
+    const existingForPrincipal = await this.#repository.findActiveByPrincipalId(
+      tokenRecord.principalId,
+    );
     if (existingForPrincipal && existingForPrincipal.telegramUserId !== params.telegramUserId) {
       return {
         success: false,
         reason: 'account_already_linked',
-        message: 'Your learning account is already linked to a different Telegram account. Please revoke that link from the web assistant before linking a new account.',
+        message:
+          'Your learning account is already linked to a different Telegram account. Please revoke that link from the web assistant before linking a new account.',
       };
     }
 
@@ -191,7 +203,8 @@ export class TelegramIdentityService {
     return {
       success: true,
       identity,
-      message: 'Account linked successfully! You can now ask course questions directly through Telegram.',
+      message:
+        'Account linked successfully! You can now ask course questions directly through Telegram.',
     };
   }
 
@@ -248,7 +261,8 @@ export class TelegramIdentityService {
         return {
           handled: true,
           action: 'unlinked_notice',
-          message: 'Please link your account first using /link <token> generated from the web assistant.',
+          message:
+            'Please link your account first using /link <token> generated from the web assistant.',
         };
       }
       return {
@@ -263,7 +277,8 @@ export class TelegramIdentityService {
         return {
           handled: true,
           action: 'usage',
-          message: 'To link your account, type /link <token> using the token generated in the web assistant.',
+          message:
+            'To link your account, type /link <token> using the token generated in the web assistant.',
         };
       }
 
@@ -313,7 +328,8 @@ export class TelegramIdentityService {
       return {
         handled: true,
         action: 'unlinked_notice',
-        message: 'Please link your account first using /link <token> generated from the web assistant.',
+        message:
+          'Please link your account first using /link <token> generated from the web assistant.',
       };
     }
 

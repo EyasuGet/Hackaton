@@ -24,11 +24,15 @@ export function registerTelegramRoutes(
   const learnerOnly = [authenticate, requireRole('learner')];
 
   // Learner generates a short-lived single-use linking token from the web assistant.
-  app.post('/api/channels/telegram/link-token', { preHandler: learnerOnly }, async (request, reply) => {
-    const principal = principalOf(request);
-    const tokenResult = await service.createLinkingToken(principal.id);
-    return reply.code(201).send(tokenResult);
-  });
+  app.post(
+    '/api/channels/telegram/link-token',
+    { preHandler: learnerOnly },
+    async (request, reply) => {
+      const principal = principalOf(request);
+      const tokenResult = await service.createLinkingToken(principal.id);
+      return reply.code(201).send(tokenResult);
+    },
+  );
 
   // Learner inspects whether their account currently has an active Telegram identity link.
   app.get('/api/channels/telegram/status', { preHandler: learnerOnly }, async (request, reply) => {

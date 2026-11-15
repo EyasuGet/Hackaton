@@ -130,7 +130,11 @@ describe('Telegram Identity Integration (T3-012-A)', () => {
         headers: { authorization: `Bearer ${tokens['learner-a']}` },
       });
       expect(learnerRes.statusCode).toBe(201);
-      const body = learnerRes.json<{ token: string; expiresAt: string; expiresInSeconds: number }>();
+      const body = learnerRes.json<{
+        token: string;
+        expiresAt: string;
+        expiresInSeconds: number;
+      }>();
       expect(body.token).toMatch(/^tlk_[0-9a-f]{32}$/);
       expect(body.expiresInSeconds).toBe(600);
     } finally {
