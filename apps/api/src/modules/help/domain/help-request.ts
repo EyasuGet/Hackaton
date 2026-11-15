@@ -1,8 +1,8 @@
 // Domain model for a learner-owned asynchronous help request.
 // A request captures the context the learner explicitly chose to share after
-// seeing the disclosure, and tracks its lifecycle from waiting to cancelled.
+// seeing the disclosure, and tracks its lifecycle from waiting to cancelled or resolved.
 
-export type HelpRequestState = 'waiting' | 'cancelled' | 'claimed';
+export type HelpRequestState = 'waiting' | 'cancelled' | 'claimed' | 'resolved';
 
 export interface HelpRequest {
   readonly id: string;
@@ -22,4 +22,19 @@ export interface HelpRequest {
   /** Set when a support staff member claims the request (T3-017-A). */
   readonly claimedBy: string | null;
   readonly claimedAt: string | null;
+  /** Set when support staff resolves the conversation (T3-017-B). */
+  readonly resolvedAt: string | null;
+  readonly resolvedBy: string | null;
+}
+
+/** A single reply in a help request thread (T3-017-B). */
+export interface HelpReply {
+  readonly id: string;
+  readonly helpRequestId: string;
+  readonly authorId: string;
+  /** Caller-supplied idempotency key; unique per request. */
+  readonly clientReplyId: string;
+  readonly body: string;
+  readonly createdAt: string;
+  readonly readAt: string | null;
 }

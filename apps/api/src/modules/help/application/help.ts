@@ -2,8 +2,13 @@
 // scope and receive null or empty results. The spec forbids promising staff
 // availability or capturing screens in this leaf (T3-016-A).
 import { ownedScope, type Principal } from '../../identity/domain/principal.ts';
-import type { HelpRequest } from '../domain/help-request.ts';
-import type { HelpRepository, SubmitHelpInput, SubmitResult } from './ports/help-repository.ts';
+import type { HelpReply, HelpRequest } from '../domain/help-request.ts';
+import type {
+  AddReplyResult,
+  HelpRepository,
+  SubmitHelpInput,
+  SubmitResult,
+} from './ports/help-repository.ts';
 
 export class Help {
   readonly #repository: HelpRepository;
@@ -50,5 +55,53 @@ export class Help {
     const scope = ownedScope(principal);
     if (!scope) return [];
     return this.#repository.listOwned(scope);
+  }
+
+  /**
+   * Adds a reply to the learner's own help request.
+   * Returns null when the principal is not a learner, the request does not
+   * belong to them, the request is in a terminal state, or it has expired.
+   */
+  async addReply(
+    principal: Principal,
+    helpRequestId: string,
+    clientReplyId: string,
+    body: string,
+  ): Promise<AddReplyResult | null> {
+    const scope = ownedScope(principal);
+    if (!scope) return null;
+    if (!body.trim()) return null;
+    // Confirm the learner owns this request before allowing a reply.
+    const request = await this.#repository.findById(scope, helpRequestId);
+    if (!request) return null;
+    return this.#repository.addReply(helpRequestId, principal.id, clientReplyId, body.trim());
+  }
+
+  /**
+   * Lists replies for the learner's own help request in chronological order.
+   * Returns null when the principal is not a learner or does not own the request.
+   */
+  async listReplies(
+    principal: Principal,
+    helpRequestId: string,
+  ): Promise<readonly HelpReply[] | null> {
+    const scope = ownedScope(principal);
+    if (!scope) return null;
+    const request = await this.#repository.findById(scope, helpRequestId);
+    if (!request) return null;
+    return this.#repository.listReplies(helpRequestId);
+  }
+
+  /**
+   * Marks all unread replies (by others) on the learner's request as read.
+   * Returns false when the principal is not a learner or does not own the request.
+   */
+  async markRepliesRead(principal: Principal, helpRequestId: string): Promise<boolean> {
+    const scope = ownedScope(principal);
+    if (!scope) return false;
+    const request = await this.#repository.findById(scope, helpRequestId);
+    if (!request) return false;
+    await this.#repository.markRepliesRead(helpRequestId, principal.id);
+    return true;
   }
 }
