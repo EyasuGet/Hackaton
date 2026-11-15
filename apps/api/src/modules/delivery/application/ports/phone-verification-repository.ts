@@ -4,6 +4,7 @@
 // Plaintext OTP is NEVER stored in repository storage.
 
 import type { PhoneVerificationCode } from '../../domain/phone-verification.ts';
+import type { Principal } from '../../../identity/domain/principal.ts';
 
 export interface PhoneVerificationRepository {
   /**
@@ -34,6 +35,16 @@ export interface PhoneVerificationRepository {
    * Records a verified phone number mapping for a learner upon successful challenge verification.
    */
   markPhoneVerified(learnerId: string, phoneNumber: string, verifiedAt: Date): Promise<void>;
+
+  /**
+   * Finds the learner ID associated with a verified phone number.
+   */
+  findLearnerByPhoneNumber?(phoneNumber: string): Promise<string | null>;
+
+  /**
+   * Finds the principal (with course grants) associated with a verified phone number.
+   */
+  findPrincipalByPhoneNumber?(phoneNumber: string): Promise<Principal | null>;
 
   /**
    * Purges expired or exhausted verification challenges as of `now`.
