@@ -17,6 +17,7 @@
     "content:import": "pnpm --filter @track3/api run content:import",
     "jobs:import": "pnpm --filter @track3/api run jobs:import",
     "demo:handoff": "pnpm --filter @track3/api run demo:handoff",
+    "telegram:link": "pnpm --filter @track3/api run telegram:link",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

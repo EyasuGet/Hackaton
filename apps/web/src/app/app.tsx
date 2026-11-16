@@ -240,35 +240,37 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
             </div>
           )}
 
-          <DemoSession handoffCode={handoffCode} onSession={setSessionToken} />
+          <div className="demo-strip">
+            <DemoSession handoffCode={handoffCode} onSession={setSessionToken} />
 
-          {!sessionToken && (
-            <section className="demo-notice" aria-labelledby="demo-heading">
-              <h2 id="demo-heading">
-                <T k="demo.heading" />
-              </h2>
-              <p>
-                <T k="demo.notice" />
-              </p>
-              <label htmlFor="demo-scenario">
-                <T k="demo.scenarioLabel" />
-              </label>
-              <select
-                id="demo-scenario"
-                value={scenario}
-                onChange={(event) => {
-                  if (isFixtureScenario(event.target.value)) setScenario(event.target.value);
-                }}
-              >
-                {/* An option holds plain text only, so these use the untagged lookup. */}
-                {Object.entries(FIXTURE_SCENARIOS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {t(label)}
-                  </option>
-                ))}
-              </select>
-            </section>
-          )}
+            {!sessionToken && (
+              <section className="demo-notice" aria-labelledby="demo-heading">
+                <h2 id="demo-heading">
+                  <T k="demo.heading" />
+                </h2>
+                <p>
+                  <T k="demo.notice" />
+                </p>
+                <label htmlFor="demo-scenario">
+                  <T k="demo.scenarioLabel" />
+                </label>
+                <select
+                  id="demo-scenario"
+                  value={scenario}
+                  onChange={(event) => {
+                    if (isFixtureScenario(event.target.value)) setScenario(event.target.value);
+                  }}
+                >
+                  {/* An option holds plain text only, so these use the untagged lookup. */}
+                  {Object.entries(FIXTURE_SCENARIOS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {t(label)}
+                    </option>
+                  ))}
+                </select>
+              </section>
+            )}
+          </div>
 
           <div
             className={`workspace-grid ${sessionToken ? 'workspace-grid--authenticated' : 'workspace-grid--demo'}`}
