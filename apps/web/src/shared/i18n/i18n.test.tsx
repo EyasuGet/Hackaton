@@ -1,13 +1,35 @@
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { LocaleContext, T, type MessageKey } from './i18n.tsx';
-import { am, en } from './messages.ts';
+import { am, ar, en, om, so, ti } from './messages.ts';
 
 afterEach(cleanup);
 
 describe('interface dictionary', () => {
   it('has an Amharic translation for every English key', () => {
     const missing = Object.keys(en).filter((key) => !am[key as MessageKey]?.trim());
+    expect(missing).toEqual([]);
+  });
+
+  it('has an Afaan Oromoo translation for every English key', () => {
+    const missing = Object.keys(en).filter((key) => !om[key as MessageKey]?.trim());
+    expect(missing).toEqual([]);
+  });
+
+  it('has a Tigrinya translation for every English key', () => {
+    const missing = Object.keys(en).filter((key) => !ti[key as MessageKey]?.trim());
+    expect(missing).toEqual([]);
+  });
+
+  it('has a Somali translation for every English key', () => {
+    const missing = Object.keys(en).filter((key) => !so[key as MessageKey]?.trim());
+    expect(missing).toEqual([]);
+  });
+
+  it('has an Arabic translation for every English key except fallback fixture', () => {
+    const missing = Object.keys(en).filter(
+      (key) => key !== 'assistant.speakerJob' && !ar[key as MessageKey]?.trim(),
+    );
     expect(missing).toEqual([]);
   });
 

@@ -194,7 +194,9 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
                 <h1>
                   <T k="app.title" />
                 </h1>
-                <p className="app-subtitle">Multilingual Learning &amp; Assistance Platform</p>
+                <p className="app-subtitle">
+                  <T k="app.subtitle" />
+                </p>
               </div>
             </div>
             <div className="languages" role="group" aria-label={t('app.languageLabel')}>
@@ -310,7 +312,7 @@ export function App({ handoffCode = null }: { handoffCode?: string | null }) {
               <T k={STATUS_TEXT[status]} />
             </p>
             <p className="footer-meta">
-              Savanna Multilingual Learning Assistant · WCAG 2.2 AA Conforming
+              <T k="app.footerMeta" />
             </p>
           </div>
         </footer>

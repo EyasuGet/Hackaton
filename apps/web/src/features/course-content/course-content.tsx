@@ -1,6 +1,7 @@
 // Course material for the signed-in learner: search permitted lessons and read a
 // cited section in place (a reload would end the in-memory demo session).
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { T, useT, type MessageKey } from '../../shared/i18n/i18n.tsx';
 import { openSection, searchContent, type SearchResult, type Section } from './content-api.ts';
 
 type View =
@@ -9,16 +10,17 @@ type View =
   | { readonly kind: 'section'; readonly section: Section; readonly results: SearchResult[] };
 
 const PROBLEMS = {
-  'signed-out': 'Your demo session has ended. Ask the demo operator for a new sign-in link.',
-  failed: 'Course material could not be loaded. Check your connection and try again.',
-  'not-found': 'This section is not available to you.',
-  withdrawn: 'This lesson has been withdrawn and can no longer be cited.',
-  removed: 'This section was removed when the lesson was updated.',
-} as const;
+  'signed-out': 'content.problem.signedOut',
+  failed: 'content.problem.failed',
+  'not-found': 'content.problem.notFound',
+  withdrawn: 'content.problem.withdrawn',
+  removed: 'content.problem.removed',
+} as const satisfies Record<string, MessageKey>;
 
 type Problem = keyof typeof PROBLEMS;
 
 export function CourseContent({ token }: { token: string | null }) {
+  const t = useT();
   const [question, setQuestion] = useState('');
   const [view, setView] = useState<View>({ kind: 'idle' });
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -38,8 +40,12 @@ export function CourseContent({ token }: { token: string | null }) {
   if (!token) {
     return (
       <section aria-labelledby={ids.heading} className="course-material-teaser">
-        <h2 id={ids.heading}>Your course material</h2>
-        <p>Sign in to search your course material.</p>
+        <h2 id={ids.heading}>
+          <T k="content.heading" />
+        </h2>
+        <p>
+          <T k="content.signInPrompt" />
+        </p>
       </section>
     );
   }
@@ -73,9 +79,11 @@ export function CourseContent({ token }: { token: string | null }) {
 
   return (
     <section aria-labelledby={ids.heading}>
-      <h2 id={ids.heading}>Your course material</h2>
+      <h2 id={ids.heading}>
+        <T k="content.heading" />
+      </h2>
       <form onSubmit={(event) => void onSearch(event)} role="search">
-        <label htmlFor={ids.search}>Search your course material</label>
+        <label htmlFor={ids.search}>{t('content.searchLabel')}</label>
         <input
           id={ids.search}
           type="search"
@@ -84,16 +92,24 @@ export function CourseContent({ token }: { token: string | null }) {
           onChange={(event) => setQuestion(event.target.value)}
         />
         <button type="submit" aria-disabled={view.kind === 'searching'}>
-          Search
+          <T k="content.searchButton" />
         </button>
       </form>
-      {problem && <p role="alert">{PROBLEMS[problem]}</p>}
-      <p role="status" aria-label="Search status">
-        {view.kind === 'searching' && 'Searching…'}
+      {problem && (
+        <p role="alert">
+          <T k={PROBLEMS[problem]} />
+        </p>
+      )}
+      <p role="status" aria-label={t('content.searchStatus')}>
+        {view.kind === 'searching' && <T k="content.searching" />}
         {view.kind === 'results' &&
-          (view.results.length === 0
-            ? 'No matching course material found.'
-            : `${view.results.length} matching section${view.results.length === 1 ? '' : 's'}.`)}
+          (view.results.length === 0 ? (
+            <T k="content.noResults" />
+          ) : view.results.length === 1 ? (
+            <T k="content.resultsCountOne" />
+          ) : (
+            t('content.resultsCountMany').replace('{count}', String(view.results.length))
+          ))}
       </p>
 
       {view.kind === 'results' && view.results.length > 0 && (
@@ -131,19 +147,16 @@ export function CourseContent({ token }: { token: string | null }) {
           <h3 ref={sectionHeading} tabIndex={-1} dir="auto">
             {view.section.heading}
           </h3>
-          <p className="hint" lang="en">
-            From “<span lang={view.section.language}>{view.section.sourceTitle}</span>”.{' '}
+          <p className="hint">
+            <T k="content.from" /> “
+            <span lang={view.section.language}>{view.section.sourceTitle}</span>”.{' '}
             {view.section.provenance}
           </p>
           <p className="message-text" dir="auto">
             {view.section.text}
           </p>
-          <button
-            type="button"
-            lang="en"
-            onClick={() => setView({ kind: 'results', results: view.results })}
-          >
-            Back to results
+          <button type="button" onClick={() => setView({ kind: 'results', results: view.results })}>
+            <T k="content.backButton" />
           </button>
         </article>
       )}
