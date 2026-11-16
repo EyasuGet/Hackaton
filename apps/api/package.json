@@ -11,6 +11,7 @@
     "content:import": "node --env-file-if-exists=../../.env src/import-content.ts",
     "jobs:import": "node --env-file-if-exists=../../.env src/import-jobs.ts",
     "demo:handoff": "node --env-file-if-exists=../../.env src/demo-handoff.ts",
+    "telegram:link": "node --env-file-if-exists=../../.env src/issue-telegram-link.ts",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/run-tests.js",
     "test:integration": "vitest run integration.test",

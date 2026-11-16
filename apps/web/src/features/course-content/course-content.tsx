@@ -37,7 +37,7 @@ export function CourseContent({ token }: { token: string | null }) {
 
   if (!token) {
     return (
-      <section aria-labelledby={ids.heading}>
+      <section aria-labelledby={ids.heading} className="course-material-teaser">
         <h2 id={ids.heading}>Your course material</h2>
         <p>Sign in to search your course material.</p>
       </section>
