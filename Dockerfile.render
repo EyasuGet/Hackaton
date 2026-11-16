@@ -1,0 +1,59 @@
+# Multi-stage production container for unified Render deployment
+# Builds React frontend and Fastify API, bundled with Caddy for same-origin proxying.
+
+FROM node:22-alpine AS build
+
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@11.21.0 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+
+RUN pnpm install --frozen-lockfile
+
+# Copy sources and configs
+COPY tsconfig.base.json ./
+COPY apps/api ./apps/api
+COPY apps/web ./apps/web
+COPY fixtures ./fixtures
+COPY docs ./docs
+
+# Build web SPA and compiled API
+RUN pnpm --filter @track3/api run build
+RUN pnpm --filter @track3/web run build
+
+# Runtime Stage: Node 22 + Caddy binary
+FROM node:22-alpine AS runtime
+
+WORKDIR /app
+
+# Copy Caddy binary from official alpine image
+COPY --from=caddy:2.9.1-alpine /usr/bin/caddy /usr/bin/caddy
+
+# Install production dependencies for the API
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+RUN corepack enable && corepack prepare pnpm@11.21.0 --activate \
+    && pnpm --filter @track3/api install --prod --frozen-lockfile
+
+# Copy compiled outputs and static assets
+COPY --from=build /app/apps/api/dist ./apps/api/dist
+COPY --from=build /app/apps/web/dist /srv/web
+COPY --from=build /app/apps/api/src ./apps/api/src
+COPY --from=build /app/fixtures ./fixtures
+COPY --from=build /app/docs ./docs
+
+# Copy Caddy configuration and startup script
+COPY deploy/render/Caddyfile /etc/caddy/Caddyfile
+COPY deploy/render/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+ENV NODE_ENV=production
+ENV API_HOST=127.0.0.1
+ENV API_PORT=3000
+ENV PORT=10000
+
+EXPOSE 10000
+
+CMD ["/app/start.sh"]

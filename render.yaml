@@ -1,0 +1,56 @@
+# Render Infrastructure-as-Code Blueprint
+# Deploy via Render Dashboard -> New -> Blueprint (select this repository).
+
+databases:
+  - name: track3-postgres
+    databaseName: track3
+    user: track3
+    plan: free
+    region: oregon
+
+services:
+  - type: web
+    name: track3-assistant
+    runtime: docker
+    dockerfilePath: Dockerfile.render
+    plan: free
+    region: oregon
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: track3-postgres
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: track3-postgres
+          property: port
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: track3-postgres
+          property: database
+      - key: DATABASE_USER
+        fromDatabase:
+          name: track3-postgres
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: track3-postgres
+          property: password
+      - key: DEMO_MODE
+        value: 'true'
+      # Must match your exact Render URL without trailing slash (e.g. https://my-service.onrender.com)
+      - key: DEMO_ALLOWED_ORIGINS
+        value: 'https://track3-assistant.onrender.com'
+      # Gemini API key for live AI answers & speech transcription
+      - key: AI_PROVIDER
+        value: 'cloud'
+      - key: GEMINI_API_KEY
+        sync: false
+      # Telegram Bot credentials (prompted securely in Render dashboard upon creation)
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
