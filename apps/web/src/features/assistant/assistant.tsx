@@ -872,116 +872,124 @@ export function Assistant({
         )}
         <DraftNotice value={draft} onClear={() => setDraft('')} />
 
-        {/* Voice recording, transcribing, and review controls (T3-010-B) */}
-        <div className="voice-controls" role="region" aria-label={t('assistant.voiceRecord')}>
-          {voiceState === 'idle' && (
-            <button
-              type="button"
-              className="voice-button voice-record"
-              onClick={() => {
-                void startVoiceRecording();
-              }}
-              aria-label={t('assistant.voiceRecord')}
-              disabled={sending}
-            >
-              <T k="assistant.voiceRecord" />
+        <div className="ask-toolbar">
+          <div className="ask-toolbar-start">
+            {/* Voice recording, transcribing, and review controls (T3-010-B) */}
+            <div className="voice-controls" role="region" aria-label={t('assistant.voiceRecord')}>
+              {voiceState === 'idle' && (
+                <button
+                  type="button"
+                  className="voice-button voice-record"
+                  onClick={() => {
+                    void startVoiceRecording();
+                  }}
+                  aria-label={t('assistant.voiceRecord')}
+                  disabled={sending}
+                >
+                  <T k="assistant.voiceRecord" />
+                </button>
+              )}
+
+              {voiceState === 'recording' && (
+                <div className="voice-active-group">
+                  <button
+                    type="button"
+                    className="voice-button voice-stop"
+                    onClick={() => {
+                      void stopVoiceRecording();
+                    }}
+                    aria-label={t('assistant.voiceStop')}
+                  >
+                    <T k="assistant.voiceStop" />
+                  </button>
+                  <button
+                    type="button"
+                    className="voice-button voice-discard"
+                    onClick={discardVoice}
+                    aria-label={t('assistant.voiceDiscard')}
+                  >
+                    <T k="assistant.voiceDiscard" />
+                  </button>
+                  <span className="voice-status" role="status" aria-live="polite">
+                    <T k="assistant.voiceRecording" />
+                  </span>
+                </div>
+              )}
+
+              {voiceState === 'transcribing' && (
+                <span className="voice-status" role="status" aria-live="polite">
+                  <T k="assistant.voiceTranscribing" />
+                </span>
+              )}
+
+              {voiceState === 'review' && (
+                <div className="voice-review-banner" role="note">
+                  <p>
+                    <T k="assistant.voiceReviewHint" />
+                  </p>
+                  <button
+                    type="button"
+                    className="voice-button voice-discard"
+                    onClick={discardVoice}
+                    aria-label={t('assistant.voiceDiscard')}
+                  >
+                    <T k="assistant.voiceDiscard" />
+                  </button>
+                </div>
+              )}
+
+              {voiceProblem && (
+                <p id={ids.voiceProblem} className="voice-problem" role="alert">
+                  <T k={VOICE_PROBLEM_TEXT[voiceProblem]} />
+                </p>
+              )}
+            </div>
+
+            <div className="ask-toggles-group">
+              <div className="assistant-simple-language-control">
+                <label htmlFor={ids.simpleLanguage}>
+                  <input
+                    id={ids.simpleLanguage}
+                    type="checkbox"
+                    checked={isSimpleLanguage}
+                    aria-describedby={ids.simpleLanguageHint}
+                    onChange={(e) => handleSimpleLanguageChange(e.target.checked)}
+                  />
+                  <T k="assistant.simpleLanguageLabel" />
+                </label>
+                <p id={ids.simpleLanguageHint} className="hint visually-hidden">
+                  <T k="assistant.simpleLanguageHint" />
+                </p>
+              </div>
+              <div className="assistant-research-control">
+                <label htmlFor={ids.researchMode}>
+                  <input
+                    id={ids.researchMode}
+                    type="checkbox"
+                    checked={isResearchMode}
+                    aria-describedby={ids.researchModeHint}
+                    onChange={(e) => setResearchMode(e.target.checked)}
+                  />
+                  <T k="assistant.researchModeLabel" />
+                </label>
+                <p id={ids.researchModeHint} className="hint visually-hidden">
+                  <T k="assistant.researchModeHint" />
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="actions">
+            {/* aria-disabled keeps the button focusable, so keyboard focus is not lost while sending. */}
+            <button type="submit" aria-disabled={sending}>
+              <T k="assistant.send" />
             </button>
-          )}
-
-          {voiceState === 'recording' && (
-            <div className="voice-active-group">
-              <button
-                type="button"
-                className="voice-button voice-stop"
-                onClick={() => {
-                  void stopVoiceRecording();
-                }}
-                aria-label={t('assistant.voiceStop')}
-              >
-                <T k="assistant.voiceStop" />
-              </button>
-              <button
-                type="button"
-                className="voice-button voice-discard"
-                onClick={discardVoice}
-                aria-label={t('assistant.voiceDiscard')}
-              >
-                <T k="assistant.voiceDiscard" />
-              </button>
-              <span className="voice-status" role="status" aria-live="polite">
-                <T k="assistant.voiceRecording" />
+            {sending && (
+              <span className="pending" aria-hidden="true">
+                <T k="assistant.waiting" />
               </span>
-            </div>
-          )}
-
-          {voiceState === 'transcribing' && (
-            <span className="voice-status" role="status" aria-live="polite">
-              <T k="assistant.voiceTranscribing" />
-            </span>
-          )}
-
-          {voiceState === 'review' && (
-            <div className="voice-review-banner" role="note">
-              <p>
-                <T k="assistant.voiceReviewHint" />
-              </p>
-              <button
-                type="button"
-                className="voice-button voice-discard"
-                onClick={discardVoice}
-                aria-label={t('assistant.voiceDiscard')}
-              >
-                <T k="assistant.voiceDiscard" />
-              </button>
-            </div>
-          )}
-
-          {voiceProblem && (
-            <p id={ids.voiceProblem} className="voice-problem" role="alert">
-              <T k={VOICE_PROBLEM_TEXT[voiceProblem]} />
-            </p>
-          )}
-        </div>
-        <div className="assistant-simple-language-control">
-          <label htmlFor={ids.simpleLanguage}>
-            <input
-              id={ids.simpleLanguage}
-              type="checkbox"
-              checked={isSimpleLanguage}
-              aria-describedby={ids.simpleLanguageHint}
-              onChange={(e) => handleSimpleLanguageChange(e.target.checked)}
-            />
-            <T k="assistant.simpleLanguageLabel" />
-          </label>
-          <p id={ids.simpleLanguageHint} className="hint">
-            <T k="assistant.simpleLanguageHint" />
-          </p>
-        </div>
-        <div className="assistant-research-control">
-          <label htmlFor={ids.researchMode}>
-            <input
-              id={ids.researchMode}
-              type="checkbox"
-              checked={isResearchMode}
-              aria-describedby={ids.researchModeHint}
-              onChange={(e) => setResearchMode(e.target.checked)}
-            />
-            <T k="assistant.researchModeLabel" />
-          </label>
-          <p id={ids.researchModeHint} className="hint">
-            <T k="assistant.researchModeHint" />
-          </p>
-        </div>
-        <div className="actions">
-          {/* aria-disabled keeps the button focusable, so keyboard focus is not lost while sending. */}
-          <button type="submit" aria-disabled={sending}>
-            <T k="assistant.send" />
-          </button>
-          {sending && (
-            <span className="pending" aria-hidden="true">
-              <T k="assistant.waiting" />
-            </span>
-          )}
+            )}
+          </div>
         </div>
       </form>
 
